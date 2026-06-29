@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="../css/cart.css" />
+  <link rel="shortcut icon" href="../img/favicon.png" type="image/x-icon" />
+  <title>SALGADOS COSTA | Carrinho de compras</title>
+  <style>
+   /* Manter todos os estilos já existentes */
+#campoNome, #campoWhatsapp, #campoCEP,#campoEndereco, #campoBairro, #campoPonto, #campoPagamento, #campoTroco, #campoNumero {
+  margin: 15px 0;
+  display: none;
+}
+
+#campoNome label,
+#campoWhatsapp label,
+#campoEndereco label,
+#campoNumero label,
+#campoCEP label,
+#campoPonto label,
+#campoPagamento label,
+#campoTroco label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+#campoNome input,
+#campoWhatsapp input,
+#campoEndereco input,
+#campoNumero input,
+#campoCEP input,   /* ✅ agora estilizado igual aos outros */
+#campoPonto input,
+#campoTroco input,
+#campoPagamento select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 1rem;
+  border: 1.5px solid #ddd;
+  border-radius: 6px;
+  font-family: 'Montserrat', sans-serif;
+  transition: border-color 0.3s ease;
+}
+
+#campoNome input:focus,
+#campoNumero input:focus,
+#campoWhatsapp input:focus,
+#campoEndereco input:focus,
+#campoPonto input:focus,
+#campoTroco input:focus,
+#campoPagamento select:focus {
+  outline: none;
+  border-color: #ff5722;
+  box-shadow: 0 0 6px rgba(255, 87, 34, 0.5);
+}
+
+.division h3 {
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #222;
+}
+
+.division label {
+  font-weight: 500;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  user-select: none;
+  color: #444;
+}
+
+.division label input[type='radio'] {
+  margin-right: 8px;
+  accent-color: #ff5722;
+  width: 18px;
+  height: 18px;
+}
+
+#generateOrder {
+  width: 100%;
+  background-color: #ff5722;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background-color 0.3s ease;
+  font-family: 'Montserrat', sans-serif;
+}
+
+#generateOrder:hover {
+  background-color: #e64a19;
+}
+  </style>
+</head>
+<body data-slug="salgadoscosta">
+  <div class="container">
+    <div class="back"><a href="../index.html"><span class="iconify-inline" data-icon="ion:arrow-back-outline"></span> Voltar</a></div>
+    <h1>Carrinho de compras</h1>
+    <p class="info">Ao clicar em ‘Gerar Pedido’, seu pedido irá para nossa cozinha e será feito com todo amor e sabor.</p>
+
+    <div class="row">
+      <div class="items">
+        <h2>Itens escolhidos</h2>
+        <hr />
+        <div id="showItems"><!-- Itens do carrinho aqui --></div>
+      </div>
+
+
+      <div class="total">
+        <h2>Valor final</h2>
+        <hr />
+
+        <div class="division">
+          <h3>Entrega</h3>
+          <label><input type="radio" name="tipoEntrega" value="retirada" /> Retirada no local (+ R$ 0,00)</label><br />
+          <label><input type="radio" name="tipoEntrega" value="delivery" /> Delivery (Pedido+Entrega)</label>
+        </div>
+
+        <div id="campoNome"><label for="nome">Nome:</label><input type="text" id="nome" autocomplete="name" /></div>
+        <div id="campoWhatsapp"><label for="whatsapp">Whatsapp:</label><input type="text" id="whatsapp" placeholder="21999999999"  autocomplete="tel" /></div>
+        <div id="campoCEP"><label for="campoCEP">CEP:</label><input type="text" id="enderecoCEP" /></div>
+        <div id="campoEndereco"><label for="endereco">Endereço:</label><input type="text" id="endereco" autocomplete="street-address" /></div>
+        <div id="campoNumero" style="display:none;"><label for="numero">Número da residência:</label><input type="text" id="numero" placeholder="Ex: 123" autocomplete="off" /></div>
+        <div id="campoPonto"><label for="pontoReferencia">Ponto de Referência:</label><input type="text" id="pontoReferencia" /></div>
+        <div id="campoBairro"><label for="bairroCliente">Bairro:</label><input type="text" id="bairroCliente" autocomplete="address-level2" /></div>
+        <div id="campoPagamento">
+          <label for="formaPagamento">Forma de Pagamento:</label>
+          <select id="formaPagamento">
+            <option value="">Selecione</option>
+            <option value="dinheiro">Dinheiro</option>
+            <option value="debito">Débito</option>
+            <option value="credito">Crédito</option>
+            <option value="pix">PIX</option>
+          </select>
+        </div>
+        <div id="campoTroco"><label for="trocoPara">Troco para quanto?</label><input type="number" id="trocoPara" min="0" step="0.01" /></div>
+
+        <div class="division">
+          <h3>Cupom</h3>
+          <div class="promotionCode">
+            <input type="text" placeholder="Insira o código aqui" id="promotionCode" />
+            <button id="addPromotionCode">+</button>
+          </div>
+        </div>
+
+        <div class="division">
+          <h3>Informações</h3>
+          <div class="item"><p>Valor do pedido:</p><span id="showAllItemsValue">Carregando...</span></div>
+          <div class="item"><p>Taxa de entrega:</p><span id="showDelivery">Carregando...</span></div>
+          <div class="item" id="taxaCartaoBox" style="display:none;"><p>Taxa de cartão: <span id="showTaxaCartao">Carregando...</span></div></p>
+          <div class="item"><p>Desconto (cupom):</p><span id="showDiscount">Carregando...</span></div>
+        </div>
+
+        <hr />
+        <div class="item"><h3>Total</h3><span id="showTotal">Carregando...</span></div>
+        <button id="generateOrder">Gerar Pedido</button>
+        <div class="keepBuying"><p>ou</p><a href="../index.html">Continuar comprando</a></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/apiHelper.js"></script>
+</body>
+<script src="../js/cart.js?=17"></script>
+</html>

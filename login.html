@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - Fábrica de Salgados Costa</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+
+
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 20px;
+}
+
+.container {
+  width: 100%;
+  max-width: 460px;
+  animation: fadeUp 0.5s ease;
+}
+
+@keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+
+.brand { text-align:center; margin-bottom:28px; }
+.brand .icon {
+  width: 64px; height: 64px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: white; margin: 0 auto 16px;
+  box-shadow: 0 8px 24px rgba(249,115,22,0.3);
+}
+.brand h1 { font-size: 22px; font-weight: 800; color: #f8fafc; }
+.brand p { font-size: 13px; color: #94a3b8; margin-top:4px; }
+
+.card {
+  background: #1e293b;
+  border-radius: 20px;
+  padding: 32px;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.tabs { display:flex; gap:4px; margin-bottom:24px; background:#0f172a; border-radius:10px; padding:4px; }
+.tab {
+  flex:1; padding:10px; text-align:center; border:none; border-radius:8px;
+  font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  background:transparent; color:#64748b; transition:all 0.2s;
+}
+.tab.active { background:#f97316; color:white; }
+
+.form-group { margin-bottom:16px; }
+.form-group label { display:block; font-size:11px; font-weight:600; color:#94a3b8; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px; }
+.form-group input {
+  width:100%; padding:12px 14px; background:#0f172a; border:1px solid rgba(255,255,255,0.08);
+  border-radius:10px; color:#f8fafc; font-size:14px; font-family:inherit; outline:none; transition:0.2s;
+}
+.form-group input:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,0.12); }
+.form-group input::placeholder { color:#475569; }
+
+.btn {
+  width:100%; padding:13px; border:none; border-radius:10px;
+  font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-primary { background:linear-gradient(135deg,#f97316,#ea580c); color:white; }
+.btn-primary:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(249,115,22,0.35); }
+.btn-primary:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+.btn-ghost { background:transparent; color:#94a3b8; border:1px solid rgba(255,255,255,0.08); }
+.btn-ghost:hover { color:#f8fafc; border-color:#f97316; }
+
+.spinner-btn { display:none; width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.6s linear infinite; }
+.btn.loading .spinner-btn { display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.error { display:none; padding:10px 14px; background:rgba(220,38,38,0.1); border:1px solid rgba(220,38,38,0.2); border-radius:8px; color:#fca5a5; font-size:13px; margin-top:12px; }
+.error.show { display:block; animation:shake 0.3s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+
+.success-msg { padding:10px 14px; background:rgba(22,163,74,0.1); border:1px solid rgba(22,163,74,0.2); border-radius:8px; color:#4ade80; font-size:13px; margin-top:12px; display:none; }
+.success-msg.show { display:block; }
+
+.form-box { display:none; }
+.form-box.active { display:block; animation:fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.footer { text-align:center; margin-top:16px; font-size:12px; color:#475569; }
+
+/* Super Admin panel after login */
+.super-panel { display:none; }
+.super-panel.active { display:block; }
+.user-list { display:flex; flex-direction:column; gap:8px; margin:12px 0; max-height:300px; overflow-y:auto; }
+.user-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#0f172a; border-radius:8px; }
+.user-item .uname { font-weight:600; font-size:13px; color:#f8fafc; }
+.user-item .udate { font-size:11px; color:#64748b; }
+.user-item .btn-sm { padding:5px 10px; font-size:11px; border:none; border-radius:6px; cursor:pointer; font-family:inherit; background:#334155; color:#94a3b8; transition:0.2s; }
+.user-item .btn-sm:hover { background:#f97316; color:white; }
+
+@media(max-width:480px) { .card { padding:24px; } .brand .icon { width:52px; height:52px; font-size:22px; } }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="brand">
+    <div class="icon"><i class="fas fa-utensils"></i></div>
+    <h1>Fábrica de Salgados</h1>
+    <p>Sistema de Gerenciamento</p>
+  </div>
+
+  <div class="card">
+    <!-- Login Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="login" onclick="switchTab('login',this)"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+      <button class="tab" data-tab="register" onclick="switchTab('register',this)"><i class="fas fa-user-plus"></i> Cadastrar</button>
+    </div>
+
+    <!-- Login Form -->
+    <div class="form-box active" id="boxLogin">
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Usuário</label>
+          <input type="text" id="loginUser" placeholder="Seu usuário" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="loginPass" placeholder="Sua senha" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" id="btnLogin">
+          <span class="spinner-btn"></span> Entrar <i class="fas fa-arrow-right"></i>
+        </button>
+        <div class="error" id="loginError"></div>
+      </form>
+    </div>
+
+    <!-- Register Form -->
+    <div class="form-box" id="boxRegister">
+      <form id="registerForm">
+        <div class="form-group">
+          <label>Nome da Loja / Usuário</label>
+          <input type="text" id="regUser" placeholder="Ex: loja_belford" required>
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="regPass" placeholder="Mínimo 6 caracteres" required>
+        </div>
+        <div class="form-group">
+          <label>Confirmar Senha</label>
+          <input type="password" id="regPass2" placeholder="Repita a senha" required>
+        </div>
+        <button type="submit" class="btn btn-primary" id="btnRegister">
+          <span class="spinner-btn"></span> Criar Conta
+        </button>
+        <div class="error" id="registerError"></div>
+        <div class="success-msg" id="registerSuccess"></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="footer">&copy; 2025 Fábrica de Salgados Costa</div>
+</div>
+
+<script>
+// Nota: superadmin é validado via Firestore (coleção 'usuarios')
+// A senha NÃO deve ser hardcoded no frontend — consulte o admin do sistema
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.form-box').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tab === 'login' ? 'boxLogin' : 'boxRegister').classList.add('active');
+  document.getElementById('loginError').classList.remove('show');
+}
+
+// ========== LOGIN ==========
+// Sistema de login administrativo (coleção 'usuarios' no Firestore).
+// O login de clientes (público) fica em index.html + menu.js (coleção 'users').
+// Futuramente ambos serão unificados via backend API.
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value.trim();
+  const error = document.getElementById('loginError');
+  const btn = document.getElementById('btnLogin');
+
+  error.classList.remove('show');
+
+  if (!user || !pass) { error.textContent = 'Preencha todos os campos.'; error.classList.add('show'); return; }
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass, empresaId: 1 }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('authUser', JSON.stringify({
+        ...data.user,
+        token: data.token,
+        _expiry: Date.now() + 86400000,
+      }));
+      window.location.href = data.user.role === 'superadmin' ? 'dashboard.html?superadmin=true' : 'dashboard.html';
+      return;
+    }
+
+    const errData = await res.json().catch(() => ({}));
+    error.textContent = errData.error || 'Erro no login. Verifique usuário e senha.';
+    error.classList.add('show');
+  } catch (err) {
+    console.error(err);
+    error.textContent = 'Erro de conexão. Tente novamente.';
+    error.classList.add('show');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+});
+
+// ========== REGISTER ==========
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const user = document.getElementById('regUser').value.trim();
+  const pass = document.getElementById('regPass').value.trim();
+  const pass2 = document.getElementById('regPass2').value.trim();
+  const error = document.getElementById('registerError');
+  const success = document.getElementById('registerSuccess');
+  const btn = document.getElementById('btnRegister');
+
+  error.classList.remove('show');
+  success.classList.remove('show');
+
+  if (!user || !pass) { error.textContent = 'Preencha todos os campos.'; error.classList.add('show'); return; }
+  if (pass.length < 6) { error.textContent = 'Senha deve ter no mínimo 6 caracteres.'; error.classList.add('show'); return; }
+  if (pass !== pass2) { error.textContent = 'Senhas não conferem.'; error.classList.add('show'); return; }
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/auth/register-public', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass, lojaNome: user }),
+    });
+
+    if (res.ok) {
+      success.textContent = 'Conta criada! Faça login.';
+      success.classList.add('show');
+      setTimeout(() => {
+        document.getElementById('loginUser').value = user;
+        switchTab('login', document.querySelector('.tab[data-tab="login"]'));
+      }, 1500);
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      return;
+    }
+
+    const errData = await res.json().catch(() => ({}));
+    error.textContent = errData.error || 'Erro ao criar conta.';
+    error.classList.add('show');
+  } catch (err) {
+    console.error(err);
+    error.textContent = 'Erro ao cadastrar. Tente novamente.';
+    error.classList.add('show');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+});
+
+// ========== AUTO CHECK FOR SUPER ADMIN SESSION ==========
+const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
+if (authUser) {
+  // Already logged in, redirect
+  const target = authUser.role === 'superadmin' ? 'dashboard.html?superadmin=true' : 'dashboard.html';
+  if (window.location.pathname.includes('login.html') || window.location.pathname === '/login') {
+    window.location.href = target;
+  }
+}
+</script>
+</body>
+</html>
