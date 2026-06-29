@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/style.css">
+<link rel="manifest" href="/manifest.json">
+<link rel="shortcut icon" href="img/IMG-20250821-WA0028.jpg" type="image/x-icon">
+<title id="pageTitle">Fabrica de Salgados Costa | Cardapio Online</title>
+
+<style>
+#statusBar {
+    position: fixed;
+    top: 0px;
+    left: 0;
+    width: 100%;
+    padding: 6px 0;
+    text-align: center;
+    font-weight: bold;
+    color: white;
+    font-family: 'Montserrat', sans-serif;
+    z-index: 9999;
+    transition: background-color 0.3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+@media (max-width: 768px) {
+    #statusBar {
+        font-size: 14px;
+        padding: 10px 0;
+    }
+}
+</style>
+</head>
+<body data-slug="salgadoscosta">
+
+<!-- Barra de status fixa -->
+<div id="statusBar">Carregando status...</div>
+
+<!-- Floating WhatsApp -->
+<a href="#" id="whatsappFloatLink" class="whatsapp">
+    <span class="iconify-inline" data-icon="akar-icons:whatsapp-fill"></span>
+</a>
+
+<!-- Carrinho flutuante -->
+<a href="./view/cart.html" class="cartFloating">
+    <span class="iconify-inline" data-icon="mdi:cart-variant"></span>
+    <div class="cartNotify"></div>
+</a>
+
+<!-- Sobre -->
+<div id="about">
+    <div class="container">
+        <h3>Cardápio online</h3>
+        <p>Faça seu Pedido para retirada na loja ou Delivery<br />Esperamos voces Logo</p>
+    </div>
+</div>
+<div class="atention">
+    <p><font color="white"><b>Encomendas somente pelo Whatsapp</b></font></p>
+</div>
+
+<!-- MENU -->
+<div id="menu" class="container">
+    <h3>Cardápio</h3>
+    <div class="linksMenu">
+        <button class="linkMenu active" id="showAll">Tudo</button>
+        <button class="linkMenu" id="showSnacks">Salgadinhos</button>
+        <button class="linkMenu" id="showCombos">Massas</button>
+        <button class="linkMenu" id="showPortions">Salgadinhos de Festa</button>
+        <button class="linkMenu" id="showDrinks">Bebidas</button>
+        <a href="#promotions" class="linkMenu">Promoções</a>
+    </div>
+    <div class="cardsMenu" id="showMenu">
+        <!-- ITEMS MENU -->
+    </div>
+</div>
+
+<!-- PROMOÇÕES -->
+<div id="promotions">
+    <div class="container">
+        <h3>Promoções do dia</h3>
+        <div class="cardsMenu" id="showPromotions">
+            <!-- ITEMS MENU -->
+        </div>
+    </div>
+</div>
+
+<br />
+<br />
+
+<!-- Container responsivo -->
+<div style="position:relative; width:100%; padding-bottom:35%; /* 16:9 ratio */ height:0; overflow:hidden; border-radius:10px;">
+  <iframe id="mapIframe"
+    src="https://www.google.com/maps?q=Av.+Ten.+Armindo+Leal+Gon%C3%A7alves,+146+-+Parque+Sao+Vicente,+Belford+Roxo+-+RJ,+26178-400&output=embed" 
+    style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" 
+    allowfullscreen="" 
+    loading="lazy" 
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
+</div>
+
+
+
+
+<!-- SERVICE -->
+<div id="service" class="container">
+    <h3>Atendimento</h3>
+    <div class="locAndCont">
+        <div class="cardLAC">
+            <div class="circle">
+                <span class="iconify-inline" data-icon="akar-icons:location"></span>
+            </div>
+            <p id="storeAddress"><b><font color="black"> Av. Tenente armindo leal gonçalves, 146<br />Sargento Roncalle</font></b></p>
+        </div>
+        <a id="whatsappServiceLink" href="https://wa.me/5521966017085" target="_blank" class="whatsappFloating">
+            <span class="iconify-inline" data-icon="akar-icons:whatsapp-fill"></span>
+        </a>
+    </div>
+    <div class="days" id="daysContainer">
+        <!-- Dias e horários vão ser carregados -->
+    </div>
+</div>
+
+
+<!-- FOOTER -->
+<div class="footerTop">
+    <div class="content">
+        <p id="logo">Fabrica de salgados <br />Costa</p>
+        <div>
+            <h4>Quem somos</h4>
+            <p>Somos quem traz alegria pra sua casa em forma de comida</p>
+        </div>
+    </div>
+</div>
+<div class="footerBottom">
+    <div class="content">
+        <p id="footerCopyright">Fabrica de Salgados - 2024 &copy; Todos os direitos reservados.</p>
+    </div>
+</div>
+
+<!-- Botão bolinha -->
+<div id="userMenuBtn">👤</div>
+
+<!-- Dropdown login -->
+<div id="userDropdown" class="hidden">
+  <h3>Login</h3>
+  <input type="text" id="loginPhone" placeholder="Telefone" />
+  <input type="password" id="loginPassword" placeholder="Senha" />
+  <button id="btnLogin">Entrar</button>
+  <button id="btnShowRegister">Cadastrar-me</button>
+</div>
+
+<!-- Modal cadastro -->
+<div id="registerOverlay" class="hidden">
+  <div class="registerBox">
+    <h3>Criar conta</h3>
+    <input type="text" id="regNome" placeholder="Nome completo" />
+    <input type="text" id="regPhone" placeholder="21999999999" />
+    <input type="password" id="regPassword" placeholder="Senha" />
+    <input type="number" id="regCep" placeholder="CEP (sem traços ou espaços)" />
+    <input type="text" id="regEndereco" placeholder="Endereço" />
+    <input type="text" id="regNumero" placeholder="Número" />
+    <input type="text" id="regBairro" placeholder="Bairro" />
+    <input type="text" id="regPonto" placeholder="Ponto de referência" />
+    <button id="btnRegister">Cadastrar</button>
+    <button id="btnCloseRegister">Cancelar</button>
+  </div>
+</div>
+
+<style>
+#userMenuBtn {
+  position: fixed;
+  top: 40px; /* abaixo da statusBar */
+  left: 10px;
+  width: 45px;
+  height: 45px;
+  background: #ff5722;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+}
+
+#userDropdown {
+  position: fixed;
+  top: 90px;
+  left: 10px;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  width: 220px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  z-index: 9999;
+}
+
+#userDropdown.hidden { display: none; }
+
+#userDropdown input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+#registerOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+#registerOverlay.hidden { display: none; }
+
+.registerBox {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 400px;
+}
+.registerBox input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+.registerBox button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: none;
+  border-radius: 6px;
+  background: #ff5722;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+</style>
+
+
+<script src="js/utils.js"></script>
+<script src="js/apiHelper.js"></script>
+<script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
+<script src="js/menu.js?=8"></script>
+<script src="js/navbar.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js');
+}
+</script>
+</body>
+</html>

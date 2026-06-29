@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Painel — Loja</title>
+
+<script src="js/utils.js"></script>
+<link rel="stylesheet" href="css/painelstyle.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0f172a; --card: #0b1224; --muted: #94a3b8; --text: #e2e8f0;
+  --brand: #22c55e; --brand-2: #3b82f6; --warn: #f59e0b; --danger: #ef4444;
+  --ok: #10b981; --ring: #22c55e55;
+}
+*{ box-sizing: border-box }
+html,body{ height:100%; margin:0; font-family:'Inter', sans-serif; background: var(--bg); color:var(--text); }
+.wrapper{ max-width:1200px; margin:32px auto; padding:0 16px; }
+header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+.title{ font-weight:800; font-size:clamp(20px,2vw+12px,32px); display:flex; align-items:center; gap:10px }
+
+.grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:16px }
+.card{ grid-column: span 12; background: linear-gradient(180deg,#0e1630,#0b1224); border:1px solid #1f2a4d; border-radius:20px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25) }
+@media(min-width:900px){ .card.half{ grid-column: span 12 } }
+.card h3{ margin:0 0 12px; font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px }
+.hr{ height:1px; background:linear-gradient(90deg, transparent, #263463, transparent); margin:12px 0 }
+
+/* Tabs */
+.tabs{ display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.tab-btn{ cursor:pointer; border:1px solid #22315b; background:#0a1224; color:var(--text); padding:10px 16px; border-radius:12px; font-weight:700; transition:.2s; flex:0 0 auto; font-family:inherit; font-size:13px; }
+.tab-btn[aria-selected="true"], .tab-btn:hover{ outline:2px solid var(--ring); background:linear-gradient(180deg,#0e1a35,#0a1224); }
+.hidden{ display:none !important }
+
+/* Skeleton */
+.skeleton-row{ background:linear-gradient(90deg,#0e1630 25%,#1a2440 50%,#0e1630 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:8px; height:48px; margin-bottom:8px; }
+@keyframes shimmer{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Modal */
+.modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:10000; animation:fadeIn .2s; }
+.modal-box{ background:linear-gradient(180deg,#0e1630,#0b1224); border:1px solid #1f2a4d; border-radius:16px; padding:28px; max-width:380px; width:90%; animation:slideUp .2s; }
+@keyframes slideUp{ from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.modal-box h3{ font-size:16px; margin-bottom:8px; }
+.modal-box p{ font-size:13px; color:var(--muted); margin-bottom:20px; line-height:1.5; }
+.modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
+.btn-modal-confirm{ padding:10px 18px; background:linear-gradient(90deg,var(--danger),#dc2626); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; font-family:inherit; font-size:13px; }
+.btn-modal-cancel{ padding:10px 18px; background:#0a1224; border:1px solid #22315b; color:var(--muted); border-radius:10px; font-weight:600; cursor:pointer; font-family:inherit; font-size:13px; }
+
+/* Form sections */
+.form-section{ background:#0a1224; border:1px solid #1f2a4d; border-radius:12px; padding:16px; margin-bottom:12px; }
+.form-section h4{ font-size:12px; color:var(--brand-2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+
+.row{ display:grid; grid-template-columns:140px 1fr; gap:8px; align-items:center; margin-bottom:8px; }
+.row .lbl{ color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; }
+.row input, .row select, .row textarea{
+  width:100%; padding:10px 12px; border-radius:10px; border:1px solid #22315b; background:#0f172a; color:var(--text); outline:none; font-weight:500; font-size:13px; font-family:inherit;
+}
+.row input:focus, .row select:focus, .row textarea:focus{ box-shadow:0 0 0 3px var(--ring); border-color:#3856a3 }
+.row textarea{ resize:vertical; min-height:60px }
+.row .inline{ display:flex; gap:10px; align-items:center }
+.chip{ padding:5px 10px; border-radius:999px; font-size:11px; border:1px solid #22315b; background:#0a1224; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer; }
+.chip input[type="checkbox"]{ width:auto; margin:0; accent-color:var(--brand); }
+
+/* Buttons */
+.btn{ cursor:pointer; border:none; padding:10px 16px; border-radius:12px; font-weight:700; font-family:inherit; font-size:13px; transition:transform .04s, opacity .2s; display:inline-flex; align-items:center; gap:6px; }
+.btn:active{ transform:translateY(1px) }
+.btn.save{ background:linear-gradient(90deg,var(--brand),#16a34a); color:#04120a }
+.btn.refresh{ background:linear-gradient(90deg,var(--brand-2),#2563eb); color:#081222 }
+.btn.pause{ background:linear-gradient(90deg,#64748b,#475569); color:#0c111b }
+.btn.danger{ background:linear-gradient(90deg,var(--danger),#dc2626); color:#1b0707 }
+.btn.ghost{ background:#0a1224; border:1px solid #22315b; color:var(--text) }
+.btn-sm{ padding:6px 12px; font-size:11px; border-radius:8px; }
+
+/* Table */
+.table-wrapper{ overflow-x:auto; }
+.table{ width:100%; border-collapse:separate; border-spacing:0 6px; font-size:13px; }
+.table th{ text-align:left; font-size:11px; color:var(--muted); font-weight:800; text-transform:uppercase; padding:4px 8px; white-space:nowrap; }
+.table td{ background:linear-gradient(180deg,#0d1633,#0b1224); border:1px solid #1f2a4d; border-left:none; border-right:none; padding:10px 8px; font-weight:500; }
+.table td .actions{ display:flex; gap:4px; flex-wrap:wrap; }
+img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; margin-right:6px; vertical-align:middle }
+.dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px }
+.dot.active{ background:var(--ok) }
+.dot.paused{ background:var(--warn) }
+
+/* Status pills */
+.pill{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600; }
+.pill-active{ background:rgba(16,185,129,0.15); color:#4ade80; }
+.pill-paused{ background:rgba(245,158,11,0.15); color:#fbbf24; }
+.pill-estoque{ background:rgba(239,68,68,0.15); color:#fca5a5; }
+.pill-baixo{ background:rgba(245,158,11,0.15); color:#fbbf24; }
+
+/* Toolbar */
+.toolbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+.toolbar input, .toolbar select{ padding:8px 12px; border-radius:8px; border:1px solid #22315b; background:#0a1224; color:var(--text); outline:none; font-size:12px; font-family:inherit; }
+.toolbar input:focus, .toolbar select:focus{ border-color:var(--brand-2); }
+.toolbar .btn{ padding:8px 14px; font-size:12px; }
+
+/* Tips */
+.tip{ font-size:11px; color:var(--muted); padding:4px 0; }
+
+@media(max-width:600px){
+  .row{ grid-template-columns:1fr; gap:4px; }
+  .row .lbl{ margin-bottom:2px; font-size:10px; }
+  .table td, .table th{ font-size:11px; padding:6px 4px; white-space:normal; }
+  .card{ padding:12px; border-radius:12px; }
+  .toolbar{ flex-direction:column; align-items:stretch; }
+  .toolbar input, .toolbar select{ width:100%; }
+  .form-section{ padding:12px; }
+  .modal-box{ padding:20px; }
+}
+.highlight-edit{ animation:pulseEdit 1s ease; box-shadow:0 0 0 4px rgba(59,130,246,0.5); }
+@keyframes pulseEdit{ 0%{transform:scale(1)} 50%{transform:scale(1.02)} 100%{transform:scale(1)} }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <header>
+    <div class="title">Painel da Loja</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn" id="tab-horarios" role="tab" aria-selected="true">Horários</button>
+      <button class="tab-btn" id="tab-produtos" role="tab" aria-selected="false">Produtos</button>
+      <button class="tab-btn" id="tab-categorias" role="tab" aria-selected="false">Categorias</button>
+      <button class="tab-btn" id="tab-config" role="tab" aria-selected="false">Config. Loja</button>
+    </nav>
+  </header>
+
+  <!-- ABA: Horários -->
+  <section id="view-horarios" class="grid" role="tabpanel">
+    <div class="card">
+      <h3><i class="fas fa-clock" style="color:var(--brand-2)"></i> Horário de Funcionamento</h3>
+      <p class="tip">Edite abertura/fechamento por dia da semana.</p>
+      <div class="hr"></div>
+      <div id="horarios-form"></div>
+      <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        <button class="btn refresh" id="btnReloadHoras"><i class="fas fa-sync-alt"></i> Recarregar</button>
+        <button class="btn save" id="btnSalvarHoras"><i class="fas fa-save"></i> Salvar Horários</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><i class="fas fa-store" style="color:var(--brand)"></i> Configuração da Loja</h3>
+      <p class="tip">Configure o status automático e manual da loja.</p>
+      <div class="hr"></div>
+      <div class="form-section">
+        <h4><i class="fas fa-calendar-week"></i> Dias de Funcionamento</h4>
+        <div id="workingDaysContainer" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;"></div>
+      </div>
+      <div class="form-section">
+        <h4><i class="fas fa-clock"></i> Horário Padrão</h4>
+        <div class="row">
+          <div class="lbl">Abertura</div>
+          <input type="time" id="lojaOpeningTime" />
+        </div>
+        <div class="row">
+          <div class="lbl">Fechamento</div>
+          <input type="time" id="lojaClosingTime" />
+        </div>
+      </div>
+      <div class="form-section">
+        <h4><i class="fas fa-toggle-on"></i> Override Manual</h4>
+        <div class="row">
+          <div class="lbl">Forçar Status</div>
+          <label class="chip"><input type="checkbox" id="lojaManualOverride" /> Ignorar horário automático</label>
+        </div>
+        <div class="row" id="lojaManualStatusRow">
+          <div class="lbl">Status Manual</div>
+          <label class="chip"><input type="checkbox" id="lojaIsOpen" checked /> Loja Aberta</label>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        <button class="btn save" id="btnSalvarLojaConfig"><i class="fas fa-save"></i> Salvar Configuração</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABA: Produtos -->
+  <section id="view-produtos" class="grid hidden" role="tabpanel">
+    <!-- Toolbar -->
+    <div class="card" style="padding:12px 16px;">
+      <div class="toolbar">
+        <input type="text" id="busca" placeholder="Buscar por nome ou ID..." style="flex:1;min-width:150px;">
+        <select id="filtroStatus">
+          <option value="">Todos os status</option>
+          <option value="active">Ativos</option>
+          <option value="paused">Pausados</option>
+          <option value="sem_estoque">Sem Estoque</option>
+        </select>
+        <button class="btn refresh" id="btnReloadProdutos"><i class="fas fa-sync-alt"></i> Atualizar</button>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card" style="padding:16px;">
+      <h3><i class="fas fa-box" style="color:var(--brand)"></i> Produtos</h3>
+      <div class="table-wrapper">
+        <table class="table">
+          <thead><tr><th>ID</th><th>Nome</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyProdutos"></tbody>
+        </table>
+      </div>
+      <div id="skeletonArea"></div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="card" id="cardFormProduto" style="padding:16px;">
+      <h3><i class="fas fa-edit" style="color:var(--brand-2)"></i> <span id="formTitle">Novo Produto</span></h3>
+      <form id="formProduto">
+        <div class="form-section">
+          <h4><i class="fas fa-tag"></i> Dados Principais</h4>
+          <div class="row">
+            <div class="lbl">ID (numérico)</div>
+            <input type="number" id="prodId" required />
+          </div>
+          <div class="row">
+            <div class="lbl">Nome do Item</div>
+            <input type="text" id="prodName" required />
+          </div>
+          <div class="row">
+            <div class="lbl">Valor (R$)</div>
+            <input type="number" id="prodPrice" step="0.01" required />
+          </div>
+          <div class="row">
+            <div class="lbl">Descrição</div>
+            <textarea id="prodDesc" rows="2" placeholder="Descrição do produto..."></textarea>
+          </div>
+          <div class="row">
+            <div class="lbl">Foto do Item</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <input type="file" id="prodImgFile" accept="image/*" />
+              <input type="hidden" id="prodImg" />
+              <img id="prodImgPreview" style="max-width:150px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-bottom:12px;background:#0a1224;border:1px solid #1f2a4d;border-radius:12px;padding:12px;cursor:pointer;">
+          <summary style="font-size:12px;color:var(--brand-2);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;">
+            <i class="fas fa-cog"></i> Avançado (opcional)
+          </summary>
+          <div style="margin-top:12px;">
+            <div class="row">
+              <div class="lbl">Status</div>
+              <select id="prodStatus">
+                <option value="active">Ativo</option>
+                <option value="paused">Pausado</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="lbl">Tipo</div>
+              <input type="number" id="prodType" placeholder="1-Salgado 2-Massa 3-Festa 4-Bebida 5-Promoção 6-Congelado" />
+            </div>
+            <div class="row">
+              <div class="lbl">Congelado</div>
+              <label class="chip"><input type="checkbox" id="prodCongelado" /> Congelado</label>
+            </div>
+            <div class="row">
+              <div class="lbl">Categoria</div>
+              <select id="prodCategoryId">
+                <option value="">Sem categoria</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="lbl">Controlar Estoque</div>
+              <label class="chip"><input type="checkbox" id="prodControlaEstoque" /> Ativar controle</label>
+            </div>
+            <div class="row estoque-fields">
+              <div class="lbl">Estoque Atual</div>
+              <input type="number" id="prodEstoqueAtual" min="0" />
+            </div>
+            <div class="row estoque-fields">
+              <div class="lbl">Avisar quando chegar em</div>
+              <input type="number" id="prodEstoqueMinimo" min="0" />
+            </div>
+            <div class="row">
+              <div class="lbl">Qdo estoque = 0</div>
+              <label class="chip"><input type="checkbox" id="prodHideWhenOutOfStock" checked /> Ocultar da vitrine</label>
+            </div>
+          </div>
+        </details>
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button type="submit" class="btn save" id="btnSalvarProduto"><i class="fas fa-save"></i> Salvar</button>
+          <button type="button" class="btn ghost" id="btnLimparForm"><i class="fas fa-undo"></i> Limpar</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ABA: Categorias -->
+  <section id="view-categorias" class="grid hidden" role="tabpanel">
+    <div class="card half">
+      <h3><i class="fas fa-tags" style="color:var(--brand-2)"></i> Categorias</h3>
+      <p class="tip">Gerencie as categorias de produtos da loja.</p>
+      <div class="hr"></div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-plus-circle"></i> Nova Categoria</h4>
+        <div class="row">
+          <div class="lbl">Nome</div>
+          <input type="text" id="catNome" placeholder="Ex.: Salgadinhos, Massas, Bebidas..." />
+        </div>
+        <div class="row">
+          <div class="lbl">Tipo (legado)</div>
+          <input type="number" id="catType" placeholder="Tipo numérico (1-6) ou deixe vazio" />
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn save" id="btnSalvarCategoria"><i class="fas fa-save"></i> Salvar</button>
+          <button class="btn ghost" id="btnLimparCategoria"><i class="fas fa-undo"></i> Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card half">
+      <h3><i class="fas fa-list"></i> Lista de Categorias</h3>
+      <div id="categoriaList">
+        <p class="tip" style="padding:16px;text-align:center;">Carregando...</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABA: Configurações da Loja -->
+  <section id="view-config" class="grid hidden" role="tabpanel">
+    <div class="card">
+      <h3><i class="fas fa-store" style="color:var(--brand)"></i> Configurações da Loja</h3>
+      <p class="tip">Edite as informações públicas da sua loja.</p>
+      <div class="hr"></div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-info-circle"></i> Informações da Loja</h4>
+        <div class="row">
+          <div class="lbl">Nome da Loja</div>
+          <input type="text" id="confNome" placeholder="Ex.: Fábrica de Salgados Costa" />
+        </div>
+        <div class="row">
+          <div class="lbl">WhatsApp (com DDD)</div>
+          <input type="text" id="confTelefone" placeholder="5521966017085" />
+        </div>
+        <div class="row">
+          <div class="lbl">Descrição</div>
+          <textarea id="confDescricao" rows="3" placeholder="Sobre a loja..."></textarea>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-map-marker-alt"></i> Endereço</h4>
+        <div class="row">
+          <div class="lbl">Logradouro</div>
+          <input type="text" id="confEndereco" />
+        </div>
+        <div class="row">
+          <div class="lbl">Número</div>
+          <input type="text" id="confNumero" />
+        </div>
+        <div class="row">
+          <div class="lbl">Bairro</div>
+          <input type="text" id="confBairro" />
+        </div>
+        <div class="row">
+          <div class="lbl">Cidade</div>
+          <input type="text" id="confCidade" />
+        </div>
+        <div class="row">
+          <div class="lbl">Estado</div>
+          <input type="text" id="confEstado" maxlength="2" placeholder="RJ" />
+        </div>
+        <div class="row">
+          <div class="lbl">CEP</div>
+          <input type="text" id="confCep" placeholder="Somente números" />
+        </div>
+        <div class="row">
+          <div class="lbl">Latitude</div>
+          <input type="text" id="confLatitude" placeholder="-22.764..." />
+        </div>
+        <div class="row">
+          <div class="lbl">Longitude</div>
+          <input type="text" id="confLongitude" placeholder="-43.399..." />
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-image"></i> Logo da Loja</h4>
+        <div class="row">
+          <div class="lbl">Logo</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input type="file" id="confLogoFile" accept="image/*" />
+            <input type="hidden" id="confLogo" />
+            <img id="confLogoPreview" style="max-width:150px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        <button class="btn save" id="btnSalvarConfig"><i class="fas fa-save"></i> Salvar Configurações</button>
+        <button class="btn refresh" id="btnRecarregarConfig"><i class="fas fa-sync-alt"></i> Recarregar</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="js/painel.js?=2"></script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Caixa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="js/utils.js"></script>
+<script>
+if(!authGuard()) throw new Error('Redirect');
+function api(path, opts) {
+  var headers = { 'Content-Type': 'application/json' };
+  var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch('/api' + path, { headers: headers, ...opts }).then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Erro ' + r.status); });
+    return r.json();
+  });
+}
+</script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: linear-gradient(135deg,#f1f5f9,#e2e8f0);
+  padding: 20px;
+  min-height: 100vh;
+}
+.container { max-width: 1200px; margin: auto; display: flex; flex-direction: column; gap: 20px; }
+
+.card {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s;
+}
+.card:hover { box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+
+h2 { font-weight: 600; margin-bottom: 16px; color: #1e293b; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+h2 i { color: #f97316; }
+
+input {
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  width: 100%;
+  max-width: 260px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: 0.2s;
+  outline: none;
+}
+input:focus { border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.1); }
+
+button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+button:active { transform: scale(0.97); }
+
+.btn-primary { background: #16a34a; color: white; }
+.btn-primary:hover { background: #15803d; }
+.btn-danger { background: #dc2626; color: white; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-info { background: #2563eb; color: white; }
+.btn-info:hover { background: #1d4ed8; }
+
+.resumo-grid {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.resumo-item {
+  background: #f8fafc;
+  padding: 18px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.resumo-item span { display: block; font-size: 22px; font-weight: 700; color: #16a34a; margin-top: 4px; }
+
+.total-geral {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 20px;
+  padding: 16px;
+  background: #f0fdf4;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+canvas { width: 100% !important; max-height: 280px; margin-top: 20px; }
+
+/* Toast */
+.toast-container {
+  position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 12px 18px; border-radius: 10px; color: white; font-size: 13px; font-weight: 500;
+  animation: toastIn 0.3s ease; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  display: flex; align-items: center; gap: 8px;
+}
+.toast-success { background: #16a34a; }
+.toast-danger { background: #dc2626; }
+.toast-info { background: #3b82f6; }
+@keyframes toastIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.relatorios-list { margin-top: 16px; }
+.relatorio-item {
+  background: #f8fafc; padding: 14px; border-radius: 10px; margin-bottom: 8px;
+  border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;
+}
+
+@media(max-width:768px){
+  .resumo-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media(max-width:480px){
+  .resumo-grid { grid-template-columns: 1fr; }
+  body { padding: 12px; }
+  .card { padding: 16px; }
+  input { max-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card" id="aberturaCard">
+    <h2><i class="fas fa-cash-register"></i> Abertura de Caixa</h2>
+    <input type="number" id="valorInicial" placeholder="Valor inicial (troco)">
+    <button class="btn-primary" onclick="abrirCaixa()"><i class="fas fa-play"></i> Abrir Caixa</button>
+  </div>
+
+  <div class="card" id="caixaCard" style="display:none;">
+    <h2><i class="fas fa-chart-pie"></i> Resumo do Dia</h2>
+    <div class="resumo-grid">
+      <div class="resumo-item"><i class="fas fa-money-bill-wave"></i> Dinheiro<br><span id="dinheiro">0</span></div>
+      <div class="resumo-item"><i class="fas fa-qrcode"></i> Pix<br><span id="pix">0</span></div>
+      <div class="resumo-item"><i class="fas fa-credit-card"></i> Débito<br><span id="debito">0</span></div>
+      <div class="resumo-item"><i class="fas fa-credit-card"></i> Crédito<br><span id="credito">0</span></div>
+    </div>
+
+    <div class="total-geral">
+      <i class="fas fa-calculator"></i> Total Geral: R$ <span id="totalGeral">0</span><br>
+      <span style="font-size:14px;font-weight:500;color:#16a34a;">
+        Troco Inicial: R$ <span id="trocoInicial">0</span>
+        &nbsp;|&nbsp; Pedidos: <span id="qtdPedidos">0</span>
+      </span>
+    </div>
+
+    <canvas id="graficoPagamentos"></canvas>
+
+    <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-info" onclick="verRelatorios()"><i class="fas fa-history"></i> Ver Relatórios</button>
+      <button class="btn-danger" onclick="fecharCaixa()"><i class="fas fa-stop"></i> Fechar Caixa</button>
+    </div>
+    <div class="relatorios-list" id="listaRelatorios"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+function toast(message, type = 'success') {
+  const c = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<i class="fas fa-${type === 'danger' ? 'times-circle' : 'check-circle'}"></i> ${message}`;
+  el.onclick = () => el.remove();
+  c.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 4000);
+}
+
+let resumo = { dinheiro:0, pix:0, 'cartao de debito':0, 'cartao de credito':0 };
+let quantidadePedidos = 0;
+let trocoInicial = 0;
+
+function dataHoje(){ return new Date().toISOString().split('T')[0]; }
+
+async function abrirCaixa(){
+  const valor = parseFloat(document.getElementById('valorInicial').value) || 0;
+  await api('/caixa/abrir', { method: 'POST', body: JSON.stringify({ valorInicial: valor }) });
+  carregarResumo();
+}
+
+async function carregarResumo(){
+  document.getElementById('aberturaCard').style.display = 'none';
+  document.getElementById('caixaCard').style.display = 'block';
+  try {
+    const caixa = await api('/caixa/hoje');
+    trocoInicial = caixa.valorInicial || 0;
+    document.getElementById('trocoInicial').textContent = trocoInicial.toFixed(2);
+    const hojeStr = new Date().toISOString().split('T')[0];
+    const pedidos = await api('/pedidos?createdAtFrom=' + hojeStr + 'T00:00:00&createdAtTo=' + hojeStr + 'T23:59:59');
+    resumo = { dinheiro:0, pix:0, 'cartao de debito':0, 'cartao de credito':0 };
+    quantidadePedidos = pedidos.length;
+    pedidos.forEach(function(p) {
+      const pag = (p.formaPagamento || '').toLowerCase();
+      const total = Number(p.total) || 0;
+      if (resumo[pag] !== undefined) resumo[pag] += total;
+    });
+    atualizarTela();
+    gerarGrafico();
+  } catch(e) {
+    toast('Erro ao carregar caixa', 'danger');
+  }
+}
+
+function atualizarTela(){
+  document.getElementById('dinheiro').textContent = resumo.dinheiro.toFixed(2);
+  document.getElementById('pix').textContent = resumo.pix.toFixed(2);
+  document.getElementById('debito').textContent = resumo['cartao de debito'].toFixed(2);
+  document.getElementById('credito').textContent = resumo['cartao de credito'].toFixed(2);
+  document.getElementById('totalGeral').textContent = calcularTotalComTroco().toFixed(2);
+  document.getElementById('qtdPedidos').textContent = quantidadePedidos;
+}
+
+function gerarGrafico(){
+  new Chart(document.getElementById('graficoPagamentos'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Dinheiro', 'Pix', 'Débito', 'Crédito'],
+      datasets: [{ data: [resumo.dinheiro, resumo.pix, resumo['cartao de debito'], resumo['cartao de credito']] }]
+    },
+    options: { plugins: { legend: { position: 'bottom' } } }
+  });
+}
+
+async function fecharCaixa(){
+  const totalPedidos = calcularTotalPedidos();
+  const totalComTroco = calcularTotalComTroco();
+  try {
+    await api('/caixa/fechar', { method: 'POST', body: JSON.stringify({
+      totalPedidos, totalComTroco, trocoInicial,
+      totalDinheiro: resumo.dinheiro, totalPix: resumo.pix,
+      totalDebito: resumo['cartao de debito'], totalCredito: resumo['cartao de credito'],
+      quantidadePedidos,
+    })});
+    imprimirRelatorio();
+    toast('Caixa fechado com sucesso!');
+    location.reload();
+  } catch(e) {
+    toast('Erro ao fechar caixa', 'danger');
+  }
+}
+
+function imprimirRelatorio(){
+  const win = window.open('', '', 'width=300,height=600');
+  win.document.write(`<pre>
+RELATÓRIO DIÁRIO - ${dataHoje()}
+
+Pedidos no dia: ${quantidadePedidos}
+Troco Inicial: R$ ${trocoInicial.toFixed(2)}
+
+----------------------------
+Dinheiro: R$ ${resumo.dinheiro.toFixed(2)}
+Pix: R$ ${resumo.pix.toFixed(2)}
+Débito: R$ ${resumo['cartao de debito'].toFixed(2)}
+Crédito: R$ ${resumo['cartao de credito'].toFixed(2)}
+
+----------------------------
+Total Pedidos: R$ ${calcularTotalPedidos().toFixed(2)}
+Total Final: R$ ${calcularTotalComTroco().toFixed(2)}
+</pre>`);
+  win.print(); win.close();
+}
+
+window.onload = async () => {
+  try {
+    const caixa = await api('/caixa/hoje');
+    if (caixa && caixa.status === 'aberto') carregarResumo();
+  } catch(e) { /* fechado ou sem caixa */ }
+};
+
+async function verRelatorios(){
+  const container = document.getElementById('listaRelatorios');
+  container.innerHTML = '<h3 style="margin-bottom:12px;font-size:15px;">Relatórios Anteriores</h3>';
+  try {
+    const relatorios = await api('/caixa/relatorios');
+    relatorios.forEach(function(r) {
+      const div = document.createElement('div');
+      div.className = 'relatorio-item';
+      const total = Number(r.totalComTroco || r.totalPedidos || 0);
+      div.innerHTML = '<span><strong>' + (r.data ? r.data.split('T')[0] : '-') + '</strong> — Pedidos: ' + (r.quantidadePedidos || 0) + ' — Total: R$ ' + total.toFixed(2) + '</span>';
+      container.appendChild(div);
+    });
+  } catch(e) {
+    container.innerHTML += '<p style="color:#94a3b8;">Erro ao carregar relatórios</p>';
+  }
+}
+
+async function imprimirRelatorioAntigo(id){
+  // Reports are now stored in the caixa record itself, not a separate collection
+  try {
+    const relatorios = await api('/caixa/relatorios');
+    var d = relatorios.find(function(r) { return r.id === Number(id); }) || {};
+  } catch(e) { var d = {}; }
+  const win = window.open('', '', 'width=300,height=600');
+  win.document.write(`<pre>
+RELATÓRIO DIÁRIO - ${d.data}
+
+Pedidos no dia: ${d.quantidadePedidos}
+Troco Inicial: R$ ${(d.trocoInicial||0).toFixed(2)}
+
+----------------------------
+Dinheiro: R$ ${(d.totalDinheiro||0).toFixed(2)}
+Pix: R$ ${(d.totalPix||0).toFixed(2)}
+Débito: R$ ${(d.totalDebito||0).toFixed(2)}
+Crédito: R$ ${(d.totalCredito||0).toFixed(2)}
+
+----------------------------
+Total Pedidos: R$ ${(d.totalPedidos||0).toFixed(2)}
+Total Final: R$ ${(d.totalComTroco||0).toFixed(2)}
+</pre>`);
+  win.print(); win.close();
+}
+
+function calcularTotalPedidos(){ return Object.values(resumo).reduce((a,b)=>a+b, 0); }
+function calcularTotalComTroco(){ return calcularTotalPedidos() + trocoInicial; }
+</script>
+</body>
+</html>

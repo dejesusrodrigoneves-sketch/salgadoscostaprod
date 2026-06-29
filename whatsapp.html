@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>WhatsApp - Fabrica de salgados Costa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: #f1f5f9;
+  color: #1e293b;
+  min-height: 100vh;
+  padding: 24px;
+}
+.page-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.page-header h1 { font-size:22px; font-weight:700; flex:1; }
+.page-header i { color:#25d366; font-size:28px; }
+.card {
+  background: white; border-radius:12px; padding:20px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.06); margin-bottom:16px;
+}
+.card h3 { font-size:15px; font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.empty-state { text-align:center; padding:40px 20px; color:#94a3b8; }
+.empty-state i { font-size:48px; margin-bottom:12px; color:#cbd5e1; }
+.instance-card {
+  border:1px solid #e2e8f0; border-radius:10px; padding:20px;
+}
+.instance-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.instance-header .name { font-weight:700; font-size:16px; }
+.instance-detail { font-size:13px; color:#64748b; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.instance-detail strong { color:#1e293b; }
+.status-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.status-connected { background:#dcfce7; color:#16a34a; }
+.status-disconnected { background:#fef2f2; color:#dc2626; }
+.status-qrcode { background:#fef9c3; color:#ca8a04; }
+.status-reconnecting { background:#dbeafe; color:#2563eb; }
+.btn {
+  padding:10px 16px; border:none; border-radius:8px; font-weight:600; font-size:13px;
+  cursor:pointer; font-family:inherit; transition:all 0.2s; display:inline-flex; align-items:center; gap:6px;
+}
+.btn:active { transform:scale(0.97); }
+.btn-primary { background:#25d366; color:white; }
+.btn-primary:hover { background:#1da851; }
+.btn-danger { background:#dc2626; color:white; }
+.btn-danger:hover { background:#b91c1c; }
+.btn-ghost { background:#f1f5f9; color:#64748b; }
+.btn-ghost:hover { background:#e2e8f0; }
+.btn-sm { padding:6px 12px; font-size:11px; }
+.btn-test { background:#3b82f6; color:white; }
+.btn-test:hover { background:#2563eb; }
+.actions { display:flex; gap:6px; flex-wrap:wrap; }
+.qr-box { text-align:center; padding:20px; margin-top:16px; }
+.qr-box p { margin-top:12px; font-size:13px; color:#64748b; }
+.toast-container { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+.toast { padding:12px 18px; border-radius:10px; color:white; font-size:13px; font-weight:500; animation:toastIn 0.3s ease; cursor:pointer; }
+.toast-success { background:#16a34a; }
+.toast-danger { background:#dc2626; }
+.toast-info { background:#3b82f6; }
+@keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+.info-box { background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; color:#0369a1; }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <i class="fab fa-whatsapp"></i>
+  <h1>Integração WhatsApp</h1>
+</div>
+
+<div id="instancesContainer">
+  <div class="card">
+    <div class="empty-state">
+      <i class="fas fa-wifi"></i>
+      <p>Carregando...</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/utils.js"></script>
+<script>
+const API = window.location.origin + '/api';
+const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
+if (!authUser) window.location.href = 'login.html';
+
+const TOKEN = authUser.token || '';
+
+async function apiRequest(path, options = {}) {
+  const url = API + path;
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
+    throw new Error(err.error || 'Erro');
+  }
+  return res.json();
+}
+
+function toast(msg, type = 'success') {
+  const c = document.getElementById('toastContainer');
+  const d = document.createElement('div');
+  d.className = 'toast toast-' + type;
+  d.textContent = msg;
+  d.onclick = () => d.remove();
+  c.appendChild(d);
+  setTimeout(() => { d.style.opacity = '0'; d.style.transition = 'opacity 0.3s'; setTimeout(() => d.remove(), 300); }, 4000);
+}
+
+function statusHtml(status) {
+  const map = {
+    connected: ['Conectado', 'status-connected'],
+    disconnected: ['Desconectado', 'status-disconnected'],
+    qrcode: ['Aguardando pareamento', 'status-qrcode'],
+    reconnecting: ['Reconectando', 'status-reconnecting'],
+    open: ['Conectado', 'status-connected'],
+    close: ['Desconectado', 'status-disconnected'],
+  };
+  const [label, cls] = map[status] || [status, 'status-disconnected'];
+  return `<span class="status-badge ${cls}"><i class="fas fa-circle"></i> ${label}</span>`;
+}
+
+function isConectada(status) {
+  return status === 'connected' || status === 'open';
+}
+
+async function carregarInstancias() {
+  try {
+    const instancias = await apiRequest('/whatsapp');
+    const container = document.getElementById('instancesContainer');
+
+    if (!instancias.length) {
+      container.innerHTML = `
+        <div class="info-box">
+          <i class="fas fa-info-circle"></i>
+          Conecte o WhatsApp da sua loja para receber notificações automaticas de pedidos.
+        </div>
+        <div class="card">
+          <div class="empty-state">
+            <i class="fab fa-whatsapp"></i>
+            <p>Nenhuma instância WhatsApp configurada.</p>
+            <p style="font-size:12px;color:#94a3b8;margin-top:4px;">Crie uma instância para conectar o WhatsApp da loja.</p>
+            <button class="btn btn-primary" style="margin-top:16px;" onclick="criarInstancia()">
+              <i class="fas fa-plus"></i> Criar Instância
+            </button>
+          </div>
+        </div>`;
+      return;
+    }
+
+    const inst = instancias[0];
+    const conectada = isConectada(inst.connectionStatus);
+
+    container.innerHTML = `
+      <div class="info-box">
+        <i class="fas fa-info-circle"></i>
+        ${conectada
+          ? 'WhatsApp conectado. Notificações de pedidos serão enviadas automaticamente para os clientes.'
+          : 'Conecte o WhatsApp escaneando o QR Code abaixo. As notificações só funcionam quando a instância estiver conectada.'}
+      </div>
+      <div class="card">
+        <div class="instance-card">
+          <div class="instance-header">
+            <div>
+              <div class="name">${inst.instanceId}</div>
+              <div class="instance-detail">
+                ${inst.phoneNumber
+                  ? '<i class="fas fa-phone"></i> <strong>' + inst.phoneNumber + '</strong>'
+                  : '<i class="fas fa-phone-slash"></i> Número não registrado'}
+              </div>
+            </div>
+            ${statusHtml(inst.connectionStatus)}
+          </div>
+          <div class="actions">
+            ${!conectada ? `
+              <button class="btn btn-sm btn-primary" onclick="gerarQR('${inst.id}')">
+                <i class="fas fa-qrcode"></i> Obter QR Code
+              </button>
+              <button class="btn btn-sm btn-ghost" onclick="reconectar('${inst.id}')">
+                <i class="fas fa-sync"></i> Reconectar
+              </button>
+            ` : `
+              <button class="btn btn-sm btn-test" onclick="enviarTeste('${inst.id}')">
+                <i class="fas fa-paper-plane"></i> Enviar Teste
+              </button>
+              <button class="btn btn-sm btn-ghost" onclick="atualizarStatus('${inst.id}')">
+                <i class="fas fa-sync"></i> Atualizar
+              </button>
+            `}
+            <button class="btn btn-sm btn-danger" onclick="excluirInstancia('${inst.id}')">
+              <i class="fas fa-trash"></i> Deletar
+            </button>
+          </div>
+        </div>
+        ${inst.qrCode && !conectada ? `
+          <div class="qr-box" id="qrCard">
+            <h3><i class="fas fa-qrcode"></i> Código de Pareamento</h3>
+            <p style="font-size:28px;font-weight:800;letter-spacing:6px;margin:16px 0;color:#25d366;font-family:monospace;">${inst.qrCode}</p>
+            <p>1. Abra o WhatsApp no celular da loja</p>
+            <p>2. Va em <strong>Menu → Dispositivos Conectados → Conectar um dispositivo</strong></p>
+            <p>3. Digite o código acima</p>
+          </div>
+        ` : ''}
+      </div>`;
+  } catch (e) {
+    document.getElementById('instancesContainer').innerHTML = `
+      <div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p></div></div>`;
+  }
+}
+
+async function criarInstancia() {
+  try {
+    const res = await apiRequest('/whatsapp/criar', { method: 'POST' });
+    toast('Instância criada com sucesso!');
+    if (res.evolutionData?.qrcode?.pairingCode) {
+      mostrarQR(res.evolutionData.qrcode.pairingCode);
+    }
+    carregarInstancias();
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+}
+
+async function gerarQR(id) {
+  try {
+    const res = await apiRequest('/whatsapp/' + id + '/qrcode', { method: 'POST' });
+    if (res.qrcode?.pairingCode) {
+      mostrarQR(res.qrcode.pairingCode);
+    } else {
+      toast('QR Code gerado, verifique a instância', 'info');
+    }
+    carregarInstancias();
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+}
+
+function mostrarQR(code) {
+  const container = document.getElementById('instancesContainer');
+  const existing = document.getElementById('qrCard');
+  if (existing) existing.remove();
+  container.innerHTML += `
+    <div class="card qr-box" id="qrCard">
+      <h3><i class="fas fa-qrcode"></i> Código de Pareamento</h3>
+      <p style="font-size:28px;font-weight:800;letter-spacing:6px;margin:16px 0;color:#25d366;font-family:monospace;">${code}</p>
+      <p>1. Abra o WhatsApp no celular da loja</p>
+      <p>2. Va em <strong>Menu → Dispositivos Conectados → Conectar um dispositivo</strong></p>
+      <p>3. Digite o código acima</p>
+      <button class="btn btn-ghost" style="margin-top:12px;" onclick="document.getElementById('qrCard').remove()">Fechar</button>
+    </div>`;
+}
+
+async function enviarTeste(id) {
+  try {
+    await apiRequest('/whatsapp/' + id + '/teste', { method: 'POST' });
+    toast('Mensagem de teste enviada com sucesso!');
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+}
+
+async function reconectar(id) {
+  try {
+    await apiRequest('/whatsapp/' + id + '/reconectar', { method: 'POST' });
+    toast('Reconectando...', 'info');
+    carregarInstancias();
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+}
+
+async function atualizarStatus(id) {
+  try {
+    const res = await apiRequest('/whatsapp/' + id + '/status');
+    toast('Status: ' + (res.connectionStatus || 'desconhecido'), 'info');
+    carregarInstancias();
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+}
+
+async function excluirInstancia(id) {
+  if (!(await confirmModal('Excluir esta instância WhatsApp? As notificações pararão de funcionar.'))) return;
+  try {
+    await apiRequest('/whatsapp/' + id, { method: 'DELETE' });
+    toast('Instância removida', 'danger');
+    carregarInstancias();
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+}
+
+carregarInstancias();
+setInterval(carregarInstancias, 15000);
+</script>
+</body>
+</html>

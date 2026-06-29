@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<title>Pedidos - Fabrica de salgados Costa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #f1f5f9;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --accent: #f97316;
+  --accent-hover: #ea580c;
+  --accent-light: rgba(249, 115, 22, 0.10);
+  --success: #16a34a;
+  --success-light: #dcfce7;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --info: #3b82f6;
+  --info-light: #dbeafe;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-header h1 i {
+  color: var(--accent);
+}
+
+.stats-row {
+  display: flex;
+  gap: 8px;
+}
+
+.stat-chip {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-chip .count {
+  background: var(--accent);
+  color: white;
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.tab .tab-count {
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.tab.active .tab-count {
+  background: rgba(255,255,255,0.25);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Orders grid */
+.orders-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.order-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--accent);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.order-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.order-card.status-producao { border-left-color: var(--warning); }
+.order-card.status-pronto { border-left-color: #9c27b0; }
+.order-card.status-emRota { border-left-color: var(--info); }
+.order-card.status-finalizado { border-left-color: var(--success); }
+
+.order-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.2s;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-header:hover {
+  background: #f8fafc;
+}
+
+.order-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.order-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.order-code {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.order-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.order-status.status-aceito { background: var(--accent-light); color: var(--accent); }
+.order-status.status-producao { background: var(--warning-light); color: #b45309; }
+.order-status.status-pronto { background: #f3e8ff; color: #7c3aed; }
+.order-status.status-emRota { background: var(--info-light); color: #1d4ed8; }
+.order-status.status-finalizado { background: var(--success-light); color: var(--success); }
+
+.order-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-total {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.order-toggle {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.3s ease;
+}
+
+.order-card.open .order-toggle {
+  transform: rotate(180deg);
+}
+
+.order-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  padding: 0 20px;
+}
+
+.order-card.open .order-body {
+  max-height: 2000px;
+  padding: 0 20px 20px;
+}
+
+.order-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.info-item {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.info-item strong {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Items */
+.items-list {
+  margin-bottom: 16px;
+}
+
+.items-list h4 {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.item-row .qty {
+  color: var(--accent);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.sub-item {
+  margin-left: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Actions */
+.order-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 11px;
+}
+
+.btn-producao { background: var(--warning-light); color: #b45309; }
+.btn-producao:hover { background: #fde68a; }
+
+.btn-pronto { background: #f3e8ff; color: #7c3aed; }
+.btn-pronto:hover { background: #ede9fe; }
+
+.btn-rota { background: var(--info-light); color: #1d4ed8; }
+.btn-rota:hover { background: #bfdbfe; }
+
+.btn-finalizar { background: var(--success-light); color: var(--success); }
+.btn-finalizar:hover { background: #bbf7d0; }
+
+.btn-whatsapp { background: #f0fdf4; color: #16a34a; }
+.btn-whatsapp:hover { background: #bbf7d0; }
+
+.btn-print { background: #f1f5f9; color: var(--text-secondary); }
+.btn-print:hover { background: #e2e8f0; }
+
+.btn-delete { background: var(--danger-light); color: var(--danger); }
+.btn-delete:hover { background: #fecaca; }
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+}
+
+.toast {
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  animation: toastIn 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: opacity 0.3s ease;
+}
+
+.toast-success { background: var(--success); }
+.toast-danger { background: var(--danger); }
+.toast-warning { background: var(--warning); }
+.toast-info { background: var(--info); }
+
+.toast i { font-size: 16px; }
+
+@keyframes toastIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Confirm modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: modalFade 0.2s ease;
+}
+
+@keyframes modalFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-box {
+  background: white;
+  border-radius: var(--radius);
+  padding: 28px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: modalSlide 0.2s ease;
+}
+
+@keyframes modalSlide {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-box h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.modal-box p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-modal-confirm { background: var(--accent); color: white; }
+.btn-modal-confirm:hover { background: var(--accent-hover); }
+
+.btn-modal-cancel { background: #f1f5f9; color: var(--text-secondary); }
+.btn-modal-cancel:hover { background: #e2e8f0; }
+
+/* Driver selection modal */
+.driver-modal-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+.driver-option {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-radius: 10px; border: 2px solid #e2e8f0;
+  cursor: pointer; transition: all 0.2s; background: white;
+}
+.driver-option:hover { border-color: var(--accent); background: var(--accent-light); }
+.driver-option.selected { border-color: var(--accent); background: var(--accent-light); }
+.driver-option .driver-info { display: flex; flex-direction: column; gap: 2px; }
+.driver-option .driver-name { font-weight: 600; font-size: 14px; }
+.driver-option .driver-detail { font-size: 12px; color: var(--text-secondary); }
+.driver-option .driver-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+.driver-option.selected .driver-check { background: var(--accent); border-color: var(--accent); color: white; }
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius);
+  height: 80px;
+  margin-bottom: 12px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  body { padding: 16px; }
+  .page-header { flex-direction: column; align-items: flex-start; }
+  .stats-row { width: 100%; justify-content: flex-start; overflow-x: auto; }
+  .order-header { flex-direction: column; align-items: flex-start; }
+  .order-actions { flex-direction: column; }
+  .btn { width: 100%; justify-content: center; }
+}
+</style>
+
+<script src="js/utils.js"></script>
+<script>
+function api(path, opts) {
+  var headers = { 'Content-Type': 'application/json' };
+  var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return fetch('/api' + path, { headers: headers, ...opts }).then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Erro ' + r.status); });
+    return r.json();
+  });
+}
+</script>
+</head>
+<body>
+
+<audio id="somNovoPedido" preload="auto" style="display:none">
+  <source src="https://archive.org/download/viralaudio-descent-whoosh-long-cinematic-sound-effect-405921/viralaudio-descent-whoosh-long-cinematic-sound-effect-405921.mp3" type="audio/mpeg">
+</audio>
+
+<div class="page-header">
+  <h1><i class="fas fa-box"></i> Pedidos</h1>
+  <div class="stats-row">
+    <div class="stat-chip"><i class="fas fa-clock"></i> Aceitos <span class="count" id="statAceito">0</span></div>
+    <div class="stat-chip"><i class="fas fa-cog"></i> Produção <span class="count" id="statProducao">0</span></div>
+    <div class="stat-chip"><i class="fas fa-check-circle"></i> Prontos <span class="count" id="statPronto">0</span></div>
+    <div class="stat-chip"><i class="fas fa-truck"></i> Rota <span class="count" id="statRota">0</span></div>
+  </div>
+</div>
+
+<div class="tabs" id="tabsContainer">
+  <div class="tab active" data-tab="aceito"><i class="fas fa-clock"></i> Aceitos <span class="tab-count" id="tabCountAceito">0</span></div>
+  <div class="tab" data-tab="producao"><i class="fas fa-cog"></i> Produção <span class="tab-count" id="tabCountProducao">0</span></div>
+  <div class="tab" data-tab="pronto"><i class="fas fa-check-circle"></i> Pronto <span class="tab-count" id="tabCountPronto">0</span></div>
+  <div class="tab" data-tab="emRota"><i class="fas fa-truck"></i> Em Rota <span class="tab-count" id="tabCountRota">0</span></div>
+</div>
+
+<div id="aceito" class="tab-content active"></div>
+<div id="producao" class="tab-content"></div>
+<div id="pronto" class="tab-content"></div>
+<div id="emRota" class="tab-content"></div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/utils.js"></script>
+<script>
+if(!authGuard()) throw new Error('Redirect');
+</script>
+<script>
+const containers = {
+  aceito: document.getElementById('aceito'),
+  producao: document.getElementById('producao'),
+  pronto: document.getElementById('pronto'),
+  emRota: document.getElementById('emRota')
+};
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+<script>
+const containers = {
+  if (!Array.isArray(itens)) return '<p>Sem itens</p>';
+  let html = '<div class="items-list"><h4>Itens</h4>';
+  itens.forEach(i => {
+    const parts = i.split('→');
+    if (parts.length === 2) {
+      const titulo = parts[0].trim();
+      const subitens = parts[1].split(',').map(s => s.trim()).filter(Boolean);
+      html += `<div class="item-row"><strong>${titulo}</strong></div>`;
+      subitens.forEach(sub => {
+        html += `<div class="sub-item">${sub}</div>`;
+      });
+    } else {
+      html += `<div class="item-row">${i}</div>`;
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
+function enviarWhatsapp(numero, mensagem) {
+  const link = `https://api.whatsapp.com/send?phone=+55${numero}&text=${encodeURIComponent(mensagem)}`;
+  window.open(link, '_blank');
+}
+
+function gerarHTMLImpressao(p) {
+  let html = `
+    <html><head><style>
+      body { font-family: monospace; font-size: 12px; width: 230px; }
+      h2,h3 { text-align: center; margin: 5px 0; }
+      hr { border: 0; border-top: 1px dashed #000; margin: 5px 0; }
+    </style></head><body>
+      <h2>Comprovante de Pedido</h2>
+      <p><strong>Código:</strong> ${p.id || '-'}</p>
+      <p><strong>Entrega:</strong> ${p.tipoEntrega || '-'}</p>
+      <p><strong>Cliente:</strong> ${p.cliente?.nome || '-'}</p>
+      <p><strong>Whatsapp:</strong> ${p.cliente?.whatsapp || '-'}</p>
+      <p><strong>Endereço:</strong> ${p.cliente?.endereco || '-'}, ${p.cliente?.numero || '-'}</p>
+      <p><strong>Bairro:</strong> ${p.cliente?.bairro || '-'}</p>
+      <p><strong>Ref:</strong> ${p.cliente?.pontoReferencia || '-'}</p>
+      <p><strong>Pagamento:</strong> ${p.formaPagamento || '-'}</p>
+      <p><strong>Troco:</strong> ${p.troco || '-'}</p>
+      <hr />`;
+  if (Array.isArray(p.itens)) {
+    html += '<h3>Itens:</h3>';
+    p.itens.forEach(i => {
+      const parts = i.split('→');
+      if (parts.length === 2) {
+        html += `<p><strong>${parts[0].trim()} →</strong></p>`;
+        parts[1].split(',').map(s => s.trim()).filter(Boolean).forEach(sub => {
+          html += `<p style="margin-left:10px;">${sub}</p>`;
+        });
+      } else {
+        html += `<p>${i}</p>`;
+      }
+    });
+  }
+  html += `<hr />
+    <p><strong>Total itens:</strong> ${fmtMoeda(p.valores?.itens)}<br>
+    <strong>Taxa cartão:</strong> ${p.taxaCartao ? fmtMoeda(p.taxaCartao) : 'R$ 0,00'}<br>
+    <strong>Taxa entrega:</strong> ${fmtMoeda(p.valores?.entrega)}<br>
+    <strong>Desconto:</strong> ${fmtMoeda(p.valores?.desconto)}<br><br>
+    <strong>Total:</strong> ${fmtMoeda(p.valores?.total)}</p>
+    <hr /><p style="text-align:center;">Obrigado pelo seu pedido!</p>
+  </body></html>`;
+  return html;
+}
+
+function imprimirPedido(p) {
+  const w = window.open('', '', 'width=300,height=600');
+  w.document.write(gerarHTMLImpressao(p));
+  w.document.close();
+  w.focus();
+  w.print();
+  w.close();
+}
+
+function atualizarBadgeEsteira() {
+  const total = document.querySelectorAll('.order-card').length;
+  window.parent.postMessage({ tipo: 'atualizarBadge', total }, window.location.origin);
+}
+
+function renderCard(p, docId) {
+  const statusMap = {
+    aceito: 'Aceito', producao: 'Produção', pronto: 'Pronto', emRota: 'Em Rota'
+  };
+
+  const card = document.createElement('div');
+  card.className = `order-card status-${p.status}`;
+  card.dataset.status = p.status;
+
+  const nome = p.cliente?.nome || 'Cliente';
+  const total = fmtMoeda(p.valores?.total);
+
+  card.innerHTML = `
+    <div class="order-header" onclick="this.closest('.order-card').classList.toggle('open')">
+      <div class="order-header-left">
+        <span class="order-name">${nome}</span>
+        <span class="order-code">#${docId.slice(-6)}</span>
+        <span class="order-status status-${p.status}">${statusMap[p.status] || p.status}</span>
+      </div>
+      <div class="order-header-right">
+        <span class="order-total">${total}</span>
+        <i class="fas fa-chevron-down order-toggle"></i>
+      </div>
+    </div>
+    <div class="order-body">
+      <div class="order-info-grid">
+        <div class="info-item"><strong>Whatsapp</strong>${p.cliente?.whatsapp || '-'}</div>
+        <div class="info-item"><strong>Endereço</strong>${p.cliente?.endereco || '-'}, ${p.cliente?.numero || '-'}</div>
+        <div class="info-item"><strong>Bairro</strong>${p.cliente?.bairro || '-'}</div>
+        <div class="info-item"><strong>CEP</strong>${p.cep || '-'}</div>
+        <div class="info-item"><strong>Ref</strong>${p.cliente?.pontoReferencia || '-'}</div>
+        <div class="info-item"><strong>Pagamento</strong>${p.formaPagamento || '-'}</div>
+        <div class="info-item"><strong>Troco</strong>${p.troco ? fmtMoeda(p.troco) : '-'}</div>
+        <div class="info-item"><strong>Total Itens</strong>${fmtMoeda(p.valores?.itens)}</div>
+        <div class="info-item"><strong>Taxa Cartão</strong>${p.taxaCartao ? fmtMoeda(p.taxaCartao) : '-'}</div>
+        <div class="info-item"><strong>Taxa Entrega</strong>${fmtMoeda(p.valores?.entrega)}</div>
+        <div class="info-item"><strong>Desconto</strong>${fmtMoeda(p.valores?.desconto)}</div>
+      </div>
+      ${fmtItens(p.itens)}
+      <div class="order-actions">
+        <button class="btn btn-producao" data-action="producao"><i class="fas fa-box"></i> Produção</button>
+        <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
+        <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
+        <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
+        <button class="btn btn-whatsapp" data-action="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+        <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
+        <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
+      </div>
+    </div>
+  `;
+
+  // Actions
+  card.querySelector('[data-action="producao"]').onclick = async () => {
+    await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'producao' }) });
+    toast('Pedido enviado para produção', 'warning');
+    carregarPedidos();
+  };
+
+  card.querySelector('[data-action="pronto"]').onclick = async () => {
+    await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'pronto' }) });
+    toast(nome + ', seu pedido está pronto!', 'success');
+    carregarPedidos();
+  };
+
+  card.querySelector('[data-action="rota"]').onclick = async () => {
+    const driverId = await selecionarEntregadorModal(nome);
+    if (!driverId) return;
+    await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'emRota', entregadorId: driverId }) });
+    try {
+      await api('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(driverId), pedidoId: docId, valor: Number(p.total) || 0 }) });
+    } catch(e) {
+      toast('Erro ao registrar entrega, mas status foi atualizado', 'warning');
+    }
+    toast('Pedido em rota com ' + driverId + '!', 'info');
+    carregarPedidos();
+  };
+
+  card.querySelector('[data-action="finalizar"]').onclick = async () => {
+    const ok = await confirmModal('Deseja finalizar o pedido de ' + nome + '?');
+    if (!ok) return;
+    await api('/pedidos/' + docId + '/finalizar', { method: 'POST' });
+    toast('Pedido finalizado!', 'success');
+    carregarPedidos();
+    atualizarBadgeEsteira();
+  };
+
+  card.querySelector('[data-action="whatsapp"]').onclick = () => {
+    if (p.cliente?.whatsapp) {
+      enviarWhatsapp(p.cliente.whatsapp, `Olá ${nome}, tudo sobre seu pedido!`);
+    } else {
+      toast('Cliente sem WhatsApp cadastrado', 'warning');
+    }
+  };
+
+  card.querySelector('[data-action="print"]').onclick = () => imprimirPedido(p);
+
+  card.querySelector('[data-action="delete"]').onclick = async () => {
+    const ok = await confirmModal('Deseja excluir o pedido de ' + nome + '?');
+    if (!ok) return;
+    await api('/pedidos/' + docId, { method: 'DELETE' });
+    carregarPedidos();
+    atualizarBadgeEsteira();
+    toast('Pedido excluído', 'danger');
+  };
+
+  return card;
+}
+
+function updateStats() {
+  const counts = {};
+  document.querySelectorAll('.order-card').forEach(c => {
+    const s = c.dataset.status;
+    counts[s] = (counts[s] || 0) + 1;
+  });
+  document.getElementById('statAceito').textContent = counts.aceito || 0;
+  document.getElementById('statProducao').textContent = counts.producao || 0;
+  document.getElementById('statPronto').textContent = counts.pronto || 0;
+  document.getElementById('statRota').textContent = counts.emRota || 0;
+  document.getElementById('tabCountAceito').textContent = counts.aceito || 0;
+  document.getElementById('tabCountProducao').textContent = counts.producao || 0;
+  document.getElementById('tabCountPronto').textContent = counts.pronto || 0;
+  document.getElementById('tabCountRota').textContent = counts.emRota || 0;
+}
+
+// Driver selection modal
+async function selecionarEntregadorModal(pedidoNome) {
+  return new Promise(async (resolve) => {
+    var drivers = [];
+    try { drivers = await api('/entregadores?ativo=true'); } catch(e) {}
+    if (!drivers || drivers.length === 0) { toast('Nenhum entregador ativo cadastrado.', 'warning'); resolve(null); return; }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <h3>Selecionar Entregador</h3>
+        <p style="margin-bottom:16px;">Atribuir entregador para o pedido de <strong>${pedidoNome}</strong></p>
+        <div class="driver-modal-list" id="driverModalList">
+          ${drivers.map(d => `
+            <div class="driver-option" data-id="${d.id}">
+              <div class="driver-info">
+                <span class="driver-name">${d.nome}</span>
+                <span class="driver-detail">📱 ${d.whatsapp || '-'}</span>
+              </div>
+              <div class="driver-check"><i class="fas fa-check"></i></div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="modal-actions" style="margin-top:16px;">
+          <button class="btn btn-modal-cancel" id="driverModalCancel">Cancelar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    let selectedId = null;
+    overlay.querySelectorAll('.driver-option').forEach(el => {
+      el.addEventListener('click', () => {
+        overlay.querySelectorAll('.driver-option').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedId = el.dataset.id;
+        overlay.remove();
+        resolve(selectedId);
+      });
+    });
+    overlay.querySelector('#driverModalCancel').onclick = () => { overlay.remove(); resolve(null); };
+    overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
+let primeiraCarga = true;
+const som = document.getElementById('somNovoPedido');
+
+document.addEventListener('click', () => {
+  som.play().then(() => { som.pause(); som.currentTime = 0; }).catch(() => {/* áudio bloqueado pelo navegador até interação */});
+}, { once: true });
+
+// Poll pedidos via API (replaces Firebase onSnapshot)
+async function carregarPedidos() {
+  try {
+    var pedidos = await api('/pedidos');
+    // Clear all containers
+    Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
+    pedidos = pedidos.filter(function(p) { return p.status && p.status !== 'pendente'; });
+    pedidos.forEach(function(p) {
+      var container = containers[p.status];
+      if (!container) return;
+      var card = renderCard(p, p.id);
+      container.appendChild(card);
+    });
+    updateStats();
+    atualizarBadgeEsteira();
+    if (primeiraCarga) {
+      primeiraCarga = false;
+    }
+  } catch(e) {
+    console.error('Erro ao carregar pedidos:', e);
+    if (!container.querySelector('.pedido-card')) toast('Erro ao carregar pedidos. Tentando novamente...', 'danger');
+  }
+}
+carregarPedidos();
+var pedidosTimer = setInterval(carregarPedidos, 10000);
+</script>
+</body>
+</html>

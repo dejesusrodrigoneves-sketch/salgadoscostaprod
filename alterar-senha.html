@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Alterar Senha - Fábrica de Salgados</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: #f1f5f9; color: #1e293b;
+  min-height: 100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.card {
+  background: white; border-radius: 16px; padding: 32px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08); max-width: 420px; width: 100%;
+  animation: fadeUp 0.4s ease;
+}
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+.card h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
+.card h1 i { color: #f97316; }
+.card .sub { font-size: 13px; color: #64748b; margin-bottom: 24px; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display:block; font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; }
+.form-group input {
+  width:100%; padding:12px 14px; border:1px solid #e2e8f0; border-radius:10px;
+  font-size:14px; font-family:inherit; outline:none; transition:0.2s;
+}
+.form-group input:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,0.1); }
+
+.btn {
+  width:100%; padding:13px; border:none; border-radius:10px;
+  font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:0.2s; display:flex; align-items:center; justify-content:center; gap:8px;
+}
+.btn-primary { background:#f97316; color:white; }
+.btn-primary:hover { background:#ea580c; }
+
+.msg { display:none; padding:12px; border-radius:8px; font-size:13px; margin-top:16px; }
+.msg.show { display:block; }
+.msg-success { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+.msg-error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1><i class="fas fa-key"></i> Alterar Senha</h1>
+  <p class="sub">Digite sua senha atual e a nova senha desejada</p>
+
+  <form id="changePassForm">
+    <div class="form-group">
+      <label>Usuário</label>
+      <input type="text" id="currentUser" readonly style="background:#f8fafc;color:#94a3b8;">
+    </div>
+    <div class="form-group">
+      <label>Senha Atual</label>
+      <input type="password" id="currentPass" placeholder="Sua senha atual" required>
+    </div>
+    <div class="form-group">
+      <label>Nova Senha</label>
+      <input type="password" id="newPass" placeholder="Mínimo 6 caracteres" required>
+    </div>
+    <div class="form-group">
+      <label>Confirmar Nova Senha</label>
+      <input type="password" id="newPass2" placeholder="Repita a nova senha" required>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar</button>
+    <div class="msg" id="msgBox"></div>
+  </form>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+<script>
+const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+
+if (!authUser.username || authUser.role === 'superadmin') {
+  window.location.href = 'login.html';
+}
+
+document.getElementById('currentUser').value = authUser.username;
+
+document.getElementById('changePassForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msgBox');
+  msg.className = 'msg';
+  msg.textContent = '';
+
+  const currentPass = document.getElementById('currentPass').value.trim();
+  const newPass = document.getElementById('newPass').value.trim();
+  const newPass2 = document.getElementById('newPass2').value.trim();
+
+  if (!currentPass || !newPass) { showMsg('Preencha todos os campos', 'error'); return; }
+  if (newPass.length < 6) { showMsg('Nova senha deve ter 6+ caracteres', 'error'); return; }
+  if (newPass !== newPass2) { showMsg('Nova senha e confirmação não conferem', 'error'); return; }
+
+  try {
+    const snap = await db.collection('usuarios').where('username', '==', authUser.username).get();
+    if (snap.empty) { showMsg('Usuário não encontrado', 'error'); return; }
+
+    const doc = snap.docs[0];
+    const data = doc.data();
+    const match = await bcrypt.compare(currentPass, data.passwordHash);
+    if (!match) { showMsg('Senha atual incorreta', 'error'); return; }
+
+    const hash = await bcrypt.hash(newPass, 10);
+    await db.collection('usuarios').doc(doc.id).update({ passwordHash: hash });
+
+    showMsg('Senha alterada com sucesso!', 'success');
+    document.getElementById('currentPass').value = '';
+    document.getElementById('newPass').value = '';
+    document.getElementById('newPass2').value = '';
+  } catch (err) {
+    console.error(err);
+    showMsg('Erro ao alterar senha', 'error');
+  }
+});
+
+function showMsg(text, type) {
+  const msg = document.getElementById('msgBox');
+  msg.textContent = text;
+  msg.className = `msg show msg-${type}`;
+}
+</script>
+</body>
+</html>
