@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "backend/api.js", "use": "@vercel/node" },
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "js/**/*.js", "use": "@vercel/static" },
+    { "src": "css/**/*.{css,scss}", "use": "@vercel/static" },
+    { "src": "img/**/*", "use": "@vercel/static" },
+    { "src": "public/**/*", "use": "@vercel/static" },
+    { "src": "view/**/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend/api.js" },
+    { "src": "/api/config", "dest": "backend/api.js" },
+    { "src": "/health", "dest": "backend/api.js" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
