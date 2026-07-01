@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "vercel-build": "npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --schema=prisma/schema.prisma --accept-data-loss",
     "dev": "nodemon server.js",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
