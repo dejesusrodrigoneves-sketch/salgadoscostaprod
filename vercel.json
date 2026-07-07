@@ -13,6 +13,8 @@
     { "src": "/api/(.*)", "dest": "backend/api.js" },
     { "src": "/api/config", "dest": "backend/api.js" },
     { "src": "/health", "dest": "backend/api.js" },
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/([^/.]+)$", "dest": "/$1.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ]
 }

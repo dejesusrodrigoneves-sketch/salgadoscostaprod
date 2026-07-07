@@ -1,6 +1,6 @@
 {
-  "name": "Fábrica de Salgados Costa",
-  "short_name": "SalgadosCosta",
+  "name": "SIC.ia",
+  "short_name": "Sistema integrado de cardapios",
   "description": "Cardápio online e gestão de pedidos",
   "start_url": "/",
   "display": "standalone",
