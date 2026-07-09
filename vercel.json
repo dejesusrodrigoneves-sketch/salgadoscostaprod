@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "framework": null,
+  "buildCommand": "cd backend && npx prisma generate --schema=prisma/schema.prisma",
   "builds": [
     { "src": "backend/api.js", "use": "@vercel/node" },
     { "src": "*.html", "use": "@vercel/static" },
@@ -13,6 +15,7 @@
     { "src": "/api/(.*)", "dest": "backend/api.js" },
     { "src": "/api/config", "dest": "backend/api.js" },
     { "src": "/health", "dest": "backend/api.js" },
+    { "src": "/cart", "dest": "/view/cart.html" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/([^/.]+)$", "dest": "/$1.html" },
     { "src": "/(.*)", "dest": "/$1" }
