@@ -8,4 +8,4 @@ const toggleBtn = () => {
         navMobile.style.transform = 'translateX(0%)'
 }
 
-btnMobile.addEventListener('click', toggleBtn)
+if (btnMobile) btnMobile.addEventListener('click', toggleBtn)

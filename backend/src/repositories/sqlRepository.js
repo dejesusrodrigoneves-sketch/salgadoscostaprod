@@ -1,15 +1,13 @@
 const prisma = require('../config/prisma');
-
-// Wrapper para facilitar troca futura entre SQL e Firestore
-// Todas as queries passam por esta camada
+const EMPRESA_ID = 1;
 
 const sql = {
   // ---- Produtos ----
-  async listarProdutos(empresaId) {
-    return prisma.produto.findMany({ where: { empresaId } });
+  async listarProdutos() {
+    return prisma.produto.findMany({ where: { empresaId: EMPRESA_ID } });
   },
-  async buscarProduto(empresaId, id) {
-    return prisma.produto.findFirst({ where: { id: Number(id), empresaId } });
+  async buscarProduto(id) {
+    return prisma.produto.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
   },
   async criarProduto(data) {
     return prisma.produto.create({ data });
@@ -22,8 +20,8 @@ const sql = {
   },
 
   // ---- Pedidos ----
-  async listarPedidos(empresaId, filtros = {}) {
-    const where = { empresaId, ...filtros };
+  async listarPedidos(filtros = {}) {
+    const where = { empresaId: EMPRESA_ID, ...filtros };
     return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true } });
   },
   async buscarPedido(id) {
@@ -37,8 +35,8 @@ const sql = {
   },
 
   // ---- Entregadores ----
-  async listarEntregadores(empresaId) {
-    return prisma.entregador.findMany({ where: { empresaId } });
+  async listarEntregadores() {
+    return prisma.entregador.findMany({ where: { empresaId: EMPRESA_ID } });
   },
   async criarEntregador(data) {
     return prisma.entregador.create({ data });
@@ -54,11 +52,11 @@ const sql = {
   },
 
   // ---- Usuários ----
-  async buscarUsuario(username, empresaId) {
-    return prisma.usuario.findUnique({ where: { empresaId_username: { empresaId, username } } });
+  async buscarUsuario(username) {
+    return prisma.usuario.findUnique({ where: { empresaId_username: { empresaId: EMPRESA_ID, username } } });
   },
-  async listarUsuarios(empresaId) {
-    return prisma.usuario.findMany({ where: { empresaId } });
+  async listarUsuarios() {
+    return prisma.usuario.findMany({ where: { empresaId: EMPRESA_ID } });
   },
   async criarUsuario(data) {
     return prisma.usuario.create({ data });
@@ -74,8 +72,8 @@ const sql = {
   },
 
   // ---- Caixa ----
-  async buscarCaixaHoje(empresaId, data) {
-    return prisma.caixaDiario.findFirst({ where: { empresaId, data: new Date(data) } });
+  async buscarCaixaHoje(data) {
+    return prisma.caixaDiario.findFirst({ where: { empresaId: EMPRESA_ID, data: new Date(data) } });
   },
   async criarCaixa(data) {
     return prisma.caixaDiario.create({ data });
@@ -83,8 +81,8 @@ const sql = {
   async atualizarCaixa(id, data) {
     return prisma.caixaDiario.update({ where: { id: Number(id) }, data });
   },
-  async relatoriosCaixa(empresaId, inicio, fim) {
-    const where = { empresaId };
+  async relatoriosCaixa(inicio, fim) {
+    const where = { empresaId: EMPRESA_ID };
     if (inicio && fim) {
       where.data = { gte: new Date(inicio), lte: new Date(fim) };
     }
@@ -92,29 +90,29 @@ const sql = {
   },
 
   // ---- Horários ----
-  async buscarHorarios(empresaId) {
-    return prisma.horario.findFirst({ where: { empresaId } });
+  async buscarHorarios() {
+    return prisma.horario.findFirst({ where: { empresaId: EMPRESA_ID } });
   },
-  async upsertHorarios(empresaId, data) {
-    return prisma.horario.upsert({ where: { empresaId }, update: data, create: { empresaId, ...data } });
+  async upsertHorarios(data) {
+    return prisma.horario.upsert({ where: { empresaId: EMPRESA_ID }, update: data, create: { empresaId: EMPRESA_ID, ...data } });
   },
 
   // ---- Counters ----
-  async nextPedidoId(empresaId) {
+  async nextPedidoId() {
     const counter = await prisma.counter.upsert({
-      where: { nome_empresaId: { nome: 'pedidoId', empresaId } },
+      where: { nome_empresaId: { nome: 'pedidoId', empresaId: EMPRESA_ID } },
       update: { lastValue: { increment: 1 } },
-      create: { nome: 'pedidoId', empresaId, lastValue: 1 },
+      create: { nome: 'pedidoId', empresaId: EMPRESA_ID, lastValue: 1 },
     });
     return String(counter.lastValue).padStart(3, '0');
   },
 
   // ---- Categorias ----
-  async listarCategorias(empresaId) {
-    return prisma.categoria.findMany({ where: { empresaId }, orderBy: { nome: 'asc' } });
+  async listarCategorias() {
+    return prisma.categoria.findMany({ where: { empresaId: EMPRESA_ID }, orderBy: { nome: 'asc' } });
   },
-  async buscarCategoria(empresaId, id) {
-    return prisma.categoria.findFirst({ where: { id: Number(id), empresaId } });
+  async buscarCategoria(id) {
+    return prisma.categoria.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
   },
   async criarCategoria(data) {
     return prisma.categoria.create({ data });
@@ -127,14 +125,14 @@ const sql = {
   },
 
   // ---- WhatsApp Instances ----
-  async listarWhatsAppInstances(empresaId) {
-    return prisma.whatsAppInstance.findMany({ where: { empresaId } });
+  async listarWhatsAppInstances() {
+    return prisma.whatsAppInstance.findMany({ where: { empresaId: EMPRESA_ID } });
   },
-  async buscarInstanciaAtiva(empresaId) {
-    return prisma.whatsAppInstance.findFirst({ where: { empresaId, isActive: true } });
+  async buscarInstanciaAtiva() {
+    return prisma.whatsAppInstance.findFirst({ where: { empresaId: EMPRESA_ID, isActive: true } });
   },
-  async buscarWhatsAppInstance(empresaId, id) {
-    return prisma.whatsAppInstance.findFirst({ where: { id: Number(id), empresaId } });
+  async buscarWhatsAppInstance(id) {
+    return prisma.whatsAppInstance.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
   },
   async criarWhatsAppInstance(data) {
     return prisma.whatsAppInstance.create({ data });
@@ -147,11 +145,11 @@ const sql = {
   },
 
   // ---- Clientes ----
-  async listarClientes(empresaId) {
-    return prisma.cliente.findMany({ where: { empresaId }, orderBy: { createdAt: 'desc' } });
+  async listarClientes() {
+    return prisma.cliente.findMany({ where: { empresaId: EMPRESA_ID }, orderBy: { createdAt: 'desc' } });
   },
-  async buscarCliente(empresaId, telefone) {
-    return prisma.cliente.findUnique({ where: { empresaId_telefone: { empresaId, telefone } } });
+  async buscarCliente(telefone) {
+    return prisma.cliente.findUnique({ where: { empresaId_telefone: { empresaId: EMPRESA_ID, telefone } } });
   },
   async buscarClientePorId(id) {
     return prisma.cliente.findUnique({ where: { id: Number(id) } });
@@ -167,11 +165,11 @@ const sql = {
   },
 
   // ---- Cupons ----
-  async buscarCupom(empresaId, codigo) {
-    return prisma.cupom.findFirst({ where: { empresaId, codigo } });
+  async buscarCupom(codigo) {
+    return prisma.cupom.findFirst({ where: { empresaId: EMPRESA_ID, codigo } });
   },
-  async listarCupons(empresaId) {
-    return prisma.cupom.findMany({ where: { empresaId } });
+  async listarCupons() {
+    return prisma.cupom.findMany({ where: { empresaId: EMPRESA_ID } });
   },
   async criarCupom(data) {
     return prisma.cupom.create({ data });

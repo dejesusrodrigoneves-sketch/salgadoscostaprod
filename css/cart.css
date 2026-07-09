@@ -4,7 +4,7 @@
   outline: 0;
   -webkit-box-sizing: border-box;
           box-sizing: border-box;
-  font-family: 'Montserrat', sans-serif;
+  font-family: inherit;
 }
 
 body {
@@ -14,11 +14,11 @@ body {
 
 .boxSabores {
   background: #fff;
-  border: 2px solid #ff5722;
-  border-radius: 10px;
+  border: 2px solid #1FA58D;
+  border-radius: 8px;
   padding: 15px;
   margin-top: 10px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
 .saborItem {
@@ -40,18 +40,18 @@ body {
 }
 
 .counter button {
-  background: #ff5722;
+  background: #1FA58D;
   color: #fff;
   border: none;
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
   transition: background 0.3s;
 }
 
 .counter button:hover {
-  background: #e64a19;
+  background: #188A75;
 }
 
 .counter span {
@@ -62,12 +62,12 @@ body {
 
 
 ::-moz-selection {
-  background: #FF7F0A;
+  background: #1FA58D;
   color: #FFFFFF;
 }
 
 ::selection {
-  background: #FF7F0A;
+  background: #1FA58D;
   color: #FFFFFF;
 }
 
@@ -98,7 +98,7 @@ h1 {
 }
 
 h1 span {
-  color: #FF7F0A;
+  color: #1FA58D;
 }
 
 .sabores-container {
@@ -114,7 +114,7 @@ h1 span {
 
 .sabores-container button {
   margin-top: 5px;
-  background-color: #ff5722;
+  background-color: #1FA58D;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -123,7 +123,7 @@ h1 span {
 }
 
 .sabores-container button:hover {
-  background-color: #e64a19;
+  background-color: #188A75;
 }
 
 .sabores-list p {
@@ -160,7 +160,7 @@ p {
   padding: 1.25rem;
   margin-bottom: 1.25rem;
 
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 
@@ -187,15 +187,15 @@ p {
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.4;
-  color: #ef8e17;
+  color: #1FA58D;
 }
 
 /* caixa de sabores confirmados */
 .caixaItem .saboresSelecionados {
   padding: 0.75rem;
-  border-radius: 10px;
-  background: #f36309;
-  border: 1px dashed #eb7323;
+  border-radius: 8px;
+  background: #1FA58D;
+  border: 1px dashed #188A75;
   font-size: 0.9rem;
   color: #444;
 }
@@ -209,11 +209,11 @@ p {
 }
 
 .caixaItem button {
-  background: #eb7323;
-  color: #d16969;
+  background: #188A75;
+  color: #fff;
   border: none;
   padding: 0.5rem 0.9rem;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -221,7 +221,7 @@ p {
 }
 
 .caixaItem button:hover {
-  background: #d9601d;
+  background: #188A75;
 }
 
 
@@ -277,7 +277,7 @@ p {
 }
 
 .back a:hover {
-  color: #A90E0E;
+  color: #1FA58D;
   -webkit-transition: .5s ease;
   transition: .5s ease;
 }
@@ -290,7 +290,7 @@ p {
   background: #FFFFFF;
   -webkit-box-shadow: 0 90px 160px 0 rgba(0, 0, 0, 0.15);
           box-shadow: 0 90px 160px 0 rgba(0, 0, 0, 0.15);
-  border-radius: 10px;
+  border-radius: 8px;
   margin-top: 25px;
   padding: 1.8rem;
 }
@@ -372,7 +372,7 @@ p {
 }
 
 .items .item .bottom .counter button:hover {
-  color: #A90E0E;
+  color: #1FA58D;
   -webkit-transition: .5s ease;
   transition: .5s ease;
 }
@@ -460,7 +460,7 @@ p {
 }
 
 .total .division .option .active {
-  background: #A90E0E;
+  background: #1FA58D;
 }
 
 .total .division .promotionCode {
@@ -493,7 +493,7 @@ p {
 }
 
 .total button {
-  background: #A90E0E;
+  background: #1FA58D;
   width: 100%;
   border: none;
   padding: 12px;
@@ -527,7 +527,7 @@ p {
 }
 
 .total .keepBuying a:hover {
-  color: #A90E0E;
+  color: #1FA58D;
   -webkit-transition: .5s ease;
   transition: .5s ease;
 }
@@ -557,8 +557,8 @@ p {
 
 #campoBairro input:focus {
   outline: none;
-  border-color: #ff5722;
-  box-shadow: 0 0 6px rgba(255, 87, 34, 0.5);
+  border-color: #1FA58D;
+  box-shadow: 0 0 6px rgba(31, 165, 141, 0.5);
 }
 
 
@@ -581,7 +581,7 @@ p {
   margin-top: 10px;
   margin-bottom: 20px;
   padding-left: 10px;
-  border-left: 3px solid #FF7F0A;
+  border-left: 3px solid #1FA58D;
   background-color: #fff6f0;
   border-radius: 5px;
   padding: 10px;

@@ -70,7 +70,7 @@ inputCEP.addEventListener('input', debounce(async () => {
             }
         }
     }
-});
+}));
 
 
 
@@ -84,12 +84,18 @@ const removeClasses = () => {
 }
 
 const checkIfHaveItem = html => {
-    if(html === '') menu.innerHTML = '<p>Nenhum produto encontrado!</p>';
+    if(html === '') menu.innerHTML = '<div class=\"empty-state\"><span class=\"iconify-inline\" data-icon=\"mdi:food-off\"></span><p>Nenhum produto encontrado</p></div>';
     else menu.innerHTML = html;
 }
 
 const addItemToArray = prod => {
     let price = prod.price.toFixed(2).replace('.', ',');
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const inCart = cart.find(i => i.id === prod.id);
+    const qtd = inCart ? inCart.qtd || 1 : 0;
+    const btnHTML = qtd > 0
+      ? '<button class="btn btn-minus" onclick="removeFromCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:minus"></span></button><span class="cart-qty">' + qtd + '</span><button class="btn btn-plus" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
+      : '<button class="btn btn-add" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>';
     itemsHTML += `
     <div class="card">
         <div>
@@ -101,9 +107,7 @@ const addItemToArray = prod => {
         </div>
         <div>
             <p class="price">R$ <span>${price}</span></p>
-            <button class="btn" onclick="addToCart(${prod.id})">
-                <span class="iconify-inline" data-icon="mdi:cart-plus"></span> Adicionar
-            </button>
+            <div class="card-actions">${btnHTML}</div>
         </div>
     </div>`;
 }
@@ -169,6 +173,12 @@ const allPromotions = () => {
         if(prod.lastPrice && prod.lastPrice!=0){
             let price=prod.price.toFixed(2).replace('.', ',');
             let lastPrice=prod.lastPrice.toFixed(2).replace('.', ',');
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const inCart = cart.find(i => i.id === prod.id);
+            const qtd = inCart ? inCart.qtd || 1 : 0;
+            const btnHTML = qtd > 0
+              ? '<button class="btn btn-minus" onclick="removeFromCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:minus"></span></button><span class="cart-qty">' + qtd + '</span><button class="btn btn-plus" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
+              : '<button class="btn btn-add" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>';
             promoItems += `<div class="card">
                 <div>
                     <div class="cardImg"><img src="./img/${prod.img}" alt="${prod.name}" loading="lazy"></div>
@@ -178,9 +188,7 @@ const allPromotions = () => {
                 <div>
                     <p class="oldPrice">R$ ${lastPrice}</p>
                     <p class="price">R$ ${price}</p>
-                    <button class="btn" onclick="addToCart(${prod.id})">
-                        <span class="iconify-inline" data-icon="mdi:cart-plus"></span> Adicionar
-                    </button>
+                    <div class="card-actions">${btnHTML}</div>
                 </div>
             </div>`;
         }
@@ -188,7 +196,16 @@ const allPromotions = () => {
     promotions.innerHTML = promoItems==='' ? '<p>Nenhuma promoção hoje, tente novamente amanhã! =(</p>' : promoItems;
 }
 
+function showSkeletonLoading() {
+    var sk = '';
+    for (var i = 0; i < 6; i++) {
+      sk += '<div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-body"><div class="skeleton-line short"></div><div class="skeleton-line"></div><div class="skeleton-line medium"></div></div></div>';
+    }
+    menu.innerHTML = sk;
+}
+
 async function loadProducts() {
+    showSkeletonLoading();
     try {
         const data = await PUBLIC_API.listarProdutos();
         products = data.filter(function(p) { return p.status !== "removed" && p.status !== "paused"; });
@@ -196,7 +213,7 @@ async function loadProducts() {
         allPromotions();
     } catch(e) {
         console.error("Erro ao carregar produtos:", e);
-        toast("Erro ao carregar cardápio", "danger");
+        menu.innerHTML = '<div class=\"error-state\"><span class=\"iconify-inline\" data-icon=\"mdi:alert-circle-outline\"></span><p>Erro ao carregar cardápio</p></div>';
     }
 }
 loadProducts();
@@ -210,19 +227,28 @@ showDrinks.addEventListener('click',()=>showProducts(4));
 async function atualizarStatusBar(){
     try{
         let aberto = false;
-        let mensagem = "A loja encontra-se fechada no momento.";
         try {
-            const res = await fetch('/api/loja/status?slug=salgadoscosta');
+            const res = await fetch('/api/loja/status');
             if (res.ok) {
                 const data = await res.json();
                 aberto = data.isOpen;
-                mensagem = data.message;
             }
         } catch (e) {}
 
         const statusBar = document.getElementById("statusBar");
         statusBar.style.backgroundColor = aberto ? "green" : "red";
-        statusBar.textContent = mensagem;
+        statusBar.textContent = aberto
+          ? "Faça agora seu pedido"
+          : "Estamos Fechados !! Faça seus agendamento pelo nosso Whatsapp";
+
+        // Update status pill in header
+        const pill = document.getElementById("statusPill");
+        const pillLabel = document.getElementById("statusLabel");
+        if (pill && pillLabel) {
+          pill.className = aberto ? 'open' : 'closed';
+          pillLabel.textContent = aberto ? 'Aberto agora' : 'Fechado';
+        }
+
         const elementos = document.querySelectorAll(".btn, .linkMenu, a[href='#menu']");
         elementos.forEach(el => {
             el.disabled = !aberto;
@@ -234,12 +260,30 @@ async function atualizarStatusBar(){
         const statusBar = document.getElementById("statusBar");
         statusBar.textContent = "Erro ao carregar status!";
         statusBar.style.backgroundColor = "gray";
+        const pill = document.getElementById("statusPill");
+        if (pill) pill.className = 'closed';
     }
 }
 atualizarStatusBar();
 setInterval(atualizarStatusBar,60000);
 
-function addToCart(id){
+// Search filter
+document.addEventListener('DOMContentLoaded', function() {
+  const input = document.getElementById('searchInput');
+  if (!input) return;
+  input.addEventListener('input', debounce(function() {
+    const query = this.value.toLowerCase().trim();
+    const cards = document.querySelectorAll('#showMenu .card, #showPromotions .card');
+    cards.forEach(function(card) {
+      var name = (card.querySelector('h4') || {}).textContent || '';
+      var desc = (card.querySelector('p') || {}).textContent || '';
+      card.style.display = (!query || name.toLowerCase().includes(query) || desc.toLowerCase().includes(query)) ? '' : 'none';
+    });
+  }));
+});
+
+function addToCart(id, event){
+    if (event) event.stopPropagation();
     const statusBar=document.getElementById("statusBar");
     const isOpen=statusBar.style.backgroundColor==="green";
     if(!isOpen){
@@ -247,11 +291,82 @@ function addToCart(id){
         return;
     }
     const cart=JSON.parse(localStorage.getItem('cart'))||[];
-    if(cart.find(i=>i.id===id)) return;
-    cart.push({id:id,qtd:1});
+    const existing = cart.find(i=>i.id===id);
+    if (existing) {
+      existing.qtd = (existing.qtd || 1) + 1;
+    } else {
+      cart.push({id:id,qtd:1});
+    }
     localStorage.setItem('cart',JSON.stringify(cart));
-    toast("Item adicionado ao carrinho!", "success");
+    refreshProductCards();
 }
+
+function removeFromCart(id, event){
+    if (event) event.stopPropagation();
+    const cart=JSON.parse(localStorage.getItem('cart'))||[];
+    const idx = cart.findIndex(i=>i.id===id);
+    if (idx === -1) return;
+    if (cart[idx].qtd > 1) {
+      cart[idx].qtd--;
+    } else {
+      cart.splice(idx, 1);
+    }
+    localStorage.setItem('cart',JSON.stringify(cart));
+    refreshProductCards();
+}
+
+function refreshProductCards(){
+    const currentTab = document.querySelector('.linksMenu .active');
+    if (currentTab) {
+      const tabMap = { showAll: 0, showSnacks: 1, showCombos: 2, showPortions: 3, showDrinks: 4, showFrozen: 6 };
+      showProducts(tabMap[currentTab.id] !== undefined ? tabMap[currentTab.id] : 0);
+    }
+    allPromotions();
+    updateOrderBar();
+}
+
+function updateOrderBar(){
+    var cart = JSON.parse(localStorage.getItem('cart')) || [];
+    var bar = document.getElementById('orderBar');
+    var badge = document.getElementById('cartBadge');
+    if (!bar) return;
+    if (cart.length === 0) {
+      bar.style.display = 'none';
+      if (badge) badge.style.display = 'none';
+      return;
+    }
+    bar.style.display = 'flex';
+    var total = 0;
+    var count = 0;
+    cart.forEach(function(item) {
+      count += item.qtd || 1;
+      var prod = products.find(function(p) { return p.id === item.id; });
+      if (prod) total += (prod.price || 0) * (item.qtd || 1);
+    });
+    var el = document.getElementById('orderBarCount');
+    if (el) el.textContent = count + (count === 1 ? ' item' : ' itens');
+    el = document.getElementById('orderBarTotal');
+    if (el) el.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+    if (badge) {
+      badge.style.display = count > 0 ? 'flex' : 'none';
+      badge.textContent = count > 99 ? '99+' : count;
+    }
+}
+
+function abrirPedidosNav(){
+    var savedUser = JSON.parse(localStorage.getItem("userLogged"));
+    if (!savedUser) return toast("Faça login primeiro!", 'warning');
+    if (typeof abrirOverlayPedidos === 'function') abrirOverlayPedidos(savedUser);
+}
+
+// Init order bar on load
+document.addEventListener('DOMContentLoaded', function() {
+  updateOrderBar();
+});
+
+// Cart notify badge also via floating cart (keep compatible)
+var _origRefresh = refreshProductCards;
+refreshProductCards = function() { _origRefresh(); updateOrderBar(); };
 
 async function carregarHorarios() {
     const container = document.getElementById("daysContainer");
@@ -289,6 +404,26 @@ async function carregarConfigLoja() {
     const titleEl = document.getElementById('pageTitle');
     if (titleEl) titleEl.textContent = nome + ' | Cardapio Online';
 
+    // Update store name in header
+    const nameEl = document.getElementById('storeName');
+    if (nameEl) nameEl.textContent = nome;
+
+    // Update cover image
+    const coverEl = document.getElementById('coverImg');
+    if (coverEl && config.capaUrl) coverEl.src = config.capaUrl;
+
+    // Update logo
+    const logoImg = document.getElementById('logoImg');
+    if (logoImg && config.logoUrl) logoImg.src = config.logoUrl;
+
+    // Update quick info
+    const qiDel = document.getElementById('qiDelivery');
+    if (qiDel) qiDel.textContent = config.taxaEntrega ? 'R$ ' + Number(config.taxaEntrega).toFixed(2).replace('.', ',') : 'Grátis';
+    const qiTime = document.getElementById('qiTime');
+    if (qiTime) qiTime.textContent = config.tempoMedio || '30-40 min';
+    const qiTel = document.getElementById('qiPhone');
+    if (qiTel) qiTel.textContent = tel.replace('5521', '(21) ');
+
     // Update footer logo
     const logoEl = document.getElementById('logo');
     if (logoEl) logoEl.innerHTML = nome.replace(' ', '<br />');
@@ -317,6 +452,10 @@ async function carregarConfigLoja() {
     if (mapIframe && config.endereco) {
       const q = encodeURIComponent([config.endereco, config.numero, config.bairro, config.cidade, config.estado].filter(Boolean).join(', '));
       if (q) mapIframe.src = 'https://www.google.com/maps?q=' + q + '&output=embed';
+    }
+    // Aplica tema da loja
+    if (config.themeSettings && typeof applyTheme === 'function') {
+      applyTheme(config.themeSettings);
     }
   } catch (e) {
     console.warn('Failed to load store config:', e);
@@ -373,10 +512,9 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
   }
 
   phone = adicionarPrefixoTelefone(phone);
-  var slug = document.body.getAttribute('data-slug') || 'salgadoscosta';
 
   try {
-    var result = await PUBLIC_API.login({ slug: slug, telefone: phone, password: password });
+    var result = await PUBLIC_API.login({ telefone: phone, password: password });
     localStorage.setItem('clientToken', result.token);
     localStorage.setItem("userLogged", JSON.stringify(result.cliente));
     toast("Login realizado!", 'success');
@@ -412,7 +550,6 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
     const bairro = document.getElementById("regBairro").value;
     const ponto = document.getElementById("regPonto").value;
     var isEditing = !!localStorage.getItem('clientToken');
-    var slug = document.body.getAttribute('data-slug') || 'salgadoscosta';
 
     if (isEditing) {
         try {
@@ -435,7 +572,7 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
 
     try {
         var result = await PUBLIC_API.register({
-            slug: slug, nome: nome, telefone: phone, password: password,
+            nome: nome, telefone: phone, password: password,
             endereco: endereco, numero: numero, bairro: bairro, cep: cep, pontoReferencia: ponto,
         });
         localStorage.setItem('clientToken', result.token);

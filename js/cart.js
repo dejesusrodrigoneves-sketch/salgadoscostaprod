@@ -853,7 +853,6 @@ if (tipoEntrega === "retirada") {
 
 
 const payload = {
-    slug: document.body.getAttribute('data-slug') || 'salgadoscosta',
     clienteNome: nome,
     clienteEndereco: endereco,
     clienteNumero: numero,

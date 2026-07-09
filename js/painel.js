@@ -20,7 +20,7 @@ async function apiRequest(path, options = {}) {
 }
 
 // ===== Tabs =====
-const tabs = ['horarios', 'produtos', 'categorias', 'config'];
+const tabs = ['horarios', 'produtos', 'categorias', 'config', 'personalizacao'];
 function selectTab(which){
   tabs.forEach(t => {
     const btn = document.getElementById('tab-' + t);
@@ -33,6 +33,7 @@ document.getElementById('tab-horarios')?.addEventListener('click', () => selectT
 document.getElementById('tab-produtos')?.addEventListener('click', () => selectTab('produtos'));
 document.getElementById('tab-categorias')?.addEventListener('click', () => { selectTab('categorias'); carregarCategorias(); });
 document.getElementById('tab-config')?.addEventListener('click', () => { selectTab('config'); carregarConfigLoja(); });
+document.getElementById('tab-personalizacao')?.addEventListener('click', () => { selectTab('personalizacao'); carregarTema(); });
 
 // ===== produtos congelados =====
 const fCongelado = document.getElementById('prodCongelado');
@@ -588,5 +589,92 @@ document.getElementById('btnSalvarConfig')?.addEventListener('click', async () =
 });
 
 document.getElementById('btnRecarregarConfig')?.addEventListener('click', () => { carregarConfigLoja(); blink(document.getElementById('btnRecarregarConfig')); toast('Configurações recarregadas'); });
+
+// ===== Personalização do Tema =====
+function previewTema() {
+  var t = {
+    primaryColor: (document.getElementById('themePrimary') || {}).value || '#F26D3D',
+    backgroundColor: (document.getElementById('themeBackground') || {}).value || '#FFFAF8',
+    surfaceColor: (document.getElementById('themeSurface') || {}).value || '#FFFFFF',
+    textColor: (document.getElementById('themeText') || {}).value || '#2D1A12',
+    isDark: (document.getElementById('themeIsDark') || {}).checked || false,
+  };
+  if (typeof applyTheme === 'function') applyTheme(t);
+  var pp = document.getElementById('previewPrimary');
+  var ps = document.getElementById('previewSecondary');
+  var psu = document.getElementById('previewSurface');
+  var pt = document.getElementById('previewText');
+  if (pp) pp.style.background = t.primaryColor;
+  if (ps) ps.style.background = t.backgroundColor;
+  if (psu) psu.style.background = t.surfaceColor;
+  if (pt) pt.style.background = t.textColor;
+}
+
+async function carregarTema() {
+  try {
+    var settings = await apiRequest('/loja/settings-admin');
+    var t = settings.themeSettings || {};
+    var p = document.getElementById('themePrimary');
+    var bg = document.getElementById('themeBackground');
+    var sf = document.getElementById('themeSurface');
+    var tx = document.getElementById('themeText');
+    var dk = document.getElementById('themeIsDark');
+    if (p) p.value = t.primaryColor || '#F26D3D';
+    if (bg) bg.value = t.backgroundColor || '#FFFAF8';
+    if (sf) sf.value = t.surfaceColor || '#FFFFFF';
+    if (tx) tx.value = t.textColor || '#2D1A12';
+    if (dk) dk.checked = t.isDark || false;
+    previewTema();
+  } catch (e) {
+    toast('Erro ao carregar tema', 'danger');
+  }
+}
+
+['themePrimary','themeBackground','themeSurface','themeText'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('input', previewTema);
+});
+var dk = document.getElementById('themeIsDark');
+if (dk) dk.addEventListener('change', previewTema);
+
+document.getElementById('btnSalvarTema')?.addEventListener('click', async function() {
+  var themeSettings = {
+    primaryColor: (document.getElementById('themePrimary') || {}).value || '#F26D3D',
+    backgroundColor: (document.getElementById('themeBackground') || {}).value || '#FFFAF8',
+    surfaceColor: (document.getElementById('themeSurface') || {}).value || '#FFFFFF',
+    textColor: (document.getElementById('themeText') || {}).value || '#2D1A12',
+    isDark: (document.getElementById('themeIsDark') || {}).checked || false,
+  };
+  try {
+    await apiRequest('/loja/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ themeSettings: themeSettings }),
+    });
+    blink(document.getElementById('btnSalvarTema'));
+    toast('Tema salvo com sucesso!');
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+});
+
+document.getElementById('btnResetarTema')?.addEventListener('click', async function() {
+  var defaults = {
+    primaryColor: '#F26D3D',
+    backgroundColor: '#FFFAF8',
+    surfaceColor: '#FFFFFF',
+    textColor: '#2D1A12',
+    isDark: false,
+  };
+  try {
+    await apiRequest('/loja/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ themeSettings: defaults }),
+    });
+    carregarTema();
+    toast('Tema restaurado para o padrão!');
+  } catch (e) {
+    toast(e.message, 'danger');
+  }
+});
 
 (function init(){ carregarHorarios(); carregarLojaConfig(); listenProdutos(); })();

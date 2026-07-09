@@ -1,19 +1,14 @@
 const { Router } = require('express');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 
-const IMG_DIR = path.resolve(__dirname, '../../../img');
-if (!fs.existsSync(IMG_DIR)) fs.mkdirSync(IMG_DIR, { recursive: true });
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, IMG_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const name = Date.now() + '_' + Math.random().toString(36).slice(2, 6) + ext;
-    cb(null, name);
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -27,9 +22,37 @@ const upload = multer({
 
 const router = Router();
 
-router.post('/', upload.single('file'), (req, res) => {
+router.post('/', upload.single('file'), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-  res.json({ filename: req.file.filename, url: `/img/${req.file.filename}` });
+
+  try {
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    const filename = Date.now() + '_' + Math.random().toString(36).slice(2, 6) + ext;
+    const filePath = filename;
+
+    const mimeMap = {
+      '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+    };
+    const contentType = mimeMap[ext] || req.file.mimetype || 'image/jpeg';
+
+    const { error } = await supabase.storage
+      .from('produtos')
+      .upload(filePath, req.file.buffer, {
+        contentType,
+        upsert: false,
+      });
+
+    if (error) throw error;
+
+    const publicUrl = process.env.SUPABASE_URL + '/storage/v1/object/public/produtos/' + filename;
+    res.json({ filename, url: publicUrl });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.use((err, req, res, next) => {

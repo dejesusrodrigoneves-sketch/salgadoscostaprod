@@ -8,7 +8,8 @@
 
 <script src="js/utils.js"></script>
 <link rel="stylesheet" href="css/painelstyle.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="js/theme.js"></script>
 
 <style>
 :root {
@@ -124,6 +125,7 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
       <button class="tab-btn" id="tab-produtos" role="tab" aria-selected="false">Produtos</button>
       <button class="tab-btn" id="tab-categorias" role="tab" aria-selected="false">Categorias</button>
       <button class="tab-btn" id="tab-config" role="tab" aria-selected="false">Config. Loja</button>
+      <button class="tab-btn" id="tab-personalizacao" role="tab" aria-selected="false">Personalizar</button>
     </nav>
   </header>
 
@@ -395,6 +397,67 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
       <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
         <button class="btn save" id="btnSalvarConfig"><i class="fas fa-save"></i> Salvar Configurações</button>
         <button class="btn refresh" id="btnRecarregarConfig"><i class="fas fa-sync-alt"></i> Recarregar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABA: Personalizacao -->
+  <section id="view-personalizacao" class="grid hidden" role="tabpanel">
+    <div class="card">
+      <h3><i class="fas fa-palette" style="color:var(--primary, #F26D3D)"></i> Personalização Visual</h3>
+      <p class="tip">Personalize as cores da sua loja. As alterações são visíveis imediatamente no cardápio online.</p>
+      <div class="hr"></div>
+
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;padding:16px;background:var(--primary-bg, #FFF0EA);border-radius:12px;">
+        <div style="flex:1;min-width:80px;text-align:center;">
+          <div id="previewPrimary" style="width:100%;height:40px;background:var(--primary, #F26D3D);border-radius:8px;"></div>
+          <span style="font-size:11px;color:var(--text-muted, #7C7C7C);">Primária</span>
+        </div>
+        <div style="flex:1;min-width:80px;text-align:center;">
+          <div id="previewSecondary" style="width:100%;height:40px;background:var(--secondary, #FFFAF8);border-radius:8px;border:1px solid var(--border, #E8E4DF);"></div>
+          <span style="font-size:11px;color:var(--text-muted, #7C7C7C);">Fundo</span>
+        </div>
+        <div style="flex:1;min-width:80px;text-align:center;">
+          <div id="previewSurface" style="width:100%;height:40px;background:var(--surface, #FFFFFF);border-radius:8px;border:1px solid var(--border, #E8E4DF);"></div>
+          <span style="font-size:11px;color:var(--text-muted, #7C7C7C);">Superfície</span>
+        </div>
+        <div style="flex:1;min-width:80px;text-align:center;">
+          <div id="previewText" style="width:100%;height:40px;background:var(--text, #2D1A12);border-radius:8px;"></div>
+          <span style="font-size:11px;color:var(--text-muted, #7C7C7C);">Texto</span>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-paint-brush"></i> Cores</h4>
+        <div class="row">
+          <div class="lbl">Cor Primária</div>
+          <input type="color" id="themePrimary" value="#F26D3D" />
+        </div>
+        <div class="row">
+          <div class="lbl">Fundo da Página</div>
+          <input type="color" id="themeBackground" value="#FFFAF8" />
+        </div>
+        <div class="row">
+          <div class="lbl">Superfície (cards)</div>
+          <input type="color" id="themeSurface" value="#FFFFFF" />
+        </div>
+        <div class="row">
+          <div class="lbl">Cor do Texto</div>
+          <input type="color" id="themeText" value="#2D1A12" />
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-adjust"></i> Modo</h4>
+        <div class="row">
+          <div class="lbl">Modo Escuro</div>
+          <label class="chip"><input type="checkbox" id="themeIsDark" /> Ativar modo escuro</label>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        <button class="btn save" id="btnSalvarTema"><i class="fas fa-save"></i> Salvar Personalização</button>
+        <button class="btn ghost" id="btnResetarTema"><i class="fas fa-undo"></i> Restaurar Padrão</button>
       </div>
     </div>
   </section>

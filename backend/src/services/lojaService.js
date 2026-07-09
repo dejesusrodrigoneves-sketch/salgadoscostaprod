@@ -43,6 +43,30 @@ async function getStatus(slug) {
   };
 }
 
+const DEFAULT_THEME = {
+  primaryColor: '#F26D3D',
+  backgroundColor: '#FFFAF8',
+  surfaceColor: '#FFFFFF',
+  textColor: '#2D1A12',
+  textMuted: '#7C7C7C',
+  successColor: '#4CAF50',
+  warningColor: '#F59E0B',
+  dangerColor: '#DC2626',
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  isDark: false,
+  borderRadius: '16px',
+  borderRadiusSm: '8px',
+  borderRadiusLg: '24px',
+};
+
+function parseTheme(empresa) {
+  if (!empresa.themeSettings) return { ...DEFAULT_THEME };
+  const raw = typeof empresa.themeSettings === 'string'
+    ? JSON.parse(empresa.themeSettings)
+    : empresa.themeSettings;
+  return { ...DEFAULT_THEME, ...raw };
+}
+
 function formatEmpresa(empresa) {
   return {
     nome: empresa.nome || '',
@@ -63,26 +87,27 @@ function formatEmpresa(empresa) {
     workingDays: Array.isArray(empresa.workingDays) ? empresa.workingDays : [],
     isOpen: empresa.isOpen,
     manualOverride: empresa.manualOverride,
+    themeSettings: parseTheme(empresa),
   };
 }
 
-async function getSettings(empresaId) {
-  const empresa = await sql.buscarEmpresa(empresaId);
+async function getSettings() {
+  const empresa = await sql.buscarEmpresa(1);
   if (!empresa) throw Object.assign(new Error('Empresa não encontrada'), { status: 404 });
   return formatEmpresa(empresa);
 }
 
-async function updateSettings(empresaId, data) {
+async function updateSettings(data) {
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
-    'latitude', 'longitude', 'descricao', 'logo',
+    'latitude', 'longitude', 'descricao', 'logo', 'themeSettings',
   ];
   const payload = {};
   for (const key of allowed) {
     if (data[key] !== undefined) payload[key] = data[key];
   }
-  return sql.atualizarEmpresa(empresaId, payload);
+  return sql.atualizarEmpresa(1, payload);
 }
 
 module.exports = { getStatus, getSettings, updateSettings };

@@ -4,37 +4,37 @@ const sql = require('../repositories/sqlRepository');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.listar = asyncHandler(async (req, res) => {
-  const instancias = await service.listar(req.user.empresaId);
+  const instancias = await service.listar();
   res.json(instancias);
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const resultado = await service.criar(req.user.empresaId, req.user.role);
+  const resultado = await service.criar(req.user.role);
   res.status(201).json(resultado);
 });
 
 exports.deletar = asyncHandler(async (req, res) => {
-  await service.deletar(req.user.empresaId, req.params.id);
+  await service.deletar(req.params.id);
   res.json({ success: true });
 });
 
 exports.qrCode = asyncHandler(async (req, res) => {
-  const resultado = await service.gerarQrCode(req.user.empresaId, req.params.id);
+  const resultado = await service.gerarQrCode(req.params.id);
   res.json(resultado);
 });
 
 exports.reconectar = asyncHandler(async (req, res) => {
-  const resultado = await service.reconectar(req.user.empresaId, req.params.id);
+  const resultado = await service.reconectar(req.params.id);
   res.json(resultado);
 });
 
 exports.status = asyncHandler(async (req, res) => {
-  const resultado = await service.status(req.user.empresaId, req.params.id);
+  const resultado = await service.status(req.params.id);
   res.json(resultado);
 });
 
 exports.enviarTeste = asyncHandler(async (req, res) => {
-  const instancia = await sql.buscarWhatsAppInstance(req.user.empresaId, Number(req.params.id));
+  const instancia = await sql.buscarWhatsAppInstance(Number(req.params.id));
   if (!instancia) {
     return res.status(404).json({ error: 'Instância não encontrada' });
   }

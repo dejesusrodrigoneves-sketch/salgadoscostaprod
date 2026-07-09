@@ -2,8 +2,8 @@ const prisma = require('../config/prisma');
 const sql = require('../repositories/sqlRepository');
 const whatsapp = require('./whatsappService');
 
-async function listar(empresaId, filtros) {
-  return sql.listarPedidos(empresaId, filtros);
+async function listar(filtros) {
+  return sql.listarPedidos(filtros);
 }
 
 async function buscar(id) {
@@ -13,7 +13,7 @@ async function buscar(id) {
 }
 
 async function criar(data) {
-  const pedidoId = await sql.nextPedidoId(data.empresaId);
+  const pedidoId = await sql.nextPedidoId();
   const pedido = { ...data, id: pedidoId };
   await sql.criarPedido(pedido);
   return pedido;
@@ -22,7 +22,7 @@ async function criar(data) {
 async function darBaixaEstoque(pedido) {
   if (!pedido.itens || pedido.itens.length === 0) return;
   for (const item of pedido.itens) {
-    const produto = await sql.buscarProduto(pedido.empresaId || 1, item.produtoId);
+    const produto = await sql.buscarProduto(item.produtoId);
     if (produto && produto.controlaEstoque) {
       const novoEstoque = Math.max(0, produto.estoqueAtual - item.quantidade);
       const updates = { estoqueAtual: novoEstoque };
@@ -34,8 +34,8 @@ async function darBaixaEstoque(pedido) {
   }
 }
 
-async function listarFiltrado(empresaId, filtros) {
-  const where = { empresaId };
+async function listarFiltrado(filtros) {
+  const where = { empresaId: 1 };
   if (filtros.status) {
     var statusList = filtros.status.split(',');
     if (statusList.length === 1) where.status = statusList[0];
@@ -49,17 +49,17 @@ async function listarFiltrado(empresaId, filtros) {
   return prisma.pedido.findMany({ where, orderBy: { createdAt: filtros.order === 'asc' ? 'asc' : 'desc' }, include: { itens: true } });
 }
 
-async function deletarPedido(empresaId, id) {
+async function deletarPedido(id) {
   const pedido = await sql.buscarPedido(id);
-  if (!pedido || pedido.empresaId !== empresaId) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
+  if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
   // Delete child itens first
   await prisma.itensPedido.deleteMany({ where: { pedidoId: id } });
   return prisma.pedido.delete({ where: { id } });
 }
 
-async function finalizarPedido(empresaId, id) {
+async function finalizarPedido(id) {
   const pedido = await sql.buscarPedido(id);
-  if (!pedido || pedido.empresaId !== empresaId) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
+  if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
   return sql.atualizarPedido(id, { status: 'finalizado', finalizadoEm: new Date() });
 }
 

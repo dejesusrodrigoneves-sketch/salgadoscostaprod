@@ -2,30 +2,30 @@ const axios = require('axios');
 const sql = require('../repositories/sqlRepository');
 const config = require('../config/env');
 
-function buildInstanceName(empresaId) {
-  return `loja_${empresaId}`;
+function buildInstanceName() {
+  return 'loja_1';
 }
 
-async function listar(empresaId) {
-  return sql.listarWhatsAppInstances(empresaId);
+async function listar() {
+  return sql.listarWhatsAppInstances();
 }
 
-async function criar(empresaId, role) {
-  const existentes = await sql.listarWhatsAppInstances(empresaId);
+async function criar(role) {
+  const existentes = await sql.listarWhatsAppInstances();
 
   if (role !== 'superadmin' && existentes.length >= 1) {
     throw Object.assign(
-      new Error('Cada empresa pode ter apenas 1 instância. Delete a existente para criar uma nova.'),
+      new Error('Já existe uma instância. Delete a existente para criar uma nova.'),
       { status: 409 }
     );
   }
 
-  const instanceName = buildInstanceName(empresaId);
+  const instanceName = buildInstanceName();
 
   const jaExisteMesmoNome = existentes.find(i => i.instanceId === instanceName);
   if (jaExisteMesmoNome) {
     throw Object.assign(
-      new Error('Já existe uma instância com este nome para esta empresa.'),
+      new Error('Já existe uma instância com este nome.'),
       { status: 409 }
     );
   }
@@ -50,7 +50,7 @@ async function criar(empresaId, role) {
   }
 
   const instancia = await sql.criarWhatsAppInstance({
-    empresaId,
+    empresaId: 1,
     instanceId: instanceName,
     connectionStatus: evolutionData ? 'qrcode' : 'disconnected',
     qrCode: evolutionData?.qrcode?.pairingCode || null,
@@ -60,8 +60,8 @@ async function criar(empresaId, role) {
   return { instancia, evolutionData };
 }
 
-async function deletar(empresaId, id) {
-  const instancia = await sql.buscarWhatsAppInstance(empresaId, id);
+async function deletar(id) {
+  const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (config.evolutionUrl && config.evolutionApiKey) {
@@ -77,8 +77,8 @@ async function deletar(empresaId, id) {
   await sql.deletarWhatsAppInstance(id);
 }
 
-async function gerarQrCode(empresaId, id) {
-  const instancia = await sql.buscarWhatsAppInstance(empresaId, id);
+async function gerarQrCode(id) {
+  const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (!config.evolutionUrl || !config.evolutionApiKey) {
@@ -100,8 +100,8 @@ async function gerarQrCode(empresaId, id) {
   return data;
 }
 
-async function reconectar(empresaId, id) {
-  const instancia = await sql.buscarWhatsAppInstance(empresaId, id);
+async function reconectar(id) {
+  const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (!config.evolutionUrl || !config.evolutionApiKey) {
@@ -118,8 +118,8 @@ async function reconectar(empresaId, id) {
   return data;
 }
 
-async function status(empresaId, id) {
-  const instancia = await sql.buscarWhatsAppInstance(empresaId, id);
+async function status(id) {
+  const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (config.evolutionUrl && config.evolutionApiKey) {

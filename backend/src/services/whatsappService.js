@@ -2,20 +2,20 @@ const axios = require('axios');
 const config = require('../config/env');
 const sql = require('../repositories/sqlRepository');
 
-async function enviarMensagem(empresaId, numero, mensagem) {
+async function enviarMensagem(numero, mensagem) {
   if (!config.evolutionUrl || !config.evolutionApiKey) {
     console.warn('WhatsApp: EVOLUTION_URL ou EVOLUTION_API_KEY não configurados');
     return null;
   }
 
-  const instancia = await sql.buscarInstanciaAtiva(empresaId);
+  const instancia = await sql.buscarInstanciaAtiva();
   if (!instancia) {
-    console.warn(`WhatsApp: Nenhuma instância ativa para empresa ${empresaId}`);
+    console.warn('WhatsApp: Nenhuma instância ativa');
     return null;
   }
 
   if (instancia.connectionStatus !== 'connected' && instancia.connectionStatus !== 'open') {
-    console.warn(`WhatsApp: Instância da empresa ${empresaId} não está conectada (status: ${instancia.connectionStatus})`);
+    console.warn(`WhatsApp: Instância não está conectada (status: ${instancia.connectionStatus})`);
     return null;
   }
 
@@ -27,7 +27,7 @@ async function enviarMensagem(empresaId, numero, mensagem) {
       { headers: { apikey: config.evolutionApiKey, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
-    console.error(`WhatsApp send failed for ${numero} (empresa ${empresaId}):`, err.message);
+    console.error(`WhatsApp send failed for ${numero}:`, err.message);
     return null;
   }
 }
@@ -51,17 +51,17 @@ async function enviarMensagemDireta(instanceId, numero, mensagem) {
 }
 
 async function notificarStatus(pedido, status) {
-  const { clienteNome, clienteWhatsapp: telefone, id: pedidoId, empresaId } = pedido;
+  const { clienteNome, clienteWhatsapp: telefone, id: pedidoId } = pedido;
   if (!telefone) return;
 
   const mensagens = {
-    producao: `🍔 Olá ${clienteNome}!\n\nSeu pedido ${pedidoId} entrou em produção.`,
-    pronto: `✅ Olá ${clienteNome}!\n\nSeu pedido ${pedidoId} está pronto para retirada.`,
-    em_rota: `🚚 Olá ${clienteNome}!\n\nSeu pedido está a caminho!`,
+    producao: '\uD83C\uDF54 Olá ' + clienteNome + '!\n\nSeu pedido ' + pedidoId + ' entrou em produção.',
+    pronto: '\u2705 Olá ' + clienteNome + '!\n\nSeu pedido ' + pedidoId + ' está pronto para retirada.',
+    em_rota: '\uD83D\uDE9A Olá ' + clienteNome + '!\n\nSeu pedido está a caminho!',
   };
 
   const msg = mensagens[status];
-  if (msg) await enviarMensagem(empresaId, telefone, msg);
+  if (msg) await enviarMensagem(telefone, msg);
 }
 
 module.exports = { enviarMensagem, enviarMensagemDireta, notificarStatus };

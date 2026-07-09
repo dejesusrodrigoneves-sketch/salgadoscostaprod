@@ -2,9 +2,9 @@ const authService = require('../services/authService');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.login = asyncHandler(async (req, res) => {
-  const { username, password, empresaId } = req.body;
+  const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
-  const result = await authService.login(username, password, empresaId || 1);
+  const result = await authService.login(username, password);
   res.json(result);
 });
 

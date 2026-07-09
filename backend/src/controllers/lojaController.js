@@ -8,20 +8,16 @@ exports.statusPublic = asyncHandler(async (req, res) => {
 });
 
 exports.settingsPublic = asyncHandler(async (req, res) => {
-  const { slug } = req.query;
-  const empresa = await (slug
-    ? require('../repositories/sqlRepository').buscarEmpresaPorSlug(slug)
-    : require('../repositories/sqlRepository').buscarEmpresa(1));
-  if (!empresa) return res.status(404).json({ error: 'Loja não encontrada' });
-  res.json(service.getSettings(empresa.id));
+  const settings = await service.getSettings();
+  res.json(settings);
 });
 
 exports.settings = asyncHandler(async (req, res) => {
-  const settings = await service.getSettings(req.user.empresaId);
+  const settings = await service.getSettings();
   res.json(settings);
 });
 
 exports.updateSettings = asyncHandler(async (req, res) => {
-  const settings = await service.updateSettings(req.user.empresaId, req.body);
+  const settings = await service.updateSettings(req.body);
   res.json(settings);
 });
