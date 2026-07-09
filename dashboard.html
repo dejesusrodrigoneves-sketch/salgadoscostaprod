@@ -6,7 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="js/theme.js"></script>
 
 <style>
 *, *::before, *::after {
@@ -16,23 +17,23 @@
 }
 
 :root {
-  --sidebar-bg: #0f172a;
-  --sidebar-hover: #1e293b;
-  --accent: #f97316;
-  --accent-hover: #ea580c;
-  --text-light: #f8fafc;
-  --text-muted: #94a3b8;
-  --bg: #f1f5f9;
-  --card-bg: #ffffff;
-  --border: #e2e8f0;
-  --success: #16a34a;
-  --danger: #dc2626;
-  --warning: #f59e0b;
+  --sidebar-bg: #2D1A12;
+  --sidebar-hover: #3D2A22;
+  --accent: #F26D3D;
+  --accent-hover: #E05A2A;
+  --text-light: #FEFCFB;
+  --text-muted: #A09088;
+  --bg: #FFFAF8;
+  --card-bg: #FFFFFF;
+  --border: #E8E4DF;
+  --success: #4CAF50;
+  --danger: #DC2626;
+  --warning: #F59E0B;
 }
 
 html, body {
   height: 100%;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   overflow: hidden;
 }
@@ -586,12 +587,7 @@ function closeSidebar() {
 // Show user info
 const userName = authUser.username || 'Admin';
 const roleBadge = isSuperAdmin ? 'Super Admin' : 'Usuário';
-document.getElementById('userInfo').innerHTML = `<i class="fas fa-user-circle"></i> ${userName} <span style="font-size:10px;color:#94a3b8;font-weight:400;">(${roleBadge})</span>`;
-
-// If super admin detected, persist to localStorage
-if (isSuperAdmin && authUser.role !== 'superadmin') {
-  localStorage.setItem('authUser', JSON.stringify({ username: 'djesus', role: 'superadmin', _expiry: Date.now() + 86400000 }));
-}
+document.getElementById('userInfo').innerHTML = '<i class=\"fas fa-user-circle\"></i> ' + userName + ' <span style=\"font-size:10px;color:#94a3b8;font-weight:400;\">(' + roleBadge + ')</span>';
 
 function logout() {
   const overlay = document.createElement('div');

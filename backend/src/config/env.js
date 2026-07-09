@@ -10,4 +10,8 @@ module.exports = {
   graphhopperKey: process.env.GRAPHHOPPER_KEY,
   geoapifyKey: process.env.GEOAPIFY_KEY,
   databaseUrl: process.env.DATABASE_URL,
+  directUrl: process.env.DIRECT_URL,
+  supabaseUrl: process.env.SUPABASE_URL,
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY
 };

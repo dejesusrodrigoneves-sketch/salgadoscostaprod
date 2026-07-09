@@ -11,19 +11,19 @@ router.use(authenticate, authorize('superadmin'));
 router.get('/', asyncHandler(async (req, res) => {
   const usuarios = await prisma.usuario.findMany({
     orderBy: { createdAt: 'desc' },
-    select: { id: true, username: true, role: true, lojaNome: true, empresaId: true, createdAt: true },
+    select: { id: true, username: true, role: true, lojaNome: true, createdAt: true },
   });
   res.json(usuarios);
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
-  const { username, password, lojaNome, role, empresaId } = req.body;
+  const { username, password, lojaNome, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
-  const existing = await prisma.usuario.findUnique({ where: { empresaId_username: { empresaId: empresaId || 1, username } } });
+  const existing = await prisma.usuario.findUnique({ where: { empresaId_username: { empresaId: 1, username } } });
   if (existing) return res.status(409).json({ error: 'Usuário já existe' });
   const hash = await bcrypt.hash(password, 10);
   const user = await prisma.usuario.create({
-    data: { empresaId: empresaId || 1, username, passwordHash: hash, lojaNome: lojaNome || username, role: role || 'user' },
+    data: { empresaId: 1, username, passwordHash: hash, lojaNome: lojaNome || username, role: role || 'user' },
     select: { id: true, username: true, role: true, lojaNome: true },
   });
   res.status(201).json(user);

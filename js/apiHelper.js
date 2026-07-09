@@ -4,10 +4,6 @@
 var PUBLIC_API = (function () {
   var base = '/api/public';
 
-  function storeSlug() {
-    return document.body.getAttribute('data-slug') || 'salgadoscosta';
-  }
-
   function getToken() {
     return localStorage.getItem('clientToken');
   }
@@ -30,19 +26,19 @@ var PUBLIC_API = (function () {
 
   return {
     // ---- Produtos ----
-    listarProdutos: function (slug) {
-      return request('GET', '/produtos?slug=' + encodeURIComponent(slug || storeSlug()));
+    listarProdutos: function () {
+      return request('GET', '/produtos');
     },
-    listarCategorias: function (slug) {
-      return request('GET', '/categorias?slug=' + encodeURIComponent(slug || storeSlug()));
+    listarCategorias: function () {
+      return request('GET', '/categorias');
     },
 
     // ---- Loja ----
-    lojaStatus: function (slug) {
-      return request('GET', '/loja/status?slug=' + encodeURIComponent(slug || storeSlug()));
+    lojaStatus: function () {
+      return request('GET', '/loja/status');
     },
-    lojaSettings: function (slug) {
-      return request('GET', '/loja/settings?slug=' + encodeURIComponent(slug || storeSlug()));
+    lojaSettings: function () {
+      return request('GET', '/loja/settings');
     },
 
     // ---- Clientes ----

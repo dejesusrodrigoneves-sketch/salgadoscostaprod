@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -19,14 +20,13 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const userRoutes = require('./routes/userRoutes');
 const entregaRoutes = require('./routes/entregaRoutes');
-const path = require('path');
-const logger = require('./config/logger');
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json({ type: ['application/json', 'application/json;charset=utf-8'] }));
+app.use(express.static(path.join(__dirname, '..', '..')));
 app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);
@@ -44,7 +44,6 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/usuarios', userRoutes);
 app.use('/api/entregas', entregaRoutes);
-app.use('/img', express.static(path.resolve(__dirname, '../../img')));
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));

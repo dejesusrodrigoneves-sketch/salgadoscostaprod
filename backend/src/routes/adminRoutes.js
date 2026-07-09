@@ -14,21 +14,7 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
-  const { nome, slug, username, password, lojaNome } = req.body;
-  if (!nome || !slug || !username || !password) {
-    return res.status(400).json({ error: 'nome, slug, username e password obrigatórios' });
-  }
-
-  const empresa = await sql.criarEmpresa({ nome, slug });
-  await authService.criarUsuario({
-    empresaId: empresa.id,
-    username,
-    password,
-    lojaNome: lojaNome || nome,
-    role: 'admin',
-  });
-
-  res.status(201).json(empresa);
+  res.status(400).json({ error: 'Criação de novas empresas desabilitada em modo single-tenant' });
 }));
 
 module.exports = router;

@@ -3,8 +3,8 @@ const sql = require('../repositories/sqlRepository');
 
 const SALT_ROUNDS = 10;
 
-async function login(username, password, empresaId) {
-  const user = await sql.buscarUsuario(username, empresaId);
+async function login(username, password) {
+  const user = await sql.buscarUsuario(username);
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 401 });
 
   const match = await bcrypt.compare(password, user.passwordHash);
@@ -12,7 +12,7 @@ async function login(username, password, empresaId) {
 
   const token = Buffer.from(JSON.stringify({
     id: user.id, username: user.username, role: user.role,
-    empresaId: user.empresaId, lojaNome: user.lojaNome,
+    empresaId: 1, lojaNome: user.lojaNome,
   })).toString('base64url');
 
   return { token, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
@@ -32,19 +32,12 @@ async function alterarSenha(userId, senhaAtual, novaSenha) {
 }
 
 async function criarConta({ username, password, lojaNome }) {
-  // Check if user already exists
-  const existing = await sql.buscarUsuario(username, 1);
+  const existing = await sql.buscarUsuario(username);
   if (existing) throw Object.assign(new Error('Usuário já existe'), { status: 409 });
-
-  // Find empresa by matching slug, or create
-  let empresa = await sql.buscarEmpresaPorSlug(username);
-  if (!empresa) {
-    empresa = await sql.criarEmpresa({ nome: lojaNome || username, slug: username });
-  }
 
   const hash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await sql.criarUsuario({
-    empresaId: empresa.id,
+    empresaId: 1,
     username,
     passwordHash: hash,
     lojaNome: lojaNome || username,

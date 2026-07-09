@@ -5,12 +5,13 @@
 <title>Super Admin - Fábrica de Salgados</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="js/theme.js"></script>
 
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 body {
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   background: #f1f5f9;
   color: #1e293b;
   padding: 24px;
@@ -81,7 +82,6 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
 <div class="tabs">
   <button class="tab active" onclick="switchTab('usuarios',this)"><i class="fas fa-users"></i> Usuários</button>
   <button class="tab" onclick="switchTab('senhas',this)"><i class="fas fa-key"></i> Gerenciar Senhas</button>
-  <button class="tab" onclick="switchTab('empresas',this)"><i class="fas fa-building"></i> Empresas</button>
 </div>
 
 <!-- Users tab -->
@@ -118,26 +118,7 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
   </div>
 </div>
 
-<!-- Empresas tab -->
-<div class="tab-content" id="tabEmpresas">
-  <div class="card">
-    <h2><i class="fas fa-list"></i> Empresas Cadastradas</h2>
-    <table class="user-table">
-      <thead><tr><th>ID</th><th>Nome</th><th>Slug</th><th>Usuários</th><th>Produtos</th><th>Pedidos</th></tr></thead>
-      <tbody id="empresaTableBody"></tbody>
-    </table>
-  </div>
-  <div class="card">
-    <h2><i class="fas fa-plus-circle"></i> Nova Empresa</h2>
-    <div style="max-width:400px;">
-      <input type="text" id="newEmpresaNome" placeholder="Nome da empresa">
-      <input type="text" id="newEmpresaSlug" placeholder="Slug (ex: loja2)">
-      <input type="text" id="newEmpresaUsername" placeholder="Usuário admin">
-      <input type="password" id="newEmpresaPassword" placeholder="Senha admin">
-      <button class="btn btn-primary" onclick="criarEmpresa()"><i class="fas fa-plus"></i> Criar Empresa</button>
-    </div>
-  </div>
-</div>
+<!-- Empresas tab removida (single-tenant) -->
 
 <div class="toast-container" id="toastContainer"></div>
 
@@ -226,52 +207,6 @@ async function alterarSenha() {
     toast('Senha alterada com sucesso!');
   } catch(e) {
     toast(e.message || 'Erro ao alterar senha', 'danger');
-  }
-}
-
-// ---- Empresas (multi-tenant) ----
-async function carregarEmpresas() {
-  const tbody = document.getElementById('empresaTableBody');
-  try {
-    const res = await fetch('/api/admin');
-    if (!res.ok) throw new Error('API indisponível');
-    const empresas = await res.json();
-    tbody.innerHTML = empresas.map(e => `<tr>
-      <td>${e.id}</td><td><strong>${e.nome}</strong></td><td>${e.slug}</td>
-      <td>${e._count?.usuarios || '-'}</td><td>${e._count?.produtos || '-'}</td>
-      <td>${e._count?.pedidos || '-'}</td>
-    </tr>`).join('');
-  } catch {
-    tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;text-align:center;">Backend API indisponível. Inicie o servidor Node.js.</td></tr>';
-  }
-}
-
-async function criarEmpresa() {
-  const nome = document.getElementById('newEmpresaNome').value.trim();
-  const slug = document.getElementById('newEmpresaSlug').value.trim();
-  const username = document.getElementById('newEmpresaUsername').value.trim();
-  const password = document.getElementById('newEmpresaPassword').value.trim();
-
-  if (!nome || !slug || !username || !password) { toast('Preencha todos os campos', 'danger'); return; }
-  if (password.length < 6) { toast('Senha deve ter 6+ caracteres', 'danger'); return; }
-
-  try {
-    const res = await fetch('/api/admin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + btoa(JSON.stringify(JSON.parse(localStorage.getItem('authUser'))))
-      },
-      body: JSON.stringify({ nome, slug, username, password }),
-    });
-    if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
-    toast(`Empresa ${nome} criada com sucesso!`);
-    document.getElementById('newEmpresaNome').value = '';
-    document.getElementById('newEmpresaSlug').value = '';
-    document.getElementById('newEmpresaUsername').value = '';
-    document.getElementById('newEmpresaPassword').value = '';
-    carregarEmpresas();
-  } catch (err) {
-    toast(err.message, 'danger');
   }
 }
 

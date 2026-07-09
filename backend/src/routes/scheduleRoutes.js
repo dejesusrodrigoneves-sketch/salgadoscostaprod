@@ -6,12 +6,12 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const router = Router();
 
 router.get('/', authenticate, asyncHandler(async (req, res) => {
-  const horarios = await sql.buscarHorarios(req.user.empresaId);
+  const horarios = await sql.buscarHorarios();
   res.json(horarios);
 }));
 
 router.put('/', authenticate, authorize('superadmin', 'admin'), asyncHandler(async (req, res) => {
-  const horarios = await sql.upsertHorarios(req.user.empresaId, req.body);
+  const horarios = await sql.upsertHorarios(req.body);
   res.json(horarios);
 }));
 

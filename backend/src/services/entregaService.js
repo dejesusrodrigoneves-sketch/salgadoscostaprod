@@ -1,8 +1,8 @@
 const prisma = require('../config/prisma');
 const logger = require('../config/logger');
 
-async function listarEntregas(empresaId, data) {
-  const where = { empresaId };
+async function listarEntregas(data) {
+  const where = { empresaId: 1 };
   if (data) {
     const start = new Date(data + 'T00:00:00.000Z');
     const end = new Date(data + 'T23:59:59.999Z');
@@ -15,16 +15,16 @@ async function listarEntregas(empresaId, data) {
   });
 }
 
-async function registrarEntrega(empresaId, entregadorId, pedidoId, valor) {
+async function registrarEntrega(entregadorId, pedidoId, valor) {
   const existente = await prisma.entregaDiaria.findFirst({
-    where: { empresaId, pedidoId },
+    where: { empresaId: 1, pedidoId },
   });
   if (existente) {
     throw Object.assign(new Error('Entrega já registrada para este pedido'), { status: 409 });
   }
   const entrega = await prisma.entregaDiaria.create({
     data: {
-      empresaId,
+      empresaId: 1,
       entregadorId: Number(entregadorId),
       pedidoId,
       valor: valor || 0,
@@ -35,9 +35,9 @@ async function registrarEntrega(empresaId, entregadorId, pedidoId, valor) {
   return entrega;
 }
 
-async function removerEntrega(empresaId, pedidoId) {
+async function removerEntrega(pedidoId) {
   const entrega = await prisma.entregaDiaria.findFirst({
-    where: { empresaId, pedidoId },
+    where: { empresaId: 1, pedidoId },
   });
   if (!entrega) {
     throw Object.assign(new Error('Entrega não encontrada'), { status: 404 });
@@ -47,13 +47,13 @@ async function removerEntrega(empresaId, pedidoId) {
   return { success: true };
 }
 
-async function resumoDiario(empresaId, data) {
+async function resumoDiario(data) {
   const dataInicio = data ? new Date(data + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
   const dataFim = new Date(dataInicio);
   dataFim.setUTCHours(23, 59, 59, 999);
 
   const entregas = await prisma.entregaDiaria.findMany({
-    where: { empresaId, data: { gte: dataInicio, lte: dataFim } },
+    where: { empresaId: 1, data: { gte: dataInicio, lte: dataFim } },
     include: { entregador: true },
   });
 

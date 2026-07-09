@@ -1,4 +1,4 @@
-const CACHE = 'salgadoscosta-v1';
+const CACHE = 'app-v2';
 
 const PRECACHE = [
   '/',
