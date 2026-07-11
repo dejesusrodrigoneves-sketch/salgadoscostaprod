@@ -1,7 +1,7 @@
 {
   "version": 2,
   "framework": null,
-  "installCommand": "npm install && cd backend && npm install",
+  "installCommand": "cd backend && npm install",
   "buildCommand": "cd backend && prisma generate",
   "builds": [
     { "src": "backend/api.js", "use": "@vercel/node" },
