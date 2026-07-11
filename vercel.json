@@ -1,7 +1,8 @@
 {
   "version": 2,
   "framework": null,
-  "buildCommand": "cd backend && npx prisma generate --schema=prisma/schema.prisma",
+  "installCommand": "npm install && cd backend && npm install",
+  "buildCommand": "cd backend && prisma generate",
   "builds": [
     { "src": "backend/api.js", "use": "@vercel/node" },
     { "src": "*.html", "use": "@vercel/static" },
