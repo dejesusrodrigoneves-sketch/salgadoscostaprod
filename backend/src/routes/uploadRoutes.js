@@ -1,12 +1,18 @@
 const { Router } = require('express');
 const multer = require('multer');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+let supabase;
+function getSupabase() {
+  if (!supabase) {
+    const { createClient } = require('@supabase/supabase-js');
+    supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+  }
+  return supabase;
+}
 
 const storage = multer.memoryStorage();
 
@@ -39,7 +45,7 @@ router.post('/', upload.single('file'), async (req, res, next) => {
     };
     const contentType = mimeMap[ext] || req.file.mimetype || 'image/jpeg';
 
-    const { error } = await supabase.storage
+    const { error } = await getSupabase().storage
       .from('produtos')
       .upload(filePath, req.file.buffer, {
         contentType,
