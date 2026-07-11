@@ -5,15 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .js",
-    "test": "vitest run",
-    "vercel-build": "cd backend && npx prisma generate --schema=prisma/schema.prisma"
-  },
-  "dependencies": {
-    "@oven/bun-windows-x64-baseline": "^1.3.14",
-    "firebase": "^8.10.1"
+    "test": "vitest run"
   },
   "devDependencies": {
     "vite": "^6.0.0",

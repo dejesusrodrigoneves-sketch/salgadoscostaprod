@@ -26,7 +26,9 @@ const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json({ type: ['application/json', 'application/json;charset=utf-8'] }));
-app.use(express.static(path.join(__dirname, '..', '..')));
+if (!process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, '..', '..')));
+}
 app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);
