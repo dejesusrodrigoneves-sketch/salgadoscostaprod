@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "framework": null,
   "builds": [
     { "src": "backend/api.js", "use": "@vercel/node" },
     { "src": "*.html", "use": "@vercel/static" },

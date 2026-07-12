@@ -6,7 +6,7 @@
   "engines": { "node": ">=18.0.0" },
   "scripts": {
     "start": "node server.js",
-    "vercel-build": "npx prisma generate --schema=prisma/schema.prisma && npx prisma db push --schema=prisma/schema.prisma --accept-data-loss",
+    "vercel-build": "npx prisma generate --schema=prisma/schema.prisma",
     "dev": "nodemon server.js",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
