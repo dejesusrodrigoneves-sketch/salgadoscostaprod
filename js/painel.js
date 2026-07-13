@@ -286,8 +286,8 @@ fImgFile?.addEventListener('change', async function() {
       toast(data.error || 'Erro no upload', 'danger');
       return;
     }
-    fImg.value = data.filename;
-    toast('Imagem enviada: ' + data.filename);
+    fImg.value = data.url;
+    toast('Imagem enviada!');
   } catch (e) {
     toast('Falha no upload: ' + e.message, 'danger');
   }
@@ -355,7 +355,7 @@ function renderProdutos(){
       <tr>
         <td>${p.id ?? '-'}</td>
         <td>
-          <img class="prodThumb" src="img/${p.img||'default.png'}" alt="${escapeHtml(p.name||'')}">
+          <img class="prodThumb" src="${p.img||'img/default.png'}" alt="${escapeHtml(p.name||'')}">
           ${escapeHtml(p.name||'')}
         </td>
         <td>R$ ${(Number(p.price)||0).toFixed(2).replace('.',',')}</td>
@@ -398,7 +398,7 @@ function carregarNoForm(id) {
   fDesc.value = p.description || '';
   fPrice.value = p.price;
   fImg.value = p.img || '';
-  if (p.img) { fImgPreview.src = 'img/' + p.img; fImgPreview.style.display = 'block'; }
+  if (p.img) { fImgPreview.src = p.img; fImgPreview.style.display = 'block'; }
   else { fImgPreview.style.display = 'none'; fImgPreview.src = ''; }
   fStatus.value = p.status || 'active';
   fCongelado.checked = p.congelado || false;

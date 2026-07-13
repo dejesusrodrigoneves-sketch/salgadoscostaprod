@@ -92,6 +92,7 @@ async function gerarQrCode(id) {
       { headers: { apikey: config.evolutionApiKey } }
     );
     data = response.data;
+    console.log('[QR debug] Evolution /connect response:', JSON.stringify(data, null, 2));
   } catch (err) {
     const msg = err.response?.data?.message || err.response?.data?.error || err.message;
     throw Object.assign(new Error('Evolution API: ' + msg), { status: err.response?.status || 502 });
