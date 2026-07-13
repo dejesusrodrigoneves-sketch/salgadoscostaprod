@@ -1,4 +1,5 @@
 const axios = require('axios');
+const QRCode = require('qrcode');
 const sql = require('../repositories/sqlRepository');
 const config = require('../config/env');
 
@@ -114,16 +115,21 @@ async function gerarQrCode(id) {
     }
   }
 
+  if (base64) {
+    await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'qrcode' });
+    return { pairingCode, base64, type: 'image', raw: data };
+  }
+
   if (pairingCode) {
     await sql.atualizarWhatsAppInstance(id, {
       qrCode: pairingCode,
       connectionStatus: 'qrcode',
     });
-  } else if (base64) {
-    await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'qrcode' });
+    const qrBase64 = await QRCode.toDataURL(pairingCode);
+    return { pairingCode, base64: qrBase64, type: 'image', raw: data };
   }
 
-  return { pairingCode, base64, type: pairingCode ? 'pairing' : base64 ? 'image' : null, raw: data };
+  return { pairingCode: null, base64: null, type: null, raw: data };
 }
 
 async function reconectar(id) {

@@ -10,7 +10,10 @@ const sql = {
     return prisma.produto.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
   },
   async criarProduto(data) {
-    return prisma.produto.create({ data });
+    const { empresaId, ...rest } = data;
+    return prisma.produto.create({
+      data: { ...rest, empresa: { connect: { id: empresaId || EMPRESA_ID } } }
+    });
   },
   async atualizarProduto(id, data) {
     return prisma.produto.update({ where: { id: Number(id) }, data });
