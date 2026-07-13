@@ -63,7 +63,8 @@ router.post('/', upload.single('file'), async (req, res, next) => {
 
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
-    return res.status(400).json({ error: err.message });
+    const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Arquivo muito grande. Máximo 5MB.' : err.message;
+    return res.status(400).json({ error: msg });
   }
   if (err) return res.status(400).json({ error: err.message });
   next();

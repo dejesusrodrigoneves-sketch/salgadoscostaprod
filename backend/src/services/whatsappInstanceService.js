@@ -85,19 +85,44 @@ async function gerarQrCode(id) {
     throw Object.assign(new Error('Evolution API não configurada'), { status: 503 });
   }
 
-  const { data } = await axios.get(
-    `${config.evolutionUrl}/instance/connect/${instancia.instanceId}`,
-    { headers: { apikey: config.evolutionApiKey } }
-  );
-
-  if (data?.qrcode?.pairingCode) {
-    await sql.atualizarWhatsAppInstance(id, {
-      qrCode: data.qrcode.pairingCode,
-      connectionStatus: 'qrcode',
-    });
+  let data;
+  try {
+    const response = await axios.get(
+      `${config.evolutionUrl}/instance/connect/${instancia.instanceId}`,
+      { headers: { apikey: config.evolutionApiKey } }
+    );
+    data = response.data;
+  } catch (err) {
+    const msg = err.response?.data?.message || err.response?.data?.error || err.message;
+    throw Object.assign(new Error('Evolution API: ' + msg), { status: err.response?.status || 502 });
   }
 
-  return data;
+  let pairingCode = null;
+  let base64 = null;
+
+  if (data && typeof data === 'object') {
+    if (data.qrcode) {
+      pairingCode = data.qrcode.pairingCode || data.qrcode.code || pairingCode;
+      base64 = data.qrcode.base64 || base64;
+    }
+    pairingCode = data.pairingCode || data.code || pairingCode;
+    base64 = data.base64 || base64;
+    if (data.instance?.qrcode) {
+      pairingCode = data.instance.qrcode.pairingCode || data.instance.qrcode.code || pairingCode;
+      base64 = data.instance.qrcode.base64 || base64;
+    }
+  }
+
+  if (pairingCode) {
+    await sql.atualizarWhatsAppInstance(id, {
+      qrCode: pairingCode,
+      connectionStatus: 'qrcode',
+    });
+  } else if (base64) {
+    await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'qrcode' });
+  }
+
+  return { pairingCode, base64, type: pairingCode ? 'pairing' : base64 ? 'image' : null, raw: data };
 }
 
 async function reconectar(id) {

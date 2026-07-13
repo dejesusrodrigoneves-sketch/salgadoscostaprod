@@ -228,28 +228,48 @@ async function criarInstancia() {
 async function gerarQR(id) {
   try {
     const res = await apiRequest('/whatsapp/' + id + '/qrcode', { method: 'POST' });
-    if (res.qrcode?.pairingCode) {
-      mostrarQR(res.qrcode.pairingCode);
+    if (res.type === 'pairing' && res.pairingCode) {
+      mostrarQR(res.pairingCode);
+    } else if (res.type === 'image' && res.base64) {
+      mostrarQR({ base64: res.base64 });
     } else {
-      toast('QR Code gerado, verifique a instância', 'info');
+      toast('QR Code gerado, verifique a instância no WhatsApp', 'info');
     }
     carregarInstancias();
   } catch (e) {
-    toast(e.message, 'danger');
+    toast('Erro ao gerar QR Code: ' + e.message, 'danger');
   }
 }
 
-function mostrarQR(code) {
+function mostrarQR(qrData) {
   const container = document.getElementById('instancesContainer');
   const existing = document.getElementById('qrCard');
   if (existing) existing.remove();
-  container.innerHTML += `
-    <div class="card qr-box" id="qrCard">
-      <h3><i class="fas fa-qrcode"></i> Código de Pareamento</h3>
-      <p style="font-size:28px;font-weight:800;letter-spacing:6px;margin:16px 0;color:#25d366;font-family:monospace;">${code}</p>
+
+  let pairingCode = typeof qrData === 'string' ? qrData : qrData?.pairingCode || null;
+  let base64 = typeof qrData === 'object' && qrData !== null ? qrData?.base64 || null : null;
+
+  let content, title;
+  if (pairingCode) {
+    title = 'Código de Pareamento';
+    content = `
+      <p style="font-size:28px;font-weight:800;letter-spacing:6px;margin:16px 0;color:#25d366;font-family:monospace;">${pairingCode}</p>
       <p>1. Abra o WhatsApp no celular da loja</p>
       <p>2. Va em <strong>Menu → Dispositivos Conectados → Conectar um dispositivo</strong></p>
-      <p>3. Digite o código acima</p>
+      <p>3. Digite o código acima</p>`;
+  } else if (base64) {
+    title = 'QR Code';
+    content = `
+      <img src="${base64}" alt="QR Code" style="width:256px;height:256px;margin:16px 0;" />
+      <p>Escaneie o QR Code com o WhatsApp do celular da loja</p>`;
+  } else {
+    return;
+  }
+
+  container.innerHTML += `
+    <div class="card qr-box" id="qrCard">
+      <h3><i class="fas fa-qrcode"></i> ${title}</h3>
+      ${content}
       <button class="btn btn-ghost" style="margin-top:12px;" onclick="document.getElementById('qrCard').remove()">Fechar</button>
     </div>`;
 }

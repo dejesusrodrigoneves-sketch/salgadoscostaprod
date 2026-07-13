@@ -11,6 +11,9 @@ async function apiRequest(path, options = {}) {
   const url = API_BASE + path;
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+    options.body = JSON.stringify(options.body);
+  }
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
@@ -260,6 +263,17 @@ const fHideWhenOutOfStock = document.getElementById('prodHideWhenOutOfStock');
 fImgFile?.addEventListener('change', async function() {
   const file = this.files[0];
   if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Imagem muito grande! Máximo 5MB.', 'danger');
+    this.value = '';
+    return;
+  }
+  const allowed = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+  if (!allowed.test(file.name)) {
+    toast('Formato inválido. Use jpg, png, gif, webp ou svg.', 'danger');
+    this.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => { fImgPreview.src = e.target.result; fImgPreview.style.display = 'block'; };
   reader.readAsDataURL(file);
@@ -268,10 +282,14 @@ fImgFile?.addEventListener('change', async function() {
   try {
     const res = await fetch(API_BASE + '/upload', { method: 'POST', body: formData });
     const data = await res.json();
+    if (!res.ok) {
+      toast(data.error || 'Erro no upload', 'danger');
+      return;
+    }
     fImg.value = data.filename;
     toast('Imagem enviada: ' + data.filename);
   } catch (e) {
-    console.warn('Upload falhou, salvando apenas preview local:', e.message);
+    toast('Falha no upload: ' + e.message, 'danger');
   }
 });
 
@@ -549,6 +567,17 @@ async function carregarConfigLoja() {
 document.getElementById('confLogoFile')?.addEventListener('change', async function() {
   const file = this.files[0];
   if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Imagem muito grande! Máximo 5MB.', 'danger');
+    this.value = '';
+    return;
+  }
+  const allowed = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+  if (!allowed.test(file.name)) {
+    toast('Formato inválido. Use jpg, png, gif, webp ou svg.', 'danger');
+    this.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => { document.getElementById('confLogoPreview').src = e.target.result; document.getElementById('confLogoPreview').style.display = 'block'; };
   reader.readAsDataURL(file);
@@ -557,10 +586,14 @@ document.getElementById('confLogoFile')?.addEventListener('change', async functi
   try {
     const res = await fetch(API_BASE + '/upload', { method: 'POST', body: formData });
     const data = await res.json();
+    if (!res.ok) {
+      toast(data.error || 'Erro no upload', 'danger');
+      return;
+    }
     document.getElementById('confLogo').value = data.filename;
     toast('Logo enviada: ' + data.filename);
   } catch (e) {
-    console.warn('Upload logo falhou:', e.message);
+    toast('Falha no upload da logo: ' + e.message, 'danger');
   }
 });
 
