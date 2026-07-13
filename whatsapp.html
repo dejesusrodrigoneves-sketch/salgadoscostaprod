@@ -79,6 +79,8 @@ body {
   </div>
 </div>
 
+<div id="qrContainer"></div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="js/utils.js"></script>
@@ -196,16 +198,20 @@ async function carregarInstancias() {
             </button>
           </div>
         </div>
-        ${inst.qrCode && !conectada ? `
-          <div class="qr-box" id="qrCard">
-            <h3><i class="fas fa-qrcode"></i> Código de Pareamento</h3>
-            <p style="font-size:28px;font-weight:800;letter-spacing:6px;margin:16px 0;color:#25d366;font-family:monospace;">${inst.qrCode}</p>
-            <p>1. Abra o WhatsApp no celular da loja</p>
-            <p>2. Va em <strong>Menu → Dispositivos Conectados → Conectar um dispositivo</strong></p>
-            <p>3. Digite o código acima</p>
-          </div>
-        ` : ''}
       </div>`;
+
+    const qrContainer = document.getElementById('qrContainer');
+    if (conectada) {
+      qrContainer.innerHTML = '';
+    } else if (!qrContainer.innerHTML) {
+      qrContainer.innerHTML = `
+        <div class="card qr-box">
+          <div class="empty-state">
+            <i class="fas fa-qrcode"></i>
+            <p>Nenhum QR Code ativo. Clique em "Gerar QR Code" para conectar.</p>
+          </div>
+        </div>`;
+    }
   } catch (e) {
     document.getElementById('instancesContainer').innerHTML = `
       <div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>${e.message}</p></div></div>`;
@@ -233,7 +239,7 @@ async function gerarQR(id) {
     } else if (res.type === 'image' && res.base64) {
       mostrarQR({ base64: res.base64 });
     } else {
-      toast('QR Code gerado, verifique a instância no WhatsApp', 'info');
+      toast('QR Code não disponível. Evolution não retornou dados de conexão.', 'danger');
     }
     carregarInstancias();
   } catch (e) {
@@ -242,9 +248,7 @@ async function gerarQR(id) {
 }
 
 function mostrarQR(qrData) {
-  const container = document.getElementById('instancesContainer');
-  const existing = document.getElementById('qrCard');
-  if (existing) existing.remove();
+  const container = document.getElementById('qrContainer');
 
   let pairingCode = typeof qrData === 'string' ? qrData : qrData?.pairingCode || null;
   let base64 = typeof qrData === 'object' && qrData !== null ? qrData?.base64 || null : null;
@@ -266,7 +270,7 @@ function mostrarQR(qrData) {
     return;
   }
 
-  container.innerHTML += `
+  container.innerHTML = `
     <div class="card qr-box" id="qrCard">
       <h3><i class="fas fa-qrcode"></i> ${title}</h3>
       ${content}
