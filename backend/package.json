@@ -3,7 +3,9 @@
   "version": "2.0.0",
   "description": "Backend API REST - Fábrica de Salgados Costa",
   "main": "server.js",
-  "engines": { "node": ">=18.0.0" },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "vercel-build": "npx prisma generate --schema=prisma/schema.prisma",
@@ -30,7 +32,8 @@
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.0",
