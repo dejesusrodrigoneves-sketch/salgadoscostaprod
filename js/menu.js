@@ -89,7 +89,7 @@ const checkIfHaveItem = html => {
 }
 
 const addItemToArray = prod => {
-    let price = prod.price.toFixed(2).replace('.', ',');
+    let price = Number(prod.price).toFixed(2).replace('.', ',');
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const inCart = cart.find(i => i.id === prod.id);
     const qtd = inCart ? inCart.qtd || 1 : 0;
@@ -171,8 +171,8 @@ const allPromotions = () => {
     let promoItems = '';
     products.forEach(prod=>{
         if(prod.lastPrice && prod.lastPrice!=0){
-            let price=prod.price.toFixed(2).replace('.', ',');
-            let lastPrice=prod.lastPrice.toFixed(2).replace('.', ',');
+            let price=Number(prod.price).toFixed(2).replace('.', ',');
+            let lastPrice=Number(prod.lastPrice).toFixed(2).replace('.', ',');
             const cart = JSON.parse(localStorage.getItem('cart')) || [];
             const inCart = cart.find(i => i.id === prod.id);
             const qtd = inCart ? inCart.qtd || 1 : 0;
@@ -371,7 +371,6 @@ refreshProductCards = function() { _origRefresh(); updateOrderBar(); };
 async function carregarHorarios() {
     const container = document.getElementById("daysContainer");
     const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    const horariosDocRef = db.collection("settings").doc("horarios");
 
     try {
         const res = await fetch('/api/loja/settings');
@@ -421,6 +420,7 @@ async function carregarConfigLoja() {
     if (qiDel) qiDel.textContent = config.taxaEntrega ? 'R$ ' + Number(config.taxaEntrega).toFixed(2).replace('.', ',') : 'Grátis';
     const qiTime = document.getElementById('qiTime');
     if (qiTime) qiTime.textContent = config.tempoMedio || '30-40 min';
+    const tel = config.telefone || '5521966017085';
     const qiTel = document.getElementById('qiPhone');
     if (qiTel) qiTel.textContent = tel.replace('5521', '(21) ');
 
@@ -433,7 +433,6 @@ async function carregarConfigLoja() {
     if (crEl) crEl.innerHTML = nome + ' - 2024 &copy; Todos os direitos reservados.';
 
     // Update WhatsApp links
-    const tel = config.telefone || '5521966017085';
     const waFloat = document.getElementById('whatsappFloatLink');
     if (waFloat) waFloat.href = 'https://wa.me/' + tel;
     const waService = document.getElementById('whatsappServiceLink');
@@ -673,12 +672,6 @@ async function abrirOverlayPedidos(user) {
                 fecharOverlayPedidos();
             }
         });
-
-        //-----------Controle de exibição de pedidos-------//
-
-        if (produto.controlaEstoque && produto.estoqueAtual <= 0) {
-  return; // não exibe
-}
 
         // Botão Fechar
         const btnClose = pedidosOverlay.querySelector("#btnCloseOrders");
