@@ -3,6 +3,7 @@ const prisma = require('../config/prisma');
 const sql = require('../repositories/sqlRepository');
 const { asyncHandler } = require('../middleware/errorHandler');
 const tokenService = require('../services/tokenService');
+const productService = require('../services/productService');
 
 const SALT_ROUNDS = 10;
 
@@ -22,7 +23,7 @@ function authenticatePublic(req, res, next) {
 }
 
 exports.listarProdutos = asyncHandler(async (req, res) => {
-  const produtos = await sql.listarProdutos();
+  const produtos = await productService.listar();
   res.json(produtos);
 });
 
