@@ -2,22 +2,11 @@
 
 const menu = document.querySelector('#showMenu');
 const promotions = document.querySelector('#showPromotions');
-
-const showAll = document.querySelector('#showAll');
-const showSnacks = document.querySelector('#showSnacks');
-const showCombos = document.querySelector('#showCombos');
-const showPortions = document.querySelector('#showPortions');
-const showDrinks = document.querySelector('#showDrinks');
-
-const showFrozen = document.createElement('button');
-showFrozen.classList.add('linkMenu');
-showFrozen.id = 'showFrozen';
-showFrozen.innerText = 'Salgadinhos Congelados';
-document.querySelector('.linksMenu').appendChild(showFrozen);
-showFrozen.addEventListener('click', () => showProducts(6));
+const categoryContainer = document.getElementById('categoryFilters');
 
 let itemsHTML = '';
 let products = [];
+let categories = [];
 
 const clearItems = type => {
     itemsHTML = '';
@@ -26,7 +15,7 @@ const clearItems = type => {
 }
 
 async function buscarEnderecoPorCEP(cep) {
-    const cleanCEP = cep.replace(/\D/g, ''); // remove não números
+    const cleanCEP = cep.replace(/\D/g, '');
     if(cleanCEP.length !== 8) return null;
 
     const url = `https://brasilapi.com.br/api/cep/v2/${cleanCEP}`;
@@ -47,8 +36,6 @@ async function buscarEnderecoPorCEP(cep) {
         return null;
     }
 }
-
-
 
 const inputCEP = document.getElementById('regCep');
 inputCEP.addEventListener('input', debounce(async () => {
@@ -72,15 +59,10 @@ inputCEP.addEventListener('input', debounce(async () => {
     }
 }));
 
-
-
 const removeClasses = () => {
-    showAll.classList.remove('active');
-    showSnacks.classList.remove('active');
-    showCombos.classList.remove('active');
-    showPortions.classList.remove('active');
-    showDrinks.classList.remove('active');
-    showFrozen.classList.remove('active');
+    document.querySelectorAll('.linkMenu[data-cat-id]').forEach(function(btn) {
+        btn.classList.remove('active');
+    });
 }
 
 const checkIfHaveItem = html => {
@@ -112,59 +94,26 @@ const addItemToArray = prod => {
     </div>`;
 }
 
-const showProducts = type => {
+const showProducts = catId => {
     clearItems('normal');
     itemsHTML = '';
 
     let filteredProducts = [];
 
-    if(type === 0){
-        // Tudo
+    if(catId === 0){
         filteredProducts = products.filter(prod => !prod.lastPrice || prod.lastPrice === 0);
-    }
-    else if(type === 1){
-        // Salgadinhos
-        filteredProducts = products.filter(prod => prod.type === type && (!prod.lastPrice || prod.lastPrice === 0));
-    }
-    else if(type === 2){
-        // Massas / Combos
-        filteredProducts = products.filter(prod => prod.type === type && (!prod.lastPrice || prod.lastPrice === 0));
-    }
-    else if(type === 3){
-    // Salgadinhos de Festa
-    filteredProducts = products.filter(prod => prod.type === type && (!prod.lastPrice || prod.lastPrice === 0));
-    
-    // Se houver produto com id 209, remove e adiciona no início
-    const index209 = filteredProducts.findIndex(prod => prod.id === 209);
-    if(index209 !== -1){
-        const [prod209] = filteredProducts.splice(index209, 1);
-        filteredProducts.unshift(prod209); // adiciona no início
-    }
-}
-    else if(type === 4){
-        // Bebidas
-        filteredProducts = products.filter(prod => prod.type === type && (!prod.lastPrice || prod.lastPrice === 0));
-    }
-    else if(type === 6){
-        // Salgadinhos Congelados
-        filteredProducts = products.filter(prod => prod.type === type && prod.congelado);
+    } else {
+        filteredProducts = products.filter(prod => prod.categoryId === catId && (!prod.lastPrice || prod.lastPrice === 0));
     }
 
-    // Adiciona os produtos filtrados ao HTML
     filteredProducts.forEach(prod => addItemToArray(prod));
 
     checkIfHaveItem(itemsHTML);
     removeClasses();
 
-    // Atualiza a aba ativa
-    if(type === 0) showAll.classList.add('active');
-    else if(type === 1) showSnacks.classList.add('active');
-    else if(type === 2) showCombos.classList.add('active');
-    else if(type === 3) showPortions.classList.add('active');
-    else if(type === 4) showDrinks.classList.add('active');
-    else if(type === 6) showFrozen.classList.add('active');
+    var activeBtn = document.querySelector('.linkMenu[data-cat-id="' + catId + '"]');
+    if(activeBtn) activeBtn.classList.add('active');
 }
-
 
 const allPromotions = () => {
     clearItems('promotions');
@@ -204,6 +153,26 @@ function showSkeletonLoading() {
     menu.innerHTML = sk;
 }
 
+async function loadCategories() {
+    try {
+        const data = await PUBLIC_API.listarCategorias();
+        categories = data || [];
+        var container = document.getElementById('categoryFilters');
+        var promoLink = container.querySelector('a[href="#promotions"]');
+        container.innerHTML = '<button class="linkMenu active" data-cat-id="0">Tudo</button>';
+        categories.forEach(function(c) {
+            var btn = document.createElement('button');
+            btn.className = 'linkMenu';
+            btn.setAttribute('data-cat-id', c.id);
+            btn.textContent = c.nome;
+            container.appendChild(btn);
+        });
+        container.appendChild(promoLink);
+    } catch(e) {
+        console.warn('Erro ao carregar categorias:', e);
+    }
+}
+
 async function loadProducts() {
     showSkeletonLoading();
     try {
@@ -216,13 +185,17 @@ async function loadProducts() {
         menu.innerHTML = '<div class=\"error-state\"><span class=\"iconify-inline\" data-icon=\"mdi:alert-circle-outline\"></span><p>Erro ao carregar cardápio</p></div>';
     }
 }
-loadProducts();
 
-showAll.addEventListener('click',()=>showProducts(0));
-showSnacks.addEventListener('click',()=>showProducts(1));
-showCombos.addEventListener('click',()=>showProducts(2));
-showPortions.addEventListener('click',()=>showProducts(3));
-showDrinks.addEventListener('click',()=>showProducts(4));
+document.getElementById('categoryFilters').addEventListener('click', function(e) {
+    var btn = e.target.closest('.linkMenu[data-cat-id]');
+    if(btn) {
+        e.preventDefault();
+        showProducts(Number(btn.getAttribute('data-cat-id')));
+    }
+});
+
+loadCategories();
+loadProducts();
 
 async function atualizarStatusBar(){
     try{
@@ -316,10 +289,10 @@ function removeFromCart(id, event){
 }
 
 function refreshProductCards(){
-    const currentTab = document.querySelector('.linksMenu .active');
+    const currentTab = document.querySelector('.linkMenu.active');
     if (currentTab) {
-      const tabMap = { showAll: 0, showSnacks: 1, showCombos: 2, showPortions: 3, showDrinks: 4, showFrozen: 6 };
-      showProducts(tabMap[currentTab.id] !== undefined ? tabMap[currentTab.id] : 0);
+      var catId = currentTab.getAttribute('data-cat-id');
+      showProducts(catId ? Number(catId) : 0);
     }
     allPromotions();
     updateOrderBar();
