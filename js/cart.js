@@ -181,7 +181,7 @@ const preco = precoItem.toFixed(2).replace(".", ",");
 
     html += `
       <div class="item" id="item-${item.id}">
-        <img src="../img/${item.img}" alt="${item.name}" loading="lazy" />
+        <img src="${item.img}" alt="${item.name}" loading="lazy" />
         <div>
           <p class="title">${item.name}</p>
           <p>${item.description}</p>
