@@ -162,18 +162,31 @@ async function carregarCategorias() {
     if (!categoriasCache.length) {
       list.innerHTML = '<p class="tip" style="padding:16px;text-align:center;">Nenhuma categoria cadastrada.</p>';
     } else {
-      list.innerHTML = categoriasCache.map(c => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid #1f2a4d;border-radius:8px;margin-bottom:6px;">
-          <div>
-            <strong>${escapeHtml(c.nome)}</strong>
-            ${c.type ? `<span class="tip" style="margin-left:8px;">Tipo: ${c.type}</span>` : ''}
+      list.innerHTML = categoriasCache.map(c => {
+        const produtos = c.produtos || [];
+        const itemsHtml = produtos.map(p => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 4px 24px;border-bottom:1px solid #1a2440;font-size:12px;">
+            <span>${escapeHtml(p.name)} — R$ ${(Number(p.price)||0).toFixed(2).replace('.',',')}</span>
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-sm ghost" onclick="carregarNoForm(${p.id})" style="padding:2px 8px;"><i class="fas fa-pen"></i></button>
+              <button class="btn btn-sm danger" onclick="removerProduto(${p.id})" style="padding:2px 8px;"><i class="fas fa-trash"></i></button>
+            </div>
           </div>
-          <div class="actions" style="display:flex;gap:4px;">
-            <button class="btn btn-sm ghost" onclick="editarCategoria(${c.id})"><i class="fas fa-pen"></i></button>
-            <button class="btn btn-sm danger" onclick="excluirCategoria(${c.id})"><i class="fas fa-trash"></i></button>
+        `).join('');
+        return `
+          <div style="border:1px solid #1f2a4d;border-radius:8px;margin-bottom:8px;overflow:hidden;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#0a1224;">
+              <strong>${escapeHtml(c.nome)} <span class="tip" style="font-weight:400;">(${produtos.length} itens)</span></strong>
+              <div style="display:flex;gap:4px;">
+                <button class="btn btn-sm save" onclick="criarItemNaCategoria(${c.id})" style="padding:4px 10px;"><i class="fas fa-plus"></i> Item</button>
+                <button class="btn btn-sm ghost" onclick="editarCategoria(${c.id})"><i class="fas fa-pen"></i></button>
+                <button class="btn btn-sm danger" onclick="excluirCategoria(${c.id})"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+            ${itemsHtml || '<div style="padding:8px 12px;font-size:12px;color:var(--muted);text-align:center;">Nenhum item nesta categoria</div>'}
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
     // Update product form category dropdown
     const sel = document.getElementById('prodCategoryId');
@@ -191,18 +204,16 @@ let editandoCategoriaId = null;
 
 document.getElementById('btnSalvarCategoria')?.addEventListener('click', async () => {
   const nome = document.getElementById('catNome').value.trim();
-  const type = document.getElementById('catType').value ? Number(document.getElementById('catType').value) : null;
   if (!nome) { toast('Nome obrigatório', 'warning'); return; }
   try {
     if (editandoCategoriaId) {
-      await apiRequest('/categorias/' + editandoCategoriaId, { method: 'PUT', body: JSON.stringify({ nome, type }) });
+      await apiRequest('/categorias/' + editandoCategoriaId, { method: 'PUT', body: JSON.stringify({ nome }) });
       toast('Categoria atualizada!');
     } else {
-      await apiRequest('/categorias', { method: 'POST', body: JSON.stringify({ nome, type }) });
+      await apiRequest('/categorias', { method: 'POST', body: JSON.stringify({ nome }) });
       toast('Categoria criada!');
     }
     document.getElementById('catNome').value = '';
-    document.getElementById('catType').value = '';
     editandoCategoriaId = null;
     carregarCategorias();
   } catch (e) {
@@ -212,7 +223,6 @@ document.getElementById('btnSalvarCategoria')?.addEventListener('click', async (
 
 document.getElementById('btnLimparCategoria')?.addEventListener('click', () => {
   document.getElementById('catNome').value = '';
-  document.getElementById('catType').value = '';
   editandoCategoriaId = null;
 });
 
@@ -220,7 +230,6 @@ function editarCategoria(id) {
   const c = categoriasCache.find(x => x.id === id);
   if (!c) return;
   document.getElementById('catNome').value = c.nome;
-  document.getElementById('catType').value = c.type || '';
   editandoCategoriaId = id;
   selectTab('categorias');
   toast('Editando categoria', 'info');
@@ -237,6 +246,17 @@ async function excluirCategoria(id) {
   }
 }
 
+function criarItemNaCategoria(catId) {
+  formProduto.reset();
+  isEditando = false;
+  document.getElementById("btnSalvarProduto").textContent = "Salvar";
+  if (fCategoryId) fCategoryId.value = catId;
+  toggleEstoqueFields();
+  selectTab('produtos');
+  fName.focus();
+  toast('Novo item na categoria selecionada', 'info');
+}
+
 // ===== Produtos (Firestore) =====
 const formProduto = document.getElementById('formProduto');
 const tbodyProdutos = document.getElementById('tbodyProdutos');
@@ -248,7 +268,6 @@ const skeletonArea = document.getElementById('skeletonArea');
 const formTitle = document.getElementById('formTitle');
 
 const fId = document.getElementById('prodId');
-const fType = document.getElementById('prodType');
 const fName = document.getElementById('prodName');
 const fDesc = document.getElementById('prodDesc');
 const fPrice = document.getElementById('prodPrice');
@@ -334,11 +353,6 @@ function getStatusLabel(p){
   return { text: 'Ativo', cls: 'pill-active' };
 }
 
-function getCategoriaNome(type) {
-  const c = categoriasCache.find(x => x.type === type);
-  return c ? c.nome : (type || '-');
-}
-
 function renderProdutos(){
   const q = (buscaInput?.value||'').trim().toLowerCase();
   const sf = filtroStatus?.value || '';
@@ -393,7 +407,6 @@ function carregarNoForm(id) {
   if (!p) return;
 
   fId.value = p.id;
-  fType.value = p.type;
   fName.value = p.name || '';
   fDesc.value = p.description || '';
   fPrice.value = p.price;
@@ -407,10 +420,8 @@ function carregarNoForm(id) {
   fEstoqueMinimo.value = p.estoqueMinimo ?? '';
   fHideWhenOutOfStock.checked = p.hideWhenOutOfStock !== false;
 
-  // Match category by type
-  if (fCategoryId && p.type) {
-    const match = categoriasCache.find(c => c.type === p.type);
-    fCategoryId.value = match ? match.id : '';
+  if (fCategoryId) {
+    fCategoryId.value = p.categoryId || '';
   }
 
   toggleEstoqueFields();
@@ -454,7 +465,6 @@ formProduto.addEventListener('submit', async e => {
 
   const payload = {
     id: Number(fId.value),
-    type: fType.value ? Number(fType.value) : 1,
     name: (fName.value || '').trim(),
     description: (fDesc.value || '').trim(),
     price: Number(fPrice.value),
@@ -468,8 +478,7 @@ formProduto.addEventListener('submit', async e => {
   };
 
   if (fCategoryId && fCategoryId.value) {
-    const cat = categoriasCache.find(c => c.id == fCategoryId.value);
-    if (cat && cat.type) payload.type = cat.type;
+    payload.categoryId = Number(fCategoryId.value);
   }
 
   if (payload.controlaEstoque && payload.estoqueAtual <= 0) {

@@ -137,7 +137,9 @@
 
         <div id="campoNome"><label for="nome">Nome:</label><input type="text" id="nome" autocomplete="name" /></div>
         <div id="campoWhatsapp"><label for="whatsapp">Whatsapp:</label><input type="text" id="whatsapp" placeholder="21999999999"  autocomplete="tel" /></div>
-        <div id="campoCEP"><label for="campoCEP">CEP:</label><input type="text" id="enderecoCEP" /></div>
+        <div id="campoCEP"><label for="enderecoCEP">CEP:</label><input type="text" id="enderecoCEP" /></div>
+        <input type="hidden" id="cidadeCliente" />
+        <input type="hidden" id="estadoCliente" />
         <div id="campoEndereco"><label for="endereco">Endereço:</label><input type="text" id="endereco" autocomplete="street-address" /></div>
         <div id="campoNumero" style="display:none;"><label for="numero">Número da residência:</label><input type="text" id="numero" placeholder="Ex: 123" autocomplete="off" /></div>
         <div id="campoPonto"><label for="pontoReferencia">Ponto de Referência:</label><input type="text" id="pontoReferencia" /></div>
@@ -175,6 +177,16 @@
         <button id="generateOrder">Gerar Pedido</button>
         <div class="keepBuying"><p>ou</p><a href="../index.html">Continuar comprando</a></div>
       </div>
+    </div>
+  </div>
+
+  <div id="orderOverlay" class="overlay hidden">
+    <div class="overlay-content">
+      <span class="overlay-icon">&#10003;</span>
+      <h2>Pedido Confirmado!</h2>
+      <p class="overlay-id">Pedido #<span id="overlayOrderId"></span></p>
+      <div class="overlay-details" id="overlayDetails"></div>
+      <button class="overlay-btn" onclick="fecharOverlay()">Ok</button>
     </div>
   </div>
 

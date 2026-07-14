@@ -42,7 +42,8 @@ if (userLogged) {
   document.getElementById("enderecoCEP").value = userLogged.cep || "";
   document.getElementById("bairroCliente").value = userLogged.bairro || "";
   document.getElementById("pontoReferencia").value = userLogged.ponto || "";
-  // Atualiza a taxa automaticamente se houver valor
+  document.getElementById("cidadeCliente").value = userLogged.cidade || "";
+  document.getElementById("estadoCliente").value = userLogged.estado || "";
 }
 
 // Máscaras de input
@@ -50,7 +51,26 @@ document.addEventListener('DOMContentLoaded', function () {
   var elWhatsapp = document.getElementById('whatsapp');
   var elCep = document.getElementById('enderecoCEP');
   if (elWhatsapp) maskPhone(elWhatsapp);
-  if (elCep) maskCEP(elCep);
+  if (elCep) {
+    maskCEP(elCep);
+    elCep.addEventListener('blur', function() {
+      var cep = this.value.replace(/\D/g, '');
+      if (cep.length === 8) {
+        fetch('https://viacep.com.br/ws/' + cep + '/json/')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            if (!d.erro) {
+              document.getElementById('endereco').value = d.logradouro || '';
+              document.getElementById('bairroCliente').value = d.bairro || '';
+              document.getElementById('cidadeCliente').value = d.localidade || '';
+              document.getElementById('estadoCliente').value = d.uf || '';
+              calcularTaxaEntregaPorBairro();
+            }
+          })
+          .catch(function(e) { console.warn('Erro ao buscar CEP:', e); });
+      }
+    });
+  }
 });
 
 
@@ -154,32 +174,35 @@ if(formaPagamento.value === "debito"){
 
 // ---------------- RENDER ---------------- //
 function renderizaItens(){
-  if(!window.products || window.products.length === 0){
-    setTimeout(renderizaItens, 100);
+  const cart = getCart();
+  if(cart.length === 0){
+    showItems.innerHTML = '<div class="empty-cart"><span class="iconify-inline" data-icon="mdi:cart-off"></span><p>Você ainda não adicionou itens no carrinho.</p></div>';
+    updateValores();
     return;
   }
 
-  const cart = getCart();
-  if(cart.length === 0){
-    showItems.innerHTML = "<p>Você ainda não adicionou itens no carrinho.</p>";
-    updateValores(); 
-    return; 
-  }
-
-  let html = "";
+  const grouped = {};
   cart.forEach(prod => {
     const item = window.products.find(p => p.id === prod.id);
-    if(!item) return;
+    if (!item) return;
+    const catName = item.category?.nome || 'Outros';
+    if (!grouped[catName]) grouped[catName] = [];
+    grouped[catName].push({ prod, item });
+  });
 
-    let precoItem;
-if (pacotesFixos.includes(prod.id) || pacotesEspeciais.includes(prod.id)) {
-  precoItem = item.price; // preço fixo
-} else {
-  precoItem = item.price * (prod.qtd || 1); // multiplica quantidade
-}
-const preco = precoItem.toFixed(2).replace(".", ",");
+  let html = "";
+  Object.entries(grouped).forEach(([catName, entries]) => {
+    html += `<div class="category-group"><h3 class="cat-header">${catName} <span class="cat-count">${entries.length} item(ns)</span></h3>`;
+    entries.forEach(({ prod, item }) => {
+      let precoItem;
+      if (pacotesFixos.includes(prod.id) || pacotesEspeciais.includes(prod.id)) {
+        precoItem = item.price;
+      } else {
+        precoItem = item.price * (prod.qtd || 1);
+      }
+      const preco = precoItem.toFixed(2).replace(".", ",");
 
-    html += `
+      html += `
       <div class="item" id="item-${item.id}">
         <img src="${item.img}" alt="${item.name}" loading="lazy" />
         <div>
@@ -195,44 +218,39 @@ const preco = precoItem.toFixed(2).replace(".", ",");
           </div>
         </div>
       </div>
-      <div class="sabores-container" id="sabores-${item.id}"></div>
-     ${prod.sabores && Object.keys(prod.sabores).length > 0 ? (() => {
-  const saboresArray = Object.entries(prod.sabores)
-    .filter(([idSabor,qtd]) => qtd>0)
-    .map(([idSabor,qtd]) => {
-      const s = window.products.find(p => p.id == idSabor);
-      return `${qtd}x ${s.name}`;
+      <div class="sabores-container" id="sabores-${item.id}"></div>`;
+      if (prod.sabores && Object.keys(prod.sabores).length > 0) {
+        const saboresArray = Object.entries(prod.sabores)
+          .filter(([idSabor,qtd]) => qtd>0)
+          .map(([idSabor,qtd]) => {
+            const s = window.products.find(p => p.id == idSabor);
+            return `${qtd}x ${s.name}`;
+          });
+        html += `<p class="caixaItem">${saboresArray.join(', <br />')}</p>`;
+      }
     });
-  const totalSabores = Object.values(prod.sabores).reduce((a,b)=>a+b,0);
-  return `<p class="caixaItem">${saboresArray.join(', <br />')}</p>`;
-})() : ""}
-    `;
+    html += `</div>`;
   });
 
   showItems.innerHTML = html;
   updateValores();
 
-//Abre automaticamente todos os modais que precisam abrir
-cart.forEach(prod => {
-  const precisaAbrir = pacotesEspeciais.includes(prod.id) || pacotesUnicos.includes(prod.id);
-  if (precisaAbrir) {
-    // cria estado inicial se não existir
-    if (!modaisState[prod.id]) {
-      modaisState[prod.id] = { open: false, sabores: {}, qtd: prod.qtd || 1 };
-    }
-
-    // verifica se o produto tem sabores já escolhidos
-    const jaConfirmado = prod.sabores && Object.keys(prod.sabores).length > 0;
-
-    if (!jaConfirmado && !modaisState[prod.id].open) {
-      const pacote = window.products.find(p => p.id === prod.id);
-      if (pacote) {
-        modaisState[prod.id].open = true;
-        setTimeout(() => abrirModalSabores(pacote), 50);
+  cart.forEach(prod => {
+    const precisaAbrir = pacotesEspeciais.includes(prod.id) || pacotesUnicos.includes(prod.id);
+    if (precisaAbrir) {
+      if (!modaisState[prod.id]) {
+        modaisState[prod.id] = { open: false, sabores: {}, qtd: prod.qtd || 1 };
+      }
+      const jaConfirmado = prod.sabores && Object.keys(prod.sabores).length > 0;
+      if (!jaConfirmado && !modaisState[prod.id].open) {
+        const pacote = window.products.find(p => p.id === prod.id);
+        if (pacote) {
+          modaisState[prod.id].open = true;
+          setTimeout(() => abrirModalSabores(pacote), 50);
+        }
       }
     }
-  }
-});
+  });
 
 
 
@@ -625,52 +643,7 @@ function atualizarCamposEntrega(tipo){
   updateValores();
 }
 
- // Supondo que você tenha uma função para pegar o usuário logado
-  const usuarioLogado = localStorage.getItem('userPhone'); // exemplo: +5511999999999
 
-  const campos = {
-    nome: document.getElementById('campoNome'),
-    whatsapp: document.getElementById('campoWhatsapp'),
-    endereco: document.getElementById('campoEndereco'),
-    numero: document.getElementById('campoNumero'),
-    bairro: document.getElementById('campoBairro'),
-    ponto: document.getElementById('campoPonto')
-  };
-
-  const tipoPedido = document.getElementById('tipo-pedido');
-
-  // Função para mostrar os campos
-  function mostrarCampos(tipo) {
-    if(tipo === 'retirada'){
-      campos.nome.style.display = 'block';
-      campos.whatsapp.style.display = 'block';
-      campos.endereco.style.display = 'none';
-      campos.numero.style.display = 'none';
-      campos.bairro.style.display = 'none';
-      campos.ponto.style.display = 'none';
-    } else if(tipo === 'delivery'){
-      campos.nome.style.display = 'block';
-      campos.whatsapp.style.display = 'block';
-      campos.endereco.style.display = 'block';
-      campos.numero.style.display = 'block';
-      campos.bairro.style.display = 'block';
-      campos.ponto.style.display = 'block';
-    } else {
-      // Nenhum selecionado
-      Object.values(campos).forEach(c => c.style.display = 'none');
-    }
-  }
-
-  // Se usuário logado, preenche campos automaticamente
-  var savedUser = JSON.parse(localStorage.getItem('userLogged') || 'null');
-  if(savedUser){
-    campos.nome.value = savedUser.nome || '';
-    campos.whatsapp.value = (savedUser.telefone || '').replace('+55','');
-    campos.endereco.value = savedUser.endereco || '';
-    campos.numero.value = savedUser.numero || '';
-    campos.bairro.value = savedUser.bairro || '';
-    campos.ponto.value = savedUser.pontoReferencia || '';
-  }
 
 function getProductsMap() {
   var map = {};
@@ -718,32 +691,28 @@ async function generateOrder() {
   const endereco = document.getElementById("endereco")?.value.trim() || "";
   const numero = document.getElementById("numero")?.value.trim() || "";
   const bairro = document.getElementById("bairroCliente")?.value.trim() || "";
+  const cidade = document.getElementById("cidadeCliente")?.value.trim() || "";
+  const estado = document.getElementById("estadoCliente")?.value.trim() || "";
   const pontoReferencia = document.getElementById("pontoReferencia")?.value.trim() || "";
   const formaPagamentoValue = document.getElementById("formaPagamento")?.value || "";
   const troco = parseFloat(document.getElementById("trocoPara")?.value) || 0;
-  
 
- let cep = "";
+  let cep = "";
   if (tipoEntrega === "delivery") {
     cep = document.getElementById("enderecoCEP")?.value.replace(/\D/g, '') || "";
   }
-
 
   if (!nome) {
     toast("Preencha seu nome!", 'warning');
     return;
   }
-
   if(!formaPagamentoValue){
     toast("Preencher tipo de pagamento!", 'warning');
     return;
-}
-
-  if (tipoEntrega === "delivery" && formaPagamentoValue === "dinheiro"){
-    if(!troco){
-      toast("Preencher campo Troco", 'warning');
-      return;
-    }
+  }
+  if (tipoEntrega === "delivery" && formaPagamentoValue === "dinheiro" && !troco){
+    toast("Preencher campo Troco", 'warning');
+    return;
   }
 
   const cart = getCart();
@@ -752,7 +721,15 @@ async function generateOrder() {
     return;
   }
 
-  const productsMap = await getProductsMap();
+  btnGenerateOrder.disabled = true;
+  btnGenerateOrder.textContent = "Gerando...";
+
+  function getProductsMap() {
+    var map = {};
+    (window.products || []).forEach(function(p) { map[String(p.id)] = p; });
+    return map;
+  }
+  const productsMap = getProductsMap();
 
   function typeToText(type) {
     switch (Number(type)) {
@@ -762,97 +739,43 @@ async function generateOrder() {
     }
   }
 
-  // Formata os itens do pedido
   const itensFormatados = cart.map(prod => {
-  const produto = productsMap[String(prod.id)];
-  if (!produto) return null;
+    const produto = productsMap[String(prod.id)];
+    if (!produto) return null;
+    const tipoTexto = typeToText(produto.type);
+    if (prod.sabores && Object.keys(prod.sabores).length > 0) {
+      const saboresFormatados = Object.entries(prod.sabores)
+        .map(([idSabor, qtd]) => {
+          const s = productsMap[idSabor];
+          return `${qtd}x ${s?.name || "??"}`;
+        }).join(", ");
+      return `${prod.qtd}x ${produto.name} [${tipoTexto}] → ${saboresFormatados}`;
+    }
+    const unitario = produto.price.toFixed(2).replace(".", ",");
+    return `${prod.qtd}x ${produto.name} [${tipoTexto}] x${unitario}`;
+  }).filter(Boolean);
 
-  const tipoTexto = typeToText(produto.type);
+  function roundTo2(num) { return Math.round(num * 100) / 100; }
 
-  // 🔹 Caso o produto tenha sabores (modal aberto)
-  if (prod.sabores && Object.keys(prod.sabores).length > 0) {
-    const saboresFormatados = Object.entries(prod.sabores)
-      .map(([idSabor, qtd]) => {
-        const s = productsMap[idSabor];
-        return `${qtd}x ${s?.name || "??"}`;
-      }).join(", ");
+  const valorItens = roundTo2(cart.reduce((acc, prod) => {
+    const produto = productsMap[String(prod.id)];
+    if (!produto) return acc;
+    if (pacotesFixos.includes(prod.id) || pacotesEspeciais.includes(prod.id)) return acc + produto.price;
+    return acc + (produto.price * (prod.qtd || 1));
+  }, 0));
 
-    return `${prod.qtd}x ${produto.name} [${tipoTexto}] → ${saboresFormatados}`;
+  let coords = { lat: null, lon: null };
+  if (tipoEntrega === "delivery") {
+    const enderecoCompleto = `${endereco}, ${numero}, ${bairro}, ${cidade}, ${estado}`;
+    coords = await getLatLon(enderecoCompleto);
   }
 
-  // 🔹 Produtos normais (sem modal) exibem com valor unitário
-  const unitario = produto.price.toFixed(2).replace(".", ",");
-  return `${prod.qtd}x ${produto.name} [${tipoTexto}] x${unitario}`;
-}).filter(Boolean);
+  const deliveryValueLocal = deliveryValue;
+  const taxaCartaoLocal = taxaCartao;
+  const desconto = (discountPercent > 0) ? ((valorItens + deliveryValueLocal) * discountPercent / 100) : 0;
+  const totalFinal = valorItens + deliveryValueLocal + taxaCartaoLocal - desconto;
 
-
-  // Calcula valores
-function roundTo2(num) {
-  return Math.round(num * 100) / 100;
-}
-
-const valorItens = roundTo2(cart.reduce((acc, prod) => {
-  const produto = productsMap[String(prod.id)];
-  if (!produto) return acc;
-  if (pacotesFixos.includes(prod.id) || pacotesEspeciais.includes(prod.id)) return acc + produto.price;
-  return acc + (produto.price * (prod.qtd || 1));
-}, 0));
-
-
-
-
-  // Endereço completo para geocodificação
- let coords = { lat: null, lon: null };
-if (tipoEntrega === "delivery") {
-    const enderecoCompleto = `${endereco}, ${numero}, ${bairro}, ${userLogged?.cidade}, ${userLogged?.estado}`;
-    coords = await getLatLon(enderecoCompleto);
-
-    if (!coords.lat || !coords.lon) {
-        toast("Não foi possível obter as coordenadas. Verifique o endereço!", 'danger');
-        return;
-    }
-}
-
-
-
-
-
-  
- const deliveryValueLocal = deliveryValue; // já definido no updateValores()
-const taxaCartaoLocal = taxaCartao; // já definido
-const desconto = (discountPercent > 0) ? ((valorItens + deliveryValueLocal) * discountPercent / 100) : 0;
-
-const totalFinal = valorItens + deliveryValueLocal + taxaCartaoLocal - desconto;
-
-
-
-
-  // Gera o código sequencial do pedido
-  const pedidoCodigo = await gerarPedidoSequencial(); // Ex: "001"
-
-let clientePedido;
-if (tipoEntrega === "retirada") {
-    // Retirada no local: envia apenas nome e whatsapp
-    clientePedido = { nome, whatsapp };
-} else if (tipoEntrega === "delivery") {
-    // Delivery: envia todos os dados incluindo o CEP
-    clientePedido = { 
-        nome, 
-        whatsapp, 
-        endereco, 
-        numero, 
-        bairro, 
-        pontoReferencia, 
-        formaPagamento: formaPagamentoValue,
-        cep // enviado apenas para delivery
-    };
-}
-
-
-
-
-
-const payload = {
+  const payload = {
     clienteNome: nome,
     clienteEndereco: endereco,
     clienteNumero: numero,
@@ -869,15 +792,29 @@ const payload = {
 
   try {
     var result = await PUBLIC_API.criarPedido(payload);
-    toast("Pedido gerado com sucesso! #" + result.id, 'success');
     localStorage.removeItem("cart");
     renderizaItens();
+    mostrarConfirmacaoPedido(result.id, itensFormatados, totalFinal);
   } catch (error) {
     console.error("Erro ao salvar pedido:", error);
     toast(error.message || "Erro ao salvar pedido.", 'danger');
+  } finally {
+    btnGenerateOrder.disabled = false;
+    btnGenerateOrder.textContent = "Gerar Pedido";
   }
 }
 
+
+// ---------------- OVERLAY CONFIRMAÇÃO ---------------- //
+function mostrarConfirmacaoPedido(orderId, itens, total) {
+  document.getElementById("overlayOrderId").textContent = orderId;
+  document.getElementById("overlayDetails").innerHTML = itens.join('<br>') + '<br><br><strong>Total: R$ ' + total.toFixed(2).replace('.', ',') + '</strong>';
+  document.getElementById("orderOverlay").classList.remove("hidden");
+}
+
+function fecharOverlay() {
+  document.getElementById("orderOverlay").classList.add("hidden");
+}
 
 // Inicializa
 window.onload=init;

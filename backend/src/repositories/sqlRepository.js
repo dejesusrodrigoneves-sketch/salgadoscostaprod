@@ -4,7 +4,7 @@ const EMPRESA_ID = 1;
 const sql = {
   // ---- Produtos ----
   async listarProdutos() {
-    return prisma.produto.findMany({ where: { empresaId: EMPRESA_ID } });
+    return prisma.produto.findMany({ where: { empresaId: EMPRESA_ID }, include: { category: true } });
   },
   async buscarProduto(id) {
     return prisma.produto.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
@@ -112,7 +112,7 @@ const sql = {
 
   // ---- Categorias ----
   async listarCategorias() {
-    return prisma.categoria.findMany({ where: { empresaId: EMPRESA_ID }, orderBy: { nome: 'asc' } });
+    return prisma.categoria.findMany({ where: { empresaId: EMPRESA_ID }, orderBy: { nome: 'asc' }, include: { produtos: true } });
   },
   async buscarCategoria(id) {
     return prisma.categoria.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
