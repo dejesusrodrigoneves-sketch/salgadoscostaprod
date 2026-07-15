@@ -769,38 +769,52 @@ document.querySelectorAll('.tab').forEach(tab => {
 <script>
 function fmtItens(itens) {
   if (!Array.isArray(itens)) return '<p style="font-size:12px;color:var(--stone)">Sem itens</p>';
-  let html = '<div class="items-list"><h4>Itens</h4>';
-  itens.forEach(i => {
+  var prods = window.products || [];
+  var groups = {};
+  itens.forEach(function(i) {
     if (typeof i === 'string') {
-      var parts = i.split('\u2192');
-      if (parts.length === 2) {
-        html += '<div class="item-row"><strong>' + escapeHtml(parts[0].trim()) + '</strong></div>';
-        html += '<div class="sub-item">' + escapeHtml(parts[1].trim()) + '</div>';
-      } else {
-        html += '<div class="item-row">' + escapeHtml(i) + '</div>';
-      }
+      if (!groups['Outros']) groups['Outros'] = [];
+      groups['Outros'].push(i);
       return;
     }
-    var prods = window.products || [];
     var prod = prods.find(function(p) { return p.id === i.produtoId; });
-    var qtd = i.quantidade || 1;
-    var preco = Number(i.precoUnitario || 0);
-    var nome = prod ? prod.name : (i.produtoNome || 'Produto #' + i.produtoId);
-    var tipo = prod ? (prod.type === 3 ? 'festa' : prod.type === 6 ? 'congelado' : 'Salgado Grande') : '';
-    html += '<div class="item-row"><strong>' + escapeHtml(qtd + 'x ' + nome + (tipo ? ' [' + tipo + ']' : '')) + '</strong></div>';
-    html += '<div class="sub-item">R$ ' + preco.toFixed(2).replace('.', ',') + '</div>';
-    if (i.sabores) {
-      try {
-        var saboresObj = typeof i.sabores === 'string' ? JSON.parse(i.sabores) : i.sabores;
-        var saboresList = Object.keys(saboresObj).filter(function(id) { return Number(saboresObj[id]) > 0; }).map(function(id) {
-          var s = prods.find(function(p) { return p.id == id; });
-          return Number(saboresObj[id]) + 'x ' + (s ? s.name : 'Sabor #' + id);
-        });
-        if (saboresList.length > 0) {
-          html += '<div class="sub-item">Sabores: ' + escapeHtml(saboresList.join(', ')) + '</div>';
+    var cat = (prod && prod.category && prod.category.nome) || 'Outros';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push({ item: i, prod: prod });
+  });
+  var html = '<div class="items-list"><h4>Itens</h4>';
+  Object.keys(groups).forEach(function(cat) {
+    html += '<h5 style="font-size:11px;color:var(--warning);text-transform:uppercase;letter-spacing:0.5px;margin:8px 0 4px;font-weight:700;">' + escapeHtml(cat) + '</h5>';
+    groups[cat].forEach(function(entry) {
+      if (typeof entry === 'string') {
+        var parts = entry.split('\u2192');
+        if (parts.length === 2) {
+          html += '<div class="item-row"><strong>' + escapeHtml(parts[0].trim()) + '</strong></div>';
+          html += '<div class="sub-item">' + escapeHtml(parts[1].trim()) + '</div>';
+        } else {
+          html += '<div class="item-row">' + escapeHtml(entry) + '</div>';
         }
-      } catch(e) {}
-    }
+        return;
+      }
+      var i = entry.item;
+      var prod = entry.prod;
+      var qtd = i.quantidade || 1;
+      var preco = Number(i.precoUnitario || 0);
+      var nome = prod ? prod.name : (i.produtoNome || 'Produto #' + i.produtoId);
+      html += '<div class="item-row"><strong>' + escapeHtml(qtd + 'x ' + nome) + '</strong><span>R$ ' + preco.toFixed(2).replace('.', ',') + '</span></div>';
+      if (i.sabores) {
+        try {
+          var saboresObj = typeof i.sabores === 'string' ? JSON.parse(i.sabores) : i.sabores;
+          var saboresList = Object.keys(saboresObj).filter(function(id) { return Number(saboresObj[id]) > 0; }).map(function(id) {
+            var s = prods.find(function(p) { return p.id == id; });
+            return Number(saboresObj[id]) + 'x ' + (s ? s.name : 'Sabor #' + id);
+          });
+          if (saboresList.length > 0) {
+            html += '<div class="sub-item">Sabores: ' + escapeHtml(saboresList.join(', ')) + '</div>';
+          }
+        } catch(e) {}
+      }
+    });
   });
   html += '</div>';
   return html;
@@ -831,34 +845,50 @@ function gerarHTMLImpressao(p) {
       <hr />`;
   if (Array.isArray(p.itens)) {
     html += '<h3>Itens:</h3>';
-    p.itens.forEach(i => {
+    var prods = window.products || [];
+    var groups = {};
+    p.itens.forEach(function(i) {
       if (typeof i === 'string') {
-        var parts = i.split('\u2192');
-        if (parts.length === 2) {
-          html += '<p><strong>' + escapeHtml(parts[0].trim()) + ' \u2192</strong></p>';
-          parts[1].split(',').map(function(s) { return s.trim(); }).filter(Boolean).forEach(function(sub) {
-            html += '<p style="margin-left:10px;">' + escapeHtml(sub) + '</p>';
-          });
-        } else {
-          html += '<p>' + escapeHtml(i) + '</p>';
-        }
+        if (!groups['Outros']) groups['Outros'] = [];
+        groups['Outros'].push(i);
         return;
       }
-      var prods = window.products || [];
       var prod = prods.find(function(p) { return p.id === i.produtoId; });
-      var qtd = i.quantidade || 1;
-      var preco = Number(i.precoUnitario || 0);
-      var nome = prod ? prod.name : 'Produto #' + i.produtoId;
-      html += '<p><strong>' + escapeHtml(qtd + 'x ' + nome) + ' \u2192 R$ ' + preco.toFixed(2).replace('.', ',') + '</strong></p>';
-      if (i.sabores) {
-        try {
-          var saboresObj = typeof i.sabores === 'string' ? JSON.parse(i.sabores) : i.sabores;
-          Object.keys(saboresObj).filter(function(id) { return Number(saboresObj[id]) > 0; }).forEach(function(id) {
-            var s = prods.find(function(p) { return p.id == id; });
-            html += '<p style="margin-left:10px;">' + escapeHtml(Number(saboresObj[id]) + 'x ' + (s ? s.name : 'Sabor #' + id)) + '</p>';
-          });
-        } catch(e) {}
-      }
+      var cat = (prod && prod.category && prod.category.nome) || 'Outros';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push({ item: i, prod: prod });
+    });
+    Object.keys(groups).forEach(function(cat) {
+      html += '<h4 style="margin:8px 0 2px;font-size:11px;">' + escapeHtml(cat) + '</h4>';
+      groups[cat].forEach(function(entry) {
+        if (typeof entry === 'string') {
+          var parts = entry.split('\u2192');
+          if (parts.length === 2) {
+            html += '<p><strong>' + escapeHtml(parts[0].trim()) + ' \u2192</strong></p>';
+            parts[1].split(',').map(function(s) { return s.trim(); }).filter(Boolean).forEach(function(sub) {
+              html += '<p style="margin-left:10px;">' + escapeHtml(sub) + '</p>';
+            });
+          } else {
+            html += '<p>' + escapeHtml(entry) + '</p>';
+          }
+          return;
+        }
+        var i = entry.item;
+        var prod = entry.prod;
+        var qtd = i.quantidade || 1;
+        var preco = Number(i.precoUnitario || 0);
+        var nome = prod ? prod.name : 'Produto #' + i.produtoId;
+        html += '<p><strong>' + escapeHtml(qtd + 'x ' + nome) + ' \u2192 R$ ' + preco.toFixed(2).replace('.', ',') + '</strong></p>';
+        if (i.sabores) {
+          try {
+            var saboresObj = typeof i.sabores === 'string' ? JSON.parse(i.sabores) : i.sabores;
+            Object.keys(saboresObj).filter(function(id) { return Number(saboresObj[id]) > 0; }).forEach(function(id) {
+              var s = prods.find(function(p) { return p.id == id; });
+              html += '<p style="margin-left:10px;">' + escapeHtml(Number(saboresObj[id]) + 'x ' + (s ? s.name : 'Sabor #' + id)) + '</p>';
+            });
+          } catch(e) {}
+        }
+      });
     });
   }
   html += '<hr>' +
