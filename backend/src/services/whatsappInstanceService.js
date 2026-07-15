@@ -167,8 +167,8 @@ async function status(id) {
         `${config.evolutionUrl}/instance/connectionState/${instancia.instanceId}`,
         { headers: { apikey: config.evolutionApiKey } }
       );
-      const status = data?.state || 'disconnected';
-      const phone = data?.phone?.number || null;
+      const status = data?.instance?.state || data?.state || 'disconnected';
+      const phone = data?.instance?.phone?.number || data?.phone?.number || null;
       await sql.atualizarWhatsAppInstance(id, {
         connectionStatus: status,
         ...(phone && { phoneNumber: phone }),
