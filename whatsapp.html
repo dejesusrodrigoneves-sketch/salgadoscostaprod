@@ -121,6 +121,7 @@ function statusHtml(status) {
     reconnecting: ['Reconectando', 'status-reconnecting'],
     open: ['Conectado', 'status-connected'],
     close: ['Desconectado', 'status-disconnected'],
+    connecting: ['Conectando', 'status-qrcode'],
   };
   const [label, cls] = map[status] || [status, 'status-disconnected'];
   return `<span class="status-badge ${cls}"><i class="fas fa-circle"></i> ${label}</span>`;
