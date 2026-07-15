@@ -165,7 +165,7 @@ function renderizarProdutos() {
     div.className = "produto";
 
     div.innerHTML = `
-      <img src="${produto.img && produto.img.startsWith('http') ? produto.img : 'img/' + (produto.img || 'default.png')}" alt="${produto.name}" loading="lazy">
+      <img src="${produto.img || ''}" alt="${produto.name}" loading="lazy">
       <h4>${produto.name}</h4>
       <span>R$ ${Number(produto.price).toFixed(2)}</span>
     `;
