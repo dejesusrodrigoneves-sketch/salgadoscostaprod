@@ -196,7 +196,7 @@ function toast(message, type = 'success') {
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 4000);
 }
 
-let resumo = { dinheiro:0, pix:0, 'cartao de debito':0, 'cartao de credito':0 };
+let resumo = { dinheiro:0, pix:0, debito:0, credito:0 };
 let quantidadePedidos = 0;
 let trocoInicial = 0;
 
@@ -204,8 +204,12 @@ function dataHoje(){ return new Date().toISOString().split('T')[0]; }
 
 async function abrirCaixa(){
   const valor = parseFloat(document.getElementById('valorInicial').value) || 0;
-  await api('/caixa/abrir', { method: 'POST', body: JSON.stringify({ valorInicial: valor }) });
-  carregarResumo();
+  try {
+    await api('/caixa/abrir', { method: 'POST', body: JSON.stringify({ valorInicial: valor }) });
+    carregarResumo();
+  } catch(e) {
+    toast('Erro ao abrir caixa', 'danger');
+  }
 }
 
 async function carregarResumo(){
@@ -217,7 +221,7 @@ async function carregarResumo(){
     document.getElementById('trocoInicial').textContent = trocoInicial.toFixed(2);
     const hojeStr = new Date().toISOString().split('T')[0];
     const pedidos = await api('/pedidos?createdAtFrom=' + hojeStr + 'T00:00:00&createdAtTo=' + hojeStr + 'T23:59:59');
-    resumo = { dinheiro:0, pix:0, 'cartao de debito':0, 'cartao de credito':0 };
+    resumo = { dinheiro:0, pix:0, debito:0, credito:0 };
     quantidadePedidos = pedidos.length;
     pedidos.forEach(function(p) {
       const pag = (p.formaPagamento || '').toLowerCase();
@@ -234,8 +238,8 @@ async function carregarResumo(){
 function atualizarTela(){
   document.getElementById('dinheiro').textContent = resumo.dinheiro.toFixed(2);
   document.getElementById('pix').textContent = resumo.pix.toFixed(2);
-  document.getElementById('debito').textContent = resumo['cartao de debito'].toFixed(2);
-  document.getElementById('credito').textContent = resumo['cartao de credito'].toFixed(2);
+  document.getElementById('debito').textContent = resumo.debito.toFixed(2);
+  document.getElementById('credito').textContent = resumo.credito.toFixed(2);
   document.getElementById('totalGeral').textContent = calcularTotalComTroco().toFixed(2);
   document.getElementById('qtdPedidos').textContent = quantidadePedidos;
 }
@@ -245,7 +249,7 @@ function gerarGrafico(){
     type: 'doughnut',
     data: {
       labels: ['Dinheiro', 'Pix', 'Débito', 'Crédito'],
-      datasets: [{ data: [resumo.dinheiro, resumo.pix, resumo['cartao de debito'], resumo['cartao de credito']] }]
+      datasets: [{ data: [resumo.dinheiro, resumo.pix, resumo.debito, resumo.credito] }]
     },
     options: { plugins: { legend: { position: 'bottom' } } }
   });
@@ -258,7 +262,7 @@ async function fecharCaixa(){
     await api('/caixa/fechar', { method: 'POST', body: JSON.stringify({
       totalPedidos, totalComTroco, trocoInicial,
       totalDinheiro: resumo.dinheiro, totalPix: resumo.pix,
-      totalDebito: resumo['cartao de debito'], totalCredito: resumo['cartao de credito'],
+      totalDebito: resumo.debito, totalCredito: resumo.credito,
       quantidadePedidos,
     })});
     imprimirRelatorio();
@@ -280,8 +284,8 @@ Troco Inicial: R$ ${trocoInicial.toFixed(2)}
 ----------------------------
 Dinheiro: R$ ${resumo.dinheiro.toFixed(2)}
 Pix: R$ ${resumo.pix.toFixed(2)}
-Débito: R$ ${resumo['cartao de debito'].toFixed(2)}
-Crédito: R$ ${resumo['cartao de credito'].toFixed(2)}
+Débito: R$ ${resumo.debito.toFixed(2)}
+Crédito: R$ ${resumo.credito.toFixed(2)}
 
 ----------------------------
 Total Pedidos: R$ ${calcularTotalPedidos().toFixed(2)}
