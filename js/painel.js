@@ -472,8 +472,8 @@ formProduto.addEventListener('submit', async e => {
     status: fStatus.value || 'active',
     congelado: fCongelado.checked,
     controlaEstoque: fControlaEstoque.checked,
-    estoqueAtual: fControlaEstoque.checked ? Number(fEstoqueAtual.value) || 0 : null,
-    estoqueMinimo: fControlaEstoque.checked ? Number(fEstoqueMinimo.value) || 0 : null,
+    estoqueAtual: fControlaEstoque.checked ? Number(fEstoqueAtual.value) || 0 : 0,
+    estoqueMinimo: fControlaEstoque.checked ? Number(fEstoqueMinimo.value) || 0 : 0,
     hideWhenOutOfStock: fHideWhenOutOfStock.checked,
   };
 
