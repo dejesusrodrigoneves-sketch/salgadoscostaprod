@@ -27,6 +27,20 @@ const sql = {
     const where = { empresaId: EMPRESA_ID, ...filtros };
     return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true } });
   },
+  async listarPedidosFiltrados(filtros) {
+    const where = { empresaId: EMPRESA_ID };
+    if (filtros.status) {
+      var statusList = filtros.status.split(',');
+      if (statusList.length === 1) where.status = statusList[0];
+      else where.status = { in: statusList };
+    }
+    if (filtros.createdAtFrom || filtros.createdAtTo) {
+      where.createdAt = {};
+      if (filtros.createdAtFrom) where.createdAt.gte = new Date(filtros.createdAtFrom);
+      if (filtros.createdAtTo) where.createdAt.lte = new Date(filtros.createdAtTo);
+    }
+    return prisma.pedido.findMany({ where, orderBy: { createdAt: filtros.order === 'asc' ? 'asc' : 'desc' }, include: { itens: true } });
+  },
   async buscarPedido(id) {
     return prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
   },
