@@ -175,5 +175,29 @@
 <script src="js/menu.js?=8"></script>
 <script src="js/navbar.js"></script>
 
+<!-- Overlay de Pedidos -->
+<div id="ordersOverlay" class="orders-overlay hidden">
+  <div class="orders-box">
+    <div class="orders-header">
+      <button id="ordersBackBtn" class="orders-back" onclick="fecharOverlayPedidos()">← Voltar</button>
+      <h3>Meus Pedidos <span id="ordersCount"></span></h3>
+    </div>
+
+    <div class="orders-body" id="ordersBody">
+      <div id="ordersActiveSection" class="orders-section" style="display:none">
+        <span class="orders-section-title">Acompanhar</span>
+        <div id="ordersActiveContainer"></div>
+      </div>
+
+      <div id="ordersHistorySection" class="orders-section">
+        <span class="orders-section-title" id="ordersHistoryTitle">Histórico</span>
+        <div id="ordersHistoryContainer"></div>
+      </div>
+    </div>
+
+    <button class="orders-close" onclick="fecharOverlayPedidos()">Fechar</button>
+  </div>
+</div>
+
 </body>
 </html>
