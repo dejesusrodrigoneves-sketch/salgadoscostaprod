@@ -369,7 +369,7 @@ function renderProdutos(){
       <tr>
         <td>${p.id ?? '-'}</td>
         <td>
-          <img class="prodThumb" src="${p.img||'img/default.png'}" alt="${escapeHtml(p.name||'')}">
+          <img class="prodThumb" src="${p.img||''}" alt="${escapeHtml(p.name||'')}">
           ${escapeHtml(p.name||'')}
         </td>
         <td>R$ ${(Number(p.price)||0).toFixed(2).replace('.',',')}</td>

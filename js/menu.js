@@ -82,7 +82,7 @@ const addItemToArray = prod => {
     <div class="card">
         <div>
             <div class="cardImg">
-<img src="${prod.img}" alt="${prod.name}" loading="lazy">
+<img src="${prod.img || ''}" alt="${prod.name}" loading="lazy">
             </div>
             <h4>${prod.name}</h4>
             <p>${prod.description}</p>
@@ -130,7 +130,7 @@ const allPromotions = () => {
               : '<button class="btn btn-add" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>';
             promoItems += `<div class="card">
                 <div>
-                    <div class="cardImg"><img src="${prod.img}" alt="${prod.name}" loading="lazy"></div>
+                    <div class="cardImg"><img src="${prod.img || ''}" alt="${prod.name}" loading="lazy"></div>
                     <h4>${prod.name}</h4>
                     <p>${prod.description}</p>
                 </div>
