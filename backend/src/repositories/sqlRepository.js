@@ -20,11 +20,12 @@ const sql = {
     });
   },
   async atualizarProduto(id, data) {
-    if (data.categoryId) {
-      data.category = { connect: { id: data.categoryId } };
-      delete data.categoryId;
+    const { id: _, empresaId, ...rest } = data;
+    if (rest.categoryId) {
+      rest.category = { connect: { id: rest.categoryId } };
+      delete rest.categoryId;
     }
-    return prisma.produto.update({ where: { id: Number(id) }, data });
+    return prisma.produto.update({ where: { id: Number(id) }, data: rest });
   },
   async deletarProduto(id) {
     return prisma.produto.delete({ where: { id: Number(id) } });
