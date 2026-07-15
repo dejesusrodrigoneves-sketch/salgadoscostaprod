@@ -557,17 +557,228 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
 });
 
 
-function atualizarUserMenu(user) {
-  userDropdown.innerHTML = `
-    <h4>Olá, ${user.nome}</h4>
-    <button id="btnEditProfile">Editar perfil</button>
-    <button id="btnMyOrders">Meus pedidos <span id="orderCount"></span></button>
-    <button id="btnLogout">Sair</button>
-  `;
+// ===== Ordem dos pedidos: polling globals =====
+var _pollTimer = null;
+var _ultimosStatus = {};
+var _pollFalhas = 0;
 
-  // Editar perfil
-  document.getElementById("btnEditProfile").addEventListener("click", () => {
-    // Preenche o overlay de cadastro com os dados do usuário
+function shortDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('pt-BR');
+}
+
+function formatTime(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function stepStatus(pedido) {
+  var ordem = { pendente: 0, preparando: 1, pronto: 2, entregue: 3, retirado: 3, cancelado: -1 };
+  return ordem[pedido.status] !== undefined ? ordem[pedido.status] : -1;
+}
+
+function nomeStatus(status) {
+  var nomes = { pendente: 'Pendente', preparando: 'Preparando', pronto: 'Pronto', entregue: 'Entregue', retirado: 'Retirado', cancelado: 'Cancelado' };
+  return nomes[status] || status;
+}
+
+var STATUS_STEPS = ['pendente', 'preparando', 'pronto', 'entregue'];
+
+function renderTimeline(pedido) {
+  var idx = stepStatus(pedido);
+  if (idx < 0) return '';
+  var html = '<div class="orders-timeline">';
+  STATUS_STEPS.forEach(function(s, i) {
+    if (i > 0) {
+      var cls = i <= idx ? '' : 'dashed';
+      html += '<div class="timeline-step"><div class="step-line ' + cls + '"></div>';
+    } else {
+      html += '<div class="timeline-step">';
+    }
+    if (i < idx) { html += '<div class="step-circle done">✓</div>'; }
+    else if (i === idx) { html += '<div class="step-circle active">◉</div>'; }
+    else { html += '<div class="step-circle future"></div>'; }
+    html += '<div class="step-content">';
+    html += '<span class="step-label">' + nomeStatus(s) + '</span>';
+    if (i <= idx) { html += '<span class="step-time">' + (pedido.updatedAt ? formatTime(pedido.updatedAt) : '') + '</span>'; }
+    if (i === idx) { html += '<span class="step-now">Agora</span>'; }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderOrderItems(pedido) {
+  var html = '<div class="order-items-section"><span class="order-items-title">Itens</span>';
+  var totalItens = 0;
+  if (pedido.itens && pedido.itens.length > 0) {
+    pedido.itens.forEach(function(item) {
+      var nome = item.produto ? (item.produto.name || item.produto.nome) : (item.nome || 'Item');
+      var qtd = item.quantidade || 1;
+      var preco = Number(item.precoUnitario || item.price || 0);
+      var subtotal = preco * qtd;
+      totalItens += subtotal;
+      html += '<div class="order-item-row"><span class="item-qtd">' + qtd + 'x</span><span class="item-name">' + escapeHtml(nome) + '</span><span class="item-price">R$ ' + subtotal.toFixed(2) + '</span></div>';
+    });
+  }
+  html += '<div class="order-item-divider"></div><div class="order-total-line"><span>Total</span><span>R$ ' + Number(pedido.total || totalItens).toFixed(2) + '</span></div></div>';
+
+  var sabores = [];
+  if (pedido.itens && pedido.itens.length > 0) {
+    pedido.itens.forEach(function(item) {
+      if (item.sabores) {
+        var arr = typeof item.sabores === 'string' ? JSON.parse(item.sabores) : item.sabores;
+        if (Array.isArray(arr)) arr.forEach(function(s) {
+          var n = typeof s === 'string' ? s : (s.nome || '');
+          var q = typeof s === 'string' ? 1 : (s.qtd || 1);
+          sabores.push(n + (q > 1 ? ' (' + q + 'x)' : ''));
+        });
+      }
+    });
+  }
+  if (sabores.length > 0) html += '<div class="order-sabores"><strong>Sabores</strong>' + sabores.join(', ') + '</div>';
+
+  var infos = [];
+  if (pedido.tipoEntrega) infos.push(pedido.tipoEntrega === 'delivery' ? '📍 Delivery' : '🏪 Balcão');
+  if (pedido.clienteEndereco) {
+    var end = pedido.clienteEndereco;
+    if (pedido.clienteNumero) end += ', ' + pedido.clienteNumero;
+    if (pedido.clienteBairro) end += ' - ' + pedido.clienteBairro;
+    infos.push(end);
+  }
+  if (pedido.formaPagamento) {
+    var pag = '💳 ' + pedido.formaPagamento.charAt(0).toUpperCase() + pedido.formaPagamento.slice(1);
+    if (pedido.troco) pag += ' · Troco p/ R$ ' + Number(pedido.troco).toFixed(2);
+    infos.push(pag);
+  }
+  if (infos.length > 0) html += '<div class="order-info">' + infos.join('<br>') + '</div>';
+  return html;
+}
+
+function toggleOrderExpand(headerEl) {
+  var card = headerEl.closest('.order-card');
+  if (card) card.classList.toggle('expanded');
+}
+
+function renderOrders(pedidos) {
+  var activeSection = document.getElementById('ordersActiveSection');
+  var activeContainer = document.getElementById('ordersActiveContainer');
+  var historyContainer = document.getElementById('ordersHistoryContainer');
+  var countEl = document.getElementById('ordersCount');
+  var historyTitle = document.getElementById('ordersHistoryTitle');
+  activeContainer.innerHTML = '';
+  historyContainer.innerHTML = '';
+
+  if (!pedidos || pedidos.length === 0) {
+    activeSection.style.display = 'none';
+    historyContainer.innerHTML = '<div class="orders-empty"><span class="icon">📋</span><p>Nenhum pedido encontrado.</p><p style="font-size:13px;">Faça seu primeiro pedido pelo cardápio!</p></div>';
+    if (countEl) countEl.textContent = '(0)';
+    return;
+  }
+  if (countEl) countEl.textContent = '(' + pedidos.length + ')';
+
+  var ativos = pedidos.filter(function(p) { return p.status === 'pendente' || p.status === 'preparando'; });
+  var historico = pedidos.filter(function(p) { return p.status !== 'pendente' && p.status !== 'preparando'; });
+
+  if (ativos.length > 0) {
+    activeSection.style.display = 'block';
+    ativos.forEach(function(p) {
+      var card = document.createElement('div');
+      card.className = 'order-card active';
+      card.setAttribute('data-order-id', p.id);
+      card.innerHTML = '<div class="order-card-header" onclick="toggleOrderExpand(this)"><span class="chevron">▶</span><div><strong>Pedido #' + p.id + '</strong><span class="order-time">' + (p.createdAt ? shortDate(p.createdAt) : '') + '</span></div><span class="live-badge">Ao vivo</span></div><div class="order-card-body"><div class="order-card-body-inner">' + renderTimeline(p) + renderOrderItems(p) + '</div></div>';
+      activeContainer.appendChild(card);
+    });
+  } else {
+    activeSection.style.display = 'none';
+  }
+
+  if (historico.length > 0) {
+    if (historyTitle) historyTitle.textContent = 'Histórico';
+    historico.forEach(function(p) {
+      var statusClass = p.status || '';
+      var statusNome = nomeStatus(p.status);
+      var card = document.createElement('div');
+      card.className = 'order-card';
+      card.setAttribute('data-order-id', p.id);
+      card.innerHTML = '<div class="order-card-header" onclick="toggleOrderExpand(this)"><span class="chevron">▶</span><div><strong>Pedido #' + p.id + '</strong><span class="order-date">' + (p.createdAt ? shortDate(p.createdAt) : '') + '</span></div><span class="status-badge ' + statusClass + '">' + (statusClass === 'cancelado' ? '✕' : statusClass === 'entregue' || statusClass === 'retirado' ? '✅' : '●') + ' ' + statusNome + '</span></div><div class="order-card-body"><div class="order-card-body-inner">' + renderOrderItems(p) + '</div></div>';
+      historyContainer.appendChild(card);
+    });
+  } else {
+    historyContainer.innerHTML = '<div class="orders-empty"><span class="icon">📋</span><p>Nenhum pedido anterior.</p></div>';
+  }
+}
+
+async function abrirOverlayPedidos(user) {
+  var overlay = document.getElementById('ordersOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+
+  var body = document.getElementById('ordersBody');
+  body.innerHTML = '<div class="orders-empty"><span class="icon">⏳</span><p>Carregando pedidos...</p></div>';
+
+  try {
+    var pedidos = await PUBLIC_API.meusPedidos();
+    renderOrders(pedidos || []);
+    _ultimosStatus = {};
+    (pedidos || []).forEach(function(p) { _ultimosStatus[p.id] = p.status; });
+    iniciarPolling();
+  } catch (e) {
+    body.innerHTML = '<div class="orders-empty"><span class="icon">⚠️</span><p>Erro ao carregar pedidos.</p><p style="font-size:13px;">Verifique sua conexão e tente novamente.</p></div>';
+  }
+}
+
+function fecharOverlayPedidos() {
+  var overlay = document.getElementById('ordersOverlay');
+  if (overlay) overlay.classList.add('hidden');
+  pararPolling();
+}
+
+function iniciarPolling() {
+  pararPolling();
+  _pollTimer = setInterval(async function() {
+    try {
+      var pedidos = await PUBLIC_API.meusPedidos();
+      _pollFalhas = 0;
+      if (!pedidos) return;
+      var ativosAntes = Object.keys(_ultimosStatus).filter(function(id) { return _ultimosStatus[id] === 'pendente' || _ultimosStatus[id] === 'preparando'; });
+      pedidos.forEach(function(p) {
+        var antigo = _ultimosStatus[p.id];
+        if (antigo && antigo !== p.status && (antigo === 'pendente' || antigo === 'preparando' || p.status === 'pendente' || p.status === 'preparando')) {
+          toast('Pedido #' + p.id + ' agora está ' + nomeStatus(p.status) + '!', 'info');
+        }
+        _ultimosStatus[p.id] = p.status;
+      });
+      renderOrders(pedidos);
+      var ativosDepois = pedidos.filter(function(p) { return p.status === 'pendente' || p.status === 'preparando'; });
+      if (ativosDepois.length === 0 && ativosAntes.length > 0) pararPolling();
+    } catch (e) {
+      _pollFalhas++;
+      if (_pollFalhas >= 3) pararPolling();
+    }
+  }, 30000);
+}
+
+function pararPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+}
+
+// Fecha ao clicar fora
+document.addEventListener('click', function(e) {
+  var overlay = document.getElementById('ordersOverlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+  if (e.target === overlay) fecharOverlayPedidos();
+});
+
+// Fecha ao apertar Esc
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') fecharOverlayPedidos();
+});
+
+function atualizarUserMenu(user) {
+  userDropdown.innerHTML = '<h4>Olá, ' + user.nome + '</h4><button id="btnEditProfile">Editar perfil</button><button id="btnMyOrders">Meus pedidos <span id="orderCount"></span></button><button id="btnLogout">Sair</button>';
+
+  document.getElementById("btnEditProfile").addEventListener("click", function() {
     registerOverlay.classList.remove("hidden");
     document.getElementById("regNome").value = user.nome;
     document.getElementById("regPhone").value = (user.telefone || user.phone || '').replace('+55','');
@@ -577,122 +788,13 @@ function atualizarUserMenu(user) {
     document.getElementById("regPonto").value = user.pontoReferencia || user.ponto || '';
   });
 
-  // Meus pedidos
-// Função para abrir o overlay de pedidos
-async function abrirOverlayPedidos(user) {
-    let pedidosOverlay = document.getElementById("ordersOverlay");
+  document.getElementById("btnMyOrders").addEventListener("click", function() {
+    var u = JSON.parse(localStorage.getItem("userLogged"));
+    if (!u) return toast("Faça login primeiro!", 'warning');
+    abrirOverlayPedidos(u);
+  });
 
-    // Cria o overlay se não existir
-    if (!pedidosOverlay) {
-        pedidosOverlay = document.createElement('div');
-        pedidosOverlay.id = 'ordersOverlay';
-        Object.assign(pedidosOverlay.style, {
-            position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.6)',
-            display: 'none', // começa escondido
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: '10001',
-            overflow: 'auto',
-        });
-
-        pedidosOverlay.innerHTML = `
-            <div id="ordersBox" style="
-                background:white;
-                padding:20px;
-                width:90%;
-                max-width:500px;
-                border-radius:10px;
-                position:relative;
-                max-height:90%;
-                display:flex;
-                flex-direction:column;
-            ">
-                <h3 style="margin-bottom:10px;">Meus pedidos <span id="totalOrders"></span></h3>
-                <div id="ordersContainer" style="
-                    flex:1;
-                    overflow-y:auto;
-                    padding-right:5px;
-                "></div>
-                <button id="btnCloseOrders" style="
-                    margin-top:10px;
-                    padding:10px;
-                    border:none;
-                    background:#ff5722;
-                    color:white;
-                    border-radius:6px;
-                    cursor:pointer;
-                ">Fechar</button>
-            </div>
-        `;
-
-        document.body.appendChild(pedidosOverlay);
-
-        // Fecha clicando fora da caixa
-        pedidosOverlay.addEventListener("click", (e) => {
-            if (e.target === pedidosOverlay) {
-                fecharOverlayPedidos();
-            }
-        });
-
-        // Fecha apertando Esc
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") {
-                fecharOverlayPedidos();
-            }
-        });
-
-        // Botão Fechar
-        const btnClose = pedidosOverlay.querySelector("#btnCloseOrders");
-        btnClose.addEventListener("click", fecharOverlayPedidos);
-    }
-
-    // Carrega os pedidos do usuário via API
-    var ordersContainer = document.getElementById("ordersContainer");
-    var totalOrders = document.getElementById("totalOrders");
-    ordersContainer.innerHTML = '';
-    try {
-        var pedidos = await PUBLIC_API.meusPedidos();
-        if (pedidos && pedidos.length > 0) {
-            pedidos.forEach(function(p) {
-                var total = p.total ? Number(p.total).toFixed(2) : '0,00';
-                ordersContainer.innerHTML += '<div style="border-bottom:1px solid #ddd;padding:5px 0;"><b>Pedido #' + p.id + '</b> - R$ ' + total + ' <span style="color:#888;font-size:12px;">(' + p.status + ')</span></div>';
-            });
-            totalOrders.textContent = '(' + pedidos.length + ')';
-        } else {
-            ordersContainer.innerHTML = '<p style="color:#888;">Nenhum pedido encontrado.</p>';
-            totalOrders.textContent = '(0)';
-        }
-    } catch(e) {
-        ordersContainer.innerHTML = '<p style="color:#888;">Erro ao carregar pedidos.</p>';
-        totalOrders.textContent = '(0)';
-    }
-
-    // Mostra o overlay
-    pedidosOverlay.style.display = "flex";
-}
-
-// Função para fechar o overlay
-function fecharOverlayPedidos() {
-    const overlay = document.getElementById("ordersOverlay");
-    if (overlay) overlay.style.display = "none";
-}
-
-// Evento do menu "Meus Pedidos"
-document.getElementById("btnMyOrders").addEventListener("click", async () => {
-    const savedUser = JSON.parse(localStorage.getItem("userLogged"));
-    if (!savedUser) return toast("Faça login primeiro!", 'warning');
-    abrirOverlayPedidos(savedUser);
-});
-
-
-
-  // Logout
-  document.getElementById("btnLogout").addEventListener("click", () => {
+  document.getElementById("btnLogout").addEventListener("click", function() {
     localStorage.removeItem("userLogged");
     location.reload();
   });
