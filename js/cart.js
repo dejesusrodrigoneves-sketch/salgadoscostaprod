@@ -751,7 +751,7 @@ async function generateOrder() {
         }).join(", ");
       return `${prod.qtd}x ${produto.name} [${tipoTexto}] → ${saboresFormatados}`;
     }
-    const unitario = produto.price.toFixed(2).replace(".", ",");
+    const unitario = Number(produto.price.toFixed(2).replace(".", ","));
     return `${prod.qtd}x ${produto.name} [${tipoTexto}] x${unitario}`;
   }).filter(Boolean);
 
