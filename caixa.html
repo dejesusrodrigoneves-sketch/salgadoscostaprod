@@ -260,7 +260,7 @@ async function fecharCaixa(){
   const totalComTroco = calcularTotalComTroco();
   try {
     await api('/caixa/fechar', { method: 'POST', body: JSON.stringify({
-      totalPedidos, totalComTroco, trocoInicial,
+      totalPedidos,
       totalDinheiro: resumo.dinheiro, totalPix: resumo.pix,
       totalDebito: resumo.debito, totalCredito: resumo.credito,
       quantidadePedidos,
@@ -297,7 +297,11 @@ Total Final: R$ ${calcularTotalComTroco().toFixed(2)}
 window.onload = async () => {
   try {
     const caixa = await api('/caixa/hoje');
-    if (caixa && caixa.status === 'aberto') carregarResumo();
+    if (caixa && caixa.status === 'aberto') {
+      document.getElementById('aberturaCard').style.display = 'none';
+      document.getElementById('caixaCard').style.display = 'block';
+      carregarResumo();
+    }
   } catch(e) { /* fechado ou sem caixa */ }
 };
 
