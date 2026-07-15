@@ -5,9 +5,6 @@
 <title>Entregadores - Fabrica de salgados Costa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet"/>
-
 <script src="js/utils.js"></script>
 <script>
 if(!authGuard()) throw new Error('Redirect');
@@ -91,33 +88,6 @@ body {
 .report-box .name { font-weight: 500; }
 .report-box .value { color: #4ade80; font-weight: 600; }
 
-/* Main content */
-.main { flex: 1; display: flex; flex-direction: column; }
-
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 24px; background: white; border-bottom: 1px solid #e2e8f0;
-}
-.topbar h1 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.tab-group { display: flex; gap: 4px; }
-.tab-btn {
-  padding: 8px 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: white;
-  font-size: 13px; font-weight: 500; cursor: pointer; transition: 0.2s; font-family: inherit;
-}
-.tab-btn:hover { border-color: #f97316; color: #f97316; }
-.tab-btn.active { background: #f97316; color: white; border-color: #f97316; }
-
-.tab-content { display: none; flex: 1; }
-.tab-content.active { display: flex; flex-direction: column; }
-.tab-content.active .map-wrap { flex: 1; }
-#map { width:100%; height:100%; min-height: 400px; }
-
-.info-bar {
-  padding: 12px 24px; background: white; border-bottom: 1px solid #e2e8f0;
-  display: flex; align-items: center; gap: 16px; font-size: 13px; flex-wrap: wrap;
-}
-.info-bar select { padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; font-family: inherit; min-width: 200px; }
-
 /* Toast */
 .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
 .toast { padding: 12px 18px; border-radius: 10px; color: white; font-size: 13px; font-weight: 500; animation: toastIn 0.3s ease; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
@@ -129,9 +99,6 @@ body {
 @media (max-width: 768px) {
   .app { flex-direction: column; }
   .sidebar { width: 100%; max-height: 50vh; }
-  .topbar { flex-direction: column; gap: 8px; align-items: flex-start; }
-  .info-bar { flex-direction: column; align-items: stretch; }
-  .info-bar select { width: 100%; }
 }
 </style>
 </head>
@@ -180,51 +147,12 @@ body {
     </div>
   </aside>
 
- 
-
-
-
-  <div class="main">
-    <div class="topbar">
-      <h1><i class="fas fa-motorcycle"></i> Rastreamento</h1>
-      <div class="tab-group">
-        <button class="tab-btn active" onclick="switchTab('tracking', this)"><i class="fas fa-map-marked-alt"></i> Mapa</button>
-        <button class="tab-btn" onclick="switchTab('history', this)"><i class="fas fa-history"></i> Histórico</button>
-      </div>
-    </div>
-
-    <div class="info-bar">
-      <span id="status">🔴 Desconectado</span>
-      <select id="pedidoSelect"></select>
-      <button class="btn btn-primary btn-sm" id="btnIniciar"><i class="fas fa-play"></i> Iniciar</button>
-      <button class="btn btn-danger btn-sm" id="btnFinalizar"><i class="fas fa-stop"></i> Finalizar</button>
-    </div>
-
-    <div class="tab-content active" id="tabTracking">
-      <div class="map-wrap">
-        <div id="map"></div>
-      </div>
-    </div>
-
-    <div class="tab-content" id="tabHistory" style="padding:24px;overflow-y:auto;">
-      <h2 style="font-size:16px;margin-bottom:16px;">Histórico de Entregas</h2>
-      <div id="historyContent">
-        <p style="color:#94a3b8;">Selecione a aba Mapa para iniciar.</p>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script>
-let MAPBOX_TOKEN = "";
-let GRAPHHOPPER_KEY = "";
-const WEBSOCKET_SERVER = "wss://costasalgados-1.onrender.com";
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
-const entregadorId = authUser ? 'entregador_1_' + (authUser.id || '0') : 'entregador725';
 const API_BASE = window.location.origin + '/api';
 const TOKEN = authUser?.token || localStorage.getItem('token') || '';
-
-const wsUrl = WEBSOCKET_SERVER + '?entregadorId=' + entregadorId;
 
 async function apiRequest(path, options = {}) {
   const url = API_BASE + path;
@@ -236,14 +164,6 @@ async function apiRequest(path, options = {}) {
     throw new Error(err.error || 'Erro HTTP ' + res.status);
   }
   return res.json();
-}
-
-function switchTab(tab, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(tab === 'tracking' ? 'tabTracking' : 'tabHistory').classList.add('active');
-  if (tab === 'history') carregarHistorico();
 }
 
 // ========== CRUD Entregadores ==========
@@ -260,13 +180,11 @@ async function salvarEntregador() {
 
   try {
     if (editandoEntregadorId) {
-      // Editar via backend API
       await apiRequest('/entregadores/' + editandoEntregadorId, {
         method: 'PUT', body: JSON.stringify({ nome, endereco, whatsapp, chavePix, ativo: true })
       });
       toast('Entregador atualizado!');
     } else {
-      // Criar via backend API (fallback Firestore)
       try {
         await apiRequest('/entregadores', {
           method: 'POST',
@@ -336,9 +254,9 @@ async function carregarEntregadores() {
       <div class="driver-card ${ativo ? '' : 'inactive'}">
         <h4>${nome} <span class="badge ${ativo ? 'badge-active' : 'badge-inactive'}">${ativo ? 'Ativo' : 'Inativo'}</span></h4>
         <div class="info">
-          ${d.endereco ? `<span>📍 ${d.endereco}</span>` : ''}
-          ${d.whatsapp ? `<span>📱 ${d.whatsapp}</span>` : ''}
-          ${d.chavePix ? `<span>💳 Pix: ${d.chavePix}</span>` : ''}
+          ${d.endereco ? `<span>\ud83d\udccd ${d.endereco}</span>` : ''}
+          ${d.whatsapp ? `<span>\ud83d\udcf1 ${d.whatsapp}</span>` : ''}
+          ${d.chavePix ? `<span>\ud83d\udcb3 Pix: ${d.chavePix}</span>` : ''}
         </div>
         <div class="actions">
           <button class="btn btn-sm btn-ghost" onclick="editarEntregador('${id}', '${nome.replace(/'/g, "\\'")}', '${(d.endereco||'').replace(/'/g, "\\'")}', '${(d.whatsapp||'').replace(/'/g, "\\'")}', '${(d.chavePix||'').replace(/'/g, "\\'")}')"><i class="fas fa-pen"></i></button>
@@ -351,10 +269,6 @@ async function carregarEntregadores() {
   }).join('');
 }
 
-// Poll drivers periodically
-setInterval(carregarEntregadores, 15000);
-carregarEntregadores();
-
 // ========== Resumo do Dia ==========
 
 async function carregarResumoDia() {
@@ -366,8 +280,8 @@ async function carregarResumoDia() {
       box.innerHTML = '<p style="font-size:12px;color:#64748b;">Nenhuma entrega hoje</p>';
       return;
     }
-    var html = resumo.entregadores.map(function(e) {
-      return '<div class="row"><span class="name">' + (e.entregadorNome || e.entregadorId) + '</span><span class="value">' + e.totalEntregas + ' entregas — R$ ' + (e.totalValor || 0).toFixed(2) + '</span></div>';
+    const html = resumo.entregadores.map(function(e) {
+      return '<div class="row"><span class="name">' + (e.entregadorNome || e.entregadorId) + '</span><span class="value">' + e.totalEntregas + ' entregas \u2014 R$ ' + (e.totalValor || 0).toFixed(2) + '</span></div>';
     }).join('');
     box.innerHTML = html;
   } catch(e) {
@@ -375,200 +289,10 @@ async function carregarResumoDia() {
   }
 }
 
-// ========== MAPA E RASTREAMENTO ==========
-
-let map;
-async function initMap() {
-  try {
-    const cfg = await fetch('/api/config').then(r => r.json());
-    mapboxgl.accessToken = cfg.mapboxToken;
-    MAPBOX_TOKEN = cfg.mapboxToken;
-    GRAPHHOPPER_KEY = cfg.graphhopperKey || '';
-  } catch(e) { console.error('Erro ao carregar config:', e); }
-  map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v12',
-    center: [-43.373775, -22.717847],
-    zoom: 13
-  });
-}
-initMap();
-
-let markerEntregador = null, markerCliente = null;
-let pedidoId = null, destinoCliente = null;
-let geoWatchId = null, rotaCoords = [];
-let ultimaRotaAtualizada = 0;
-const TEMPO_MIN_RECALCULO = 20000;
-const TOLERANCIA_DESVIO = 0.0008;
-
-const ws = new WebSocket(wsUrl);
-const statusSpan = document.getElementById('status');
-ws.onopen = () => statusSpan.textContent = '🟢 Conectado';
-ws.onclose = () => statusSpan.textContent = '🔴 Desconectado';
-ws.onerror = () => statusSpan.textContent = '⚠️ Erro de conexão';
-
-function enviarWS(dados) {
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(dados));
-  else ws.addEventListener('open', () => ws.send(JSON.stringify(dados)), { once: true });
-}
-
-async function carregarPedidos() {
-  const select = document.getElementById('pedidoSelect');
-  select.innerHTML = '<option value="">Carregando...</option>';
-  try {
-    const pedidos = await apiRequest('/pedidos?status=aceito,producao,pronto,emRota');
-    if (!pedidos || pedidos.length === 0) { select.innerHTML = '<option value="">Nenhum pedido pendente</option>'; return; }
-    select.innerHTML = '<option value="">Selecione um pedido</option>';
-    pedidos.forEach(function(p) {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.id.slice(-6) + ' - ' + (p.clienteNome || 'Cliente');
-      select.appendChild(opt);
-    });
-  } catch (e) {
-    console.error(e);
-    select.innerHTML = '<option value="">Erro ao carregar</option>';
-  }
-}
-
-async function calcularRotaGH(origem, destino) {
-  try {
-    const url = `/api/proxy/graphhopper?path=/route&point=${origem.lat},${origem.lng}&point=${destino.lat},${destino.lng}&vehicle=car&points_encoded=false`;
-    const res = await fetch(url).catch(() => {
-      // Fallback: chama GraphHopper diretamente
-      return fetch(`https://graphhopper.com/api/1/route?point=${origem.lat},${origem.lng}&point=${destino.lat},${destino.lng}&vehicle=car&points_encoded=false&key=${GRAPHHOPPER_KEY}`);
-    });
-    const data = await res.json();
-    if (!data.paths?.length) return;
-    rotaCoords = data.paths[0].points.coordinates;
-    if (map.getSource('rota')) {
-      map.getSource('rota').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: rotaCoords } });
-    } else {
-      map.addSource('rota', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: rotaCoords } } });
-      map.addLayer({ id: 'rota', type: 'line', source: 'rota', paint: { 'line-color': '#2196f3', 'line-width': 5 } });
-    }
-  } catch (e) { console.error('Erro rota:', e); }
-}
-
-function smoothMove(marker, target, duration = 1000) {
-  if (!marker) return;
-  const start = marker.getLngLat();
-  const startTime = performance.now();
-  function animate(time) {
-    const t = Math.min((time - startTime) / duration, 1);
-    marker.setLngLat([start.lng + (target.lng - start.lng) * t, start.lat + (target.lat - start.lat) * t]);
-    if (t < 1) requestAnimationFrame(animate);
-  }
-  requestAnimationFrame(animate);
-}
-
-function distanciaPontoLinha(ponto, linha) {
-  let minDist = Infinity;
-  for (let i = 0; i < linha.length - 1; i++) {
-    const [x1, y1] = linha[i], [x2, y2] = linha[i + 1];
-    const px = ponto.lng, py = ponto.lat;
-    const dx = x2 - x1, dy = y2 - y1;
-    const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
-    let nx, ny;
-    if (t < 0) { nx = x1; ny = y1; }
-    else if (t > 1) { nx = x2; ny = y2; }
-    else { nx = x1 + t * dx; ny = y1 + t * dy; }
-    minDist = Math.min(minDist, Math.sqrt((px - nx) ** 2 + (py - ny) ** 2));
-  }
-  return minDist;
-}
-
-function startGeolocation() {
-  if (!navigator.geolocation) return toast('Geolocalização não suportada', 'danger');
-  geoWatchId = navigator.geolocation.watchPosition(async pos => {
-    const { latitude, longitude } = pos.coords;
-    if (!markerEntregador) {
-      markerEntregador = new mapboxgl.Marker({ color: '#ff5722' }).setLngLat([longitude, latitude]).addTo(map);
-    } else smoothMove(markerEntregador, { lat: latitude, lng: longitude }, 500);
-    map.setCenter([longitude, latitude]);
-    const agora = Date.now();
-    if (rotaCoords.length && distanciaPontoLinha({ lat: latitude, lng: longitude }, rotaCoords) > TOLERANCIA_DESVIO && (agora - ultimaRotaAtualizada > TEMPO_MIN_RECALCULO)) {
-      ultimaRotaAtualizada = agora;
-      await calcularRotaGH({ lat: latitude, lng: longitude }, destinoCliente);
-    }
-    enviarWS({ tipo: 'atualizacao_localizacao', entregadorId, pedidoId, latitude, longitude, timestamp: agora });
-    if (pedidoId) {
-      try { apiRequest('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(entregadorId), pedidoId, valor: 0 }) }); } catch(e) {}
-    }
-  }, err => console.error('Erro GPS:', err), { enableHighAccuracy: true });
-}
-
-document.getElementById('btnIniciar').onclick = async function() {
-  const select = document.getElementById('pedidoSelect');
-  pedidoId = select.value;
-  if (!pedidoId) return toast('Selecione um pedido', 'warning');
-
-  var pedidoAtual = await apiRequest('/pedidos/' + pedidoId);
-  const endereco = (pedidoAtual.clienteEndereco || '') + ' ' + (pedidoAtual.clienteNumero || '') + ', ' + (pedidoAtual.clienteBairro || '') + ', Belford Roxo, RJ';
-  const geoRes = await fetch(`/api/proxy/mapbox?path=/geocoding/v5/mapbox.places/${encodeURIComponent(endereco)}.json`);
-  const geoData = await geoRes.json();
-  if (!geoData.features?.length) return toast('Endereço não encontrado', 'danger');
-  const [lng, lat] = geoData.features[0].center;
-  destinoCliente = { lat, lng };
-
-  if (!markerCliente) markerCliente = new mapboxgl.Marker({ color: '#4caf50' }).setLngLat([lng, lat]).addTo(map);
-  else markerCliente.setLngLat([lng, lat]);
-
-  const pos = await new Promise(res => navigator.geolocation.getCurrentPosition(p => res({ lat: p.coords.latitude, lng: p.coords.longitude })));
-  await calcularRotaGH(pos, destinoCliente);
-  startGeolocation();
-  statusSpan.textContent = `🚚 Corrida: ${pedidoId.slice(-6)}`;
-  window.open(`https://www.google.com/maps?q=${destinoCliente.lat},${destinoCliente.lng}`, '_blank');
-};
-
-document.getElementById('btnFinalizar').onclick = async () => {
-  if (!pedidoId) return toast('Nenhum pedido em andamento', 'warning');
-  if (!(await confirmModal('Finalizar entrega?'))) return;
-  if (geoWatchId != null) navigator.geolocation.clearWatch(geoWatchId);
-  await apiRequest('/pedidos/' + pedidoId + '/finalizar', { method: 'POST' });
-  try { await apiRequest('/entregas/' + pedidoId, { method: 'DELETE' }); } catch(e) {}
-  enviarWS({ tipo: 'entrega_finalizada', entregadorId, pedidoId });
-
-  // Registrar no resumo do dia via API
-  try {
-    var pedidoFinalizado = await apiRequest('/pedidos/' + pedidoId);
-    var valorEntrega = Number(pedidoFinalizado.total) || 0;
-    await apiRequest('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(entregadorId), pedidoId, valor: valorEntrega }) });
-  } catch(e) {}
-
-  pedidoId = null; destinoCliente = null; rotaCoords = [];
-  statusSpan.textContent = '✅ Finalizada';
-  markerCliente?.remove(); markerCliente = null;
-  markerEntregador?.remove(); markerEntregador = null;
-  carregarPedidos();
-  carregarResumoDia();
-};
-
-// ========== Histórico ==========
-
-async function carregarHistorico() {
-  const container = document.getElementById('historyContent');
-  const hoje = new Date().toISOString().split('T')[0];
-  try {
-    const resumo = await apiRequest('/entregas/resumo?data=' + hoje);
-    if (!resumo.entregadores || resumo.entregadores.length === 0) {
-      container.innerHTML = '<p style="color:#94a3b8;">Nenhuma entrega registrada hoje.</p>';
-      return;
-    }
-    let html = '<div class="report-box" style="background:white;border:1px solid #e2e8f0;">';
-    resumo.entregadores.forEach(function(r) {
-      html += '<div class="row"><span class="name">' + (r.entregadorNome || r.entregadorId) + '</span><span class="value">' + r.totalEntregas + ' entregas — R$ ' + (r.totalValor || 0).toFixed(2) + '</span></div>';
-    });
-    html += '</div>';
-    container.innerHTML = html;
-  } catch(e) {
-    container.innerHTML = '<p style="color:#94a3b8;">Erro ao carregar hist\u00f3rico.</p>';
-  }
-}
-
-    
-// ========== INIT ==========
-carregarPedidos();
+// Poll drivers and resumo
+setInterval(carregarEntregadores, 15000);
+setInterval(carregarResumoDia, 30000);
+carregarEntregadores();
 carregarResumoDia();
 </script>
 </body>
