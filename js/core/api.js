@@ -4,7 +4,8 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function request(method, path, body) {
-  const token = localStorage.getItem('authToken');
+  const u = JSON.parse(localStorage.getItem('authUser') || '{}');
+  const token = u.token || '';
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
