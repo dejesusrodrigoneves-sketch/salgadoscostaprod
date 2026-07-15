@@ -478,7 +478,10 @@ function addDiscount(){
 // ---------------- INICIALIZAÇÃO ---------------- //
 async function loadProductsFromFirestore(){
   try {
-    window.products = await PUBLIC_API.listarProdutos();
+    const data = await PUBLIC_API.listarProdutos();
+    window.products = (data || []).map(function(p) {
+      return { ...p, price: Number(p.price), lastPrice: p.lastPrice ? Number(p.lastPrice) : null };
+    });
   } catch(e) {
     console.error("Erro ao carregar produtos:", e);
     window.products = [];
