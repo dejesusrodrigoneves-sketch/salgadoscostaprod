@@ -3,10 +3,7 @@ const sql = require('../repositories/sqlRepository');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.listar = asyncHandler(async (req, res) => {
-  const { status } = req.query;
-  const filtros = {};
-  if (status) filtros.status = status;
-  const pedidos = await orderService.listar(filtros);
+  const pedidos = await orderService.listarFiltrado(req.query);
   res.json(pedidos);
 });
 
