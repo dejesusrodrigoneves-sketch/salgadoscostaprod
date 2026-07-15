@@ -37,7 +37,7 @@ async function criar(role) {
     try {
       const { data } = await axios.post(
         `${config.evolutionUrl}/instance/create`,
-        { instanceName, integration: 'WHATSAPP-BAILEYS' },
+        { instanceName, integration: 'WHATSAPP-BAILEYS', qrcode: true },
         { headers: { apikey: config.evolutionApiKey } }
       );
       evolutionData = data;
@@ -54,7 +54,7 @@ async function criar(role) {
     empresaId: 1,
     instanceId: instanceName,
     connectionStatus: evolutionData ? 'qrcode' : 'disconnected',
-    qrCode: evolutionData?.qrcode?.pairingCode || null,
+    qrCode: evolutionData?.qrcode?.code || evolutionData?.qrcode?.pairingCode || null,
     isActive: true,
   });
 
@@ -99,33 +99,40 @@ async function gerarQrCode(id) {
     throw Object.assign(new Error('Evolution API: ' + msg), { status: err.response?.status || 502 });
   }
 
-  let pairingCode = null;
   let base64 = null;
+  let rawCode = null;
+  let pairingCode = null;
 
   if (data && typeof data === 'object') {
     if (data.qrcode) {
-      pairingCode = data.qrcode.pairingCode || data.qrcode.code || pairingCode;
       base64 = data.qrcode.base64 || base64;
+      rawCode = data.qrcode.code || rawCode;
+      pairingCode = data.qrcode.pairingCode || pairingCode;
     }
-    pairingCode = data.pairingCode || data.code || pairingCode;
     base64 = data.base64 || base64;
+    rawCode = data.code || rawCode;
+    pairingCode = data.pairingCode || pairingCode;
     if (data.instance?.qrcode) {
-      pairingCode = data.instance.qrcode.pairingCode || data.instance.qrcode.code || pairingCode;
       base64 = data.instance.qrcode.base64 || base64;
+      rawCode = data.instance.qrcode.code || rawCode;
+      pairingCode = data.instance.qrcode.pairingCode || pairingCode;
     }
   }
 
+  await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'qrcode' });
+
   if (base64) {
-    await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'qrcode' });
     return { pairingCode, base64, type: 'image', raw: data };
   }
 
+  if (rawCode) {
+    const qrBase64 = await QRCode.toDataURL(rawCode);
+    return { pairingCode: null, base64: qrBase64, type: 'image', raw: data };
+  }
+
   if (pairingCode) {
-    await sql.atualizarWhatsAppInstance(id, {
-      qrCode: pairingCode,
-      connectionStatus: 'qrcode',
-    });
     const qrBase64 = await QRCode.toDataURL(pairingCode);
+    await sql.atualizarWhatsAppInstance(id, { qrCode: pairingCode });
     return { pairingCode, base64: qrBase64, type: 'image', raw: data };
   }
 
