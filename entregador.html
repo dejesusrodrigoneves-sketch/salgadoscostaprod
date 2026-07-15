@@ -182,9 +182,30 @@ body {
 
  
 
-  
 
-    <!-- Tab: History -->
+
+  <div class="main">
+    <div class="topbar">
+      <h1><i class="fas fa-motorcycle"></i> Rastreamento</h1>
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="switchTab('tracking', this)"><i class="fas fa-map-marked-alt"></i> Mapa</button>
+        <button class="tab-btn" onclick="switchTab('history', this)"><i class="fas fa-history"></i> Histórico</button>
+      </div>
+    </div>
+
+    <div class="info-bar">
+      <span id="status">🔴 Desconectado</span>
+      <select id="pedidoSelect"></select>
+      <button class="btn btn-primary btn-sm" id="btnIniciar"><i class="fas fa-play"></i> Iniciar</button>
+      <button class="btn btn-danger btn-sm" id="btnFinalizar"><i class="fas fa-stop"></i> Finalizar</button>
+    </div>
+
+    <div class="tab-content active" id="tabTracking">
+      <div class="map-wrap">
+        <div id="map"></div>
+      </div>
+    </div>
+
     <div class="tab-content" id="tabHistory" style="padding:24px;overflow-y:auto;">
       <h2 style="font-size:16px;margin-bottom:16px;">Histórico de Entregas</h2>
       <div id="historyContent">
@@ -195,7 +216,8 @@ body {
 </div>
 
 <script>
-const MAPBOX_TOKEN = "";
+let MAPBOX_TOKEN = "";
+let GRAPHHOPPER_KEY = "";
 const WEBSOCKET_SERVER = "wss://costasalgados-1.onrender.com";
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 const entregadorId = authUser ? 'entregador_1_' + (authUser.id || '0') : 'entregador725';
@@ -263,7 +285,7 @@ async function salvarEntregador() {
   document.getElementById('inpWhatsapp').value = '';
   document.getElementById('inpPix').value = '';
   editandoEntregadorId = null;
-  document.querySelector('#sidebar h3').textContent = 'Cadastrar Entregador';
+  document.querySelector('.sidebar h3').textContent = 'Cadastrar Entregador';
 }
 
 function editarEntregador(id, nome, endereco, whatsapp, chavePix) {
@@ -272,7 +294,7 @@ function editarEntregador(id, nome, endereco, whatsapp, chavePix) {
   document.getElementById('inpWhatsapp').value = whatsapp || '';
   document.getElementById('inpPix').value = chavePix || '';
   editandoEntregadorId = id;
-  document.querySelector('#sidebar h3').textContent = 'Editar Entregador';
+  document.querySelector('.sidebar h3').textContent = 'Editar Entregador';
   toast('Editando entregador', 'info');
 }
 
@@ -361,6 +383,7 @@ async function initMap() {
     const cfg = await fetch('/api/config').then(r => r.json());
     mapboxgl.accessToken = cfg.mapboxToken;
     MAPBOX_TOKEN = cfg.mapboxToken;
+    GRAPHHOPPER_KEY = cfg.graphhopperKey || '';
   } catch(e) { console.error('Erro ao carregar config:', e); }
   map = new mapboxgl.Map({
     container: 'map',
@@ -537,9 +560,11 @@ async function carregarHistorico() {
       html += '<div class="row"><span class="name">' + (r.entregadorNome || r.entregadorId) + '</span><span class="value">' + r.totalEntregas + ' entregas — R$ ' + (r.totalValor || 0).toFixed(2) + '</span></div>';
     });
     html += '</div>';
-  container.innerHTML = html;
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<p style="color:#94a3b8;">Erro ao carregar hist\u00f3rico.</p>';
   }
-    }
+}
 
     
 // ========== INIT ==========
