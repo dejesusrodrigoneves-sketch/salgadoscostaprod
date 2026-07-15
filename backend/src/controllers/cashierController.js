@@ -23,7 +23,15 @@ exports.fechar = asyncHandler(async (req, res) => {
   const data = new Date().toISOString().split('T')[0];
   const caixa = await sql.buscarCaixaHoje(data);
   if (!caixa) return res.status(404).json({ error: 'Caixa não encontrado' });
-  const atualizado = await sql.atualizarCaixa(caixa.id, { status: 'fechado', fechadoEm: new Date(), ...req.body });
+  const body = {
+    totalPedidos: Number(req.body.totalPedidos) || 0,
+    totalDinheiro: Number(req.body.totalDinheiro) || 0,
+    totalPix: Number(req.body.totalPix) || 0,
+    totalDebito: Number(req.body.totalDebito) || 0,
+    totalCredito: Number(req.body.totalCredito) || 0,
+    quantidadePedidos: Number(req.body.quantidadePedidos) || 0,
+  };
+  const atualizado = await sql.atualizarCaixa(caixa.id, { status: 'fechado', fechadoEm: new Date(), ...body });
   res.json(atualizado);
 });
 
