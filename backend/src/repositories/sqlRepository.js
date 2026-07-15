@@ -11,11 +11,19 @@ const sql = {
   },
   async criarProduto(data) {
     const { id, empresaId, ...rest } = data;
+    if (rest.categoryId) {
+      rest.category = { connect: { id: rest.categoryId } };
+      delete rest.categoryId;
+    }
     return prisma.produto.create({
       data: { ...rest, empresa: { connect: { id: empresaId || EMPRESA_ID } } }
     });
   },
   async atualizarProduto(id, data) {
+    if (data.categoryId) {
+      data.category = { connect: { id: data.categoryId } };
+      delete data.categoryId;
+    }
     return prisma.produto.update({ where: { id: Number(id) }, data });
   },
   async deletarProduto(id) {
