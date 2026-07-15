@@ -209,11 +209,68 @@ body {
   border-color: var(--primary);
 }
 
-.order-card.status-aceito    { border-left: 3px solid var(--success); }
+.order-card.status-pendente  { border-left: 4px solid var(--danger); background: #FEF2F2; animation: pulse-pendente 2s ease-in-out infinite; }
 .order-card.status-producao  { border-left: 3px solid var(--warning); }
 .order-card.status-pronto    { border-left: 3px solid var(--primary); }
 .order-card.status-emRota    { border-left: 3px solid var(--primary); }
 .order-card.status-finalizado{ border-left: 3px solid var(--success); }
+
+@keyframes pulse-pendente {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.25); }
+  50%      { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+}
+
+.badge-novo {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--danger);
+  background: #FEE2E2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  animation: blink-novo 1s step-end infinite;
+}
+
+@keyframes blink-novo {
+  50% { opacity: 0; }
+}
+
+.btn-aceitar {
+  background: var(--success);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: var(--r-btn);
+  transition: background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+}
+
+.btn-aceitar:hover {
+  background: #16A34A;
+}
+
+.stat-pendente {
+  animation: pulse-stat 2s ease-in-out infinite;
+}
+
+.order-header.no-toggle {
+  cursor: default;
+}
+
+@keyframes pulse-stat {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
 
 .order-header {
   display: flex;
@@ -260,7 +317,7 @@ body {
   font-weight: 600;
 }
 
-.order-status.status-aceito     { background: #DCFCE7; color: var(--success); }
+.order-status.status-pendente   { background: #FEE2E2; color: var(--danger); font-weight: 700; }
 .order-status.status-producao   { background: #FEF3C7; color: var(--warning); }
 .order-status.status-pronto     { background: var(--primary-bg); color: var(--primary); }
 .order-status.status-emRota     { background: var(--primary-bg); color: var(--primary); }
@@ -663,14 +720,10 @@ function api(path, opts) {
 </head>
 <body>
 
-<audio id="somNovoPedido" preload="auto" style="display:none">
-  <source src="https://archive.org/download/viralaudio-descent-whoosh-long-cinematic-sound-effect-405921/viralaudio-descent-whoosh-long-cinematic-sound-effect-405921.mp3" type="audio/mpeg">
-</audio>
-
 <div class="page-header">
   <h1><i class="fas fa-box"></i> Pedidos</h1>
   <div class="stats-row">
-    <div class="stat-chip"><i class="fas fa-clock"></i> Aceitos <span class="count" id="statAceito">0</span></div>
+    <div class="stat-chip stat-pendente"><i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Pendentes <span class="count" id="statPendente" style="background:var(--danger)">0</span></div>
     <div class="stat-chip"><i class="fas fa-cog"></i> Produção <span class="count" id="statProducao">0</span></div>
     <div class="stat-chip"><i class="fas fa-check-circle"></i> Prontos <span class="count" id="statPronto">0</span></div>
     <div class="stat-chip"><i class="fas fa-truck"></i> Rota <span class="count" id="statRota">0</span></div>
@@ -678,13 +731,13 @@ function api(path, opts) {
 </div>
 
 <div class="tabs" id="tabsContainer">
-  <div class="tab active" data-tab="aceito"><i class="fas fa-clock"></i> Aceitos <span class="tab-count" id="tabCountAceito">0</span></div>
+  <div class="tab active" data-tab="pendente"><i class="fas fa-exclamation-triangle"></i> Pendentes <span class="tab-count" id="tabCountPendente" style="background:var(--danger);color:#fff">0</span></div>
   <div class="tab" data-tab="producao"><i class="fas fa-cog"></i> Produção <span class="tab-count" id="tabCountProducao">0</span></div>
   <div class="tab" data-tab="pronto"><i class="fas fa-check-circle"></i> Pronto <span class="tab-count" id="tabCountPronto">0</span></div>
   <div class="tab" data-tab="emRota"><i class="fas fa-truck"></i> Em Rota <span class="tab-count" id="tabCountRota">0</span></div>
 </div>
 
-<div id="aceito" class="tab-content active"></div>
+<div id="pendente" class="tab-content active"></div>
 <div id="producao" class="tab-content"></div>
 <div id="pronto" class="tab-content"></div>
 <div id="emRota" class="tab-content"></div>
@@ -697,7 +750,7 @@ if (!authGuard()) throw new Error('Redirect');
 </script>
 <script>
 const containers = {
-  aceito: document.getElementById('aceito'),
+  pendente: document.getElementById('pendente'),
   producao: document.getElementById('producao'),
   pronto: document.getElementById('pronto'),
   emRota: document.getElementById('emRota')
@@ -770,14 +823,14 @@ function gerarHTMLImpressao(p) {
       }
     });
   }
-  html += '<hr />
-    <p><strong>Total itens:</strong> ' + fmtMoeda(p.valores?.itens) + '<br>
-    <strong>Taxa cartão:</strong> ' + (p.taxaCartao ? fmtMoeda(p.taxaCartao) : 'R$ 0,00') + '<br>
-    <strong>Taxa entrega:</strong> ' + fmtMoeda(p.valores?.entrega) + '<br>
-    <strong>Desconto:</strong> ' + fmtMoeda(p.valores?.desconto) + '<br><br>
-    <strong>Total:</strong> ' + fmtMoeda(p.valores?.total) + '</p>
-    <hr /><p style="text-align:center;">Obrigado pelo seu pedido!</p>
-  </body></html>';
+  html += '<hr>' +
+    '<p><strong>Total itens:</strong> ' + fmtMoeda(p.valores?.itens) + '<br>' +
+    '<strong>Taxa cartão:</strong> ' + (p.taxaCartao ? fmtMoeda(p.taxaCartao) : 'R$ 0,00') + '<br>' +
+    '<strong>Taxa entrega:</strong> ' + fmtMoeda(p.valores?.entrega) + '<br>' +
+    '<strong>Desconto:</strong> ' + fmtMoeda(p.valores?.desconto) + '<br><br>' +
+    '<strong>Total:</strong> ' + fmtMoeda(p.valores?.total) + '</p>' +
+    '<hr><p style="text-align:center;">Obrigado pelo seu pedido!</p>' +
+    '</body></html>';
   return html;
 }
 
@@ -797,7 +850,7 @@ function atualizarBadgeEsteira() {
 
 function renderCard(p, docId) {
   const statusMap = {
-    aceito: 'Aceito', producao: 'Produção', pronto: 'Pronto', emRota: 'Em Rota'
+    pendente: 'Pendente', producao: 'Produção', pronto: 'Pronto', emRota: 'Em Rota'
   };
 
   const card = document.createElement('div');
@@ -806,17 +859,19 @@ function renderCard(p, docId) {
 
   const nome = p.cliente?.nome || 'Cliente';
   const total = fmtMoeda(p.valores?.total);
+  const isPendente = p.status === 'pendente';
 
   card.innerHTML = `
-    <div class="order-header" onclick="this.closest('.order-card').classList.toggle('open')">
+    <div class="order-header${isPendente ? ' no-toggle' : ''}" ${isPendente ? '' : 'onclick="this.closest(\'.order-card\').classList.toggle(\'open\')"'}>
       <div class="order-header-left">
         <span class="order-name">${escapeHtml(nome)}</span>
         <span class="order-code">#${docId.slice(-6)}</span>
         <span class="order-status status-${p.status}">${statusMap[p.status] || p.status}</span>
+        ${isPendente ? '<span class="badge-novo">NOVO</span>' : ''}
       </div>
       <div class="order-header-right">
         <span class="order-total">${total}</span>
-        <i class="fas fa-chevron-down order-toggle"></i>
+        ${isPendente ? '' : '<i class="fas fa-chevron-down order-toggle"></i>'}
       </div>
     </div>
     <div class="order-body">
@@ -835,16 +890,31 @@ function renderCard(p, docId) {
       </div>
       ${fmtItens(p.itens)}
       <div class="order-actions">
-        <button class="btn btn-producao" data-action="producao"><i class="fas fa-box"></i> Produção</button>
-        <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
-        <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
-        <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
-        <button class="btn btn-whatsapp" data-action="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-        <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
-        <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
+        ${isPendente ? `
+          <button class="btn-aceitar" data-action="aceitar"><i class="fas fa-check"></i> Aceitar Pedido</button>
+          <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
+        ` : `
+          <button class="btn btn-producao" data-action="producao"><i class="fas fa-box"></i> Produção</button>
+          <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
+          <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
+          <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
+          <button class="btn btn-whatsapp" data-action="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+          <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
+          <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
+        `}
       </div>
     </div>
   `;
+
+  if (isPendente) {
+    card.querySelector('[data-action="aceitar"]').onclick = async () => {
+      await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'producao' }) });
+      toast('Pedido aceito e enviado para produção!', 'success');
+      carregarPedidos();
+    };
+    card.querySelector('[data-action="print"]').onclick = () => imprimirPedido(p);
+    return card;
+  }
 
   card.querySelector('[data-action="producao"]').onclick = async () => {
     await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'producao' }) });
@@ -908,11 +978,11 @@ function updateStats() {
     const s = c.dataset.status;
     counts[s] = (counts[s] || 0) + 1;
   });
-  document.getElementById('statAceito').textContent = counts.aceito || 0;
+  document.getElementById('statPendente').textContent = counts.pendente || 0;
   document.getElementById('statProducao').textContent = counts.producao || 0;
   document.getElementById('statPronto').textContent = counts.pronto || 0;
   document.getElementById('statRota').textContent = counts.emRota || 0;
-  document.getElementById('tabCountAceito').textContent = counts.aceito || 0;
+  document.getElementById('tabCountPendente').textContent = counts.pendente || 0;
   document.getElementById('tabCountProducao').textContent = counts.producao || 0;
   document.getElementById('tabCountPronto').textContent = counts.pronto || 0;
   document.getElementById('tabCountRota').textContent = counts.emRota || 0;
@@ -962,19 +1032,71 @@ async function selecionarEntregadorModal(pedidoNome) {
   });
 }
 
-let primeiraCarga = true;
-const som = document.getElementById('somNovoPedido');
+// --- Web Audio API beep system ---
+let audioCtx = null;
+let beepLoopId = null;
+let beepInProg = false;
 
-document.addEventListener('click', () => {
-  som.play().then(() => { som.pause(); som.currentTime = 0; }).catch(() => {});
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function beep(freq, duration, type) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.value = freq || 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+function tocarAlarmeNovoPedido() {
+  beep(880, 0.2);
+  setTimeout(function() { beep(880, 0.2); }, 250);
+  setTimeout(function() { beep(880, 0.3); }, 500);
+}
+
+function beepLoop() {
+  if (beepInProg) return;
+  beepInProg = true;
+  function tick() {
+    beepLoopId = setTimeout(function() {
+      beep(880, 0.5, 'sine');
+      tick();
+    }, 3000);
+  }
+  tick();
+}
+
+function pararBeepLoop() {
+  if (beepLoopId) { clearTimeout(beepLoopId); beepLoopId = null; }
+  beep(660, 0.15, 'sine');
+  beepInProg = false;
+}
+
+document.addEventListener('click', function() {
+  var ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
 }, { once: true });
+
+// --- polling + detection ---
+let pendentesAnteriores = [];
+let primeiraCarga = true;
 
 async function carregarPedidos() {
   try {
     var pedidos = await api('/pedidos');
     Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
-    pedidos = pedidos.filter(function(p) { return p.status && p.status !== 'pendente'; });
     pedidos.forEach(function(p) {
+      if (!p.status) return;
       var container = containers[p.status];
       if (!container) return;
       var card = renderCard(p, p.id);
@@ -982,9 +1104,26 @@ async function carregarPedidos() {
     });
     updateStats();
     atualizarBadgeEsteira();
-    if (primeiraCarga) {
-      primeiraCarga = false;
+
+    var pendentesAtuais = pedidos.filter(function(p) { return p.status === 'pendente'; });
+    var novosIds = pendentesAtuais.filter(function(p) {
+      return !pendentesAnteriores.some(function(a) { return a.id === p.id; });
+    });
+
+    if (novosIds.length > 0) {
+      tocarAlarmeNovoPedido();
+      var abaAtiva = document.querySelector('.tab.active');
+      if (abaAtiva && abaAtiva.dataset.tab !== 'pendente') {
+        var tabPendente = document.querySelector('.tab[data-tab="pendente"]');
+        if (tabPendente) tabPendente.click();
+      }
     }
+
+    if (pendentesAtuais.length > 0 && !beepLoopId) beepLoop();
+    else if (pendentesAtuais.length === 0 && beepLoopId) pararBeepLoop();
+
+    pendentesAnteriores = pendentesAtuais;
+    primeiraCarga = false;
   } catch(e) {
     console.error('Erro ao carregar pedidos:', e);
     toast('Erro ao carregar pedidos. Tentando novamente...', 'danger');
