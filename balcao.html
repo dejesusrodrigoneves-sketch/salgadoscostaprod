@@ -87,7 +87,8 @@ let typeAtual = null;
 // Carregar produtos via API
 async function carregarProdutos() {
   try {
-    var token = localStorage.getItem('authToken');
+    var authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+    var token = authUser.token || '';
     var res = await fetch('/api/produtos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
     if (!res.ok) throw new Error('Erro ao carregar produtos');
     todosProdutos = await res.json();
