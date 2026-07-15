@@ -247,12 +247,12 @@ async function excluirCategoria(id) {
 }
 
 function criarItemNaCategoria(catId) {
-  formProduto.reset();
-  isEditando = false;
-  document.getElementById("btnSalvarProduto").textContent = "Salvar";
+  limparFormProduto();
   if (fCategoryId) fCategoryId.value = catId;
   toggleEstoqueFields();
   selectTab('produtos');
+  const topo = document.getElementById('view-produtos');
+  if (topo) topo.scrollIntoView({ behavior: 'smooth', block: 'start' });
   fName.focus();
   toast('Novo item na categoria selecionada', 'info');
 }
@@ -293,6 +293,8 @@ fImgFile?.addEventListener('change', async function() {
     this.value = '';
     return;
   }
+  const imgAnterior = fImg.value;
+  const previewAnterior = fImgPreview.src;
   const reader = new FileReader();
   reader.onload = e => { fImgPreview.src = e.target.result; fImgPreview.style.display = 'block'; };
   reader.readAsDataURL(file);
@@ -302,12 +304,20 @@ fImgFile?.addEventListener('change', async function() {
     const res = await fetch(API_BASE + '/upload', { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) {
+      fImgPreview.src = previewAnterior;
+      fImgPreview.style.display = previewAnterior ? 'block' : 'none';
+      fImg.value = imgAnterior;
       toast(data.error || 'Erro no upload', 'danger');
+      this.value = '';
       return;
     }
     fImg.value = data.url;
     toast('Imagem enviada!');
   } catch (e) {
+    fImgPreview.src = previewAnterior;
+    fImgPreview.style.display = previewAnterior ? 'block' : 'none';
+    fImg.value = imgAnterior;
+    this.value = '';
     toast('Falha no upload: ' + e.message, 'danger');
   }
 });
@@ -401,6 +411,16 @@ function onActionProduto(e){
 }
 
 let isEditando = false;
+
+function limparFormProduto() {
+  formProduto.reset();
+  fImgPreview.src = '';
+  fImgPreview.style.display = 'none';
+  isEditando = false;
+  document.getElementById("btnSalvarProduto").textContent = "Salvar";
+  document.getElementById("formTitle").textContent = "Novo Produto";
+  toggleEstoqueFields();
+}
 
 function carregarNoForm(id) {
   const p = cacheProdutos.find(x => x.id === id);
@@ -509,9 +529,10 @@ formProduto.addEventListener('submit', async e => {
     }
     toast(isEditando ? 'Produto atualizado!' : 'Produto cadastrado!');
     blink(e.submitter);
-    formProduto.reset();
-    isEditando = false;
-    document.getElementById("btnSalvarProduto").textContent = "Salvar";
+    limparFormProduto();
+    selectTab('produtos');
+    const topo = document.getElementById('view-produtos');
+    if (topo) topo.scrollIntoView({ behavior: 'smooth', block: 'start' });
     carregarProdutosApi();
   } catch (err) {
     console.error("Erro ao salvar produto:", err);
@@ -534,10 +555,7 @@ fControlaEstoque?.addEventListener("change", toggleEstoqueFields);
 toggleEstoqueFields();
 
 btnLimparForm?.addEventListener('click', () => {
-  formProduto.reset();
-  isEditando = false;
-  document.getElementById("btnSalvarProduto").textContent = "Salvar";
-  toggleEstoqueFields();
+  limparFormProduto();
 });
 
 buscaInput?.addEventListener('input', renderProdutos);
