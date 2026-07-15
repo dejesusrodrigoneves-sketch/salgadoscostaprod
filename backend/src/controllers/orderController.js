@@ -4,7 +4,28 @@ const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.listar = asyncHandler(async (req, res) => {
   const pedidos = await orderService.listarFiltrado(req.query);
-  res.json(pedidos);
+  const formatado = pedidos.map(function(p) {
+    return {
+      ...p,
+      cliente: {
+        nome: p.clienteNome,
+        whatsapp: p.clienteWhatsapp,
+        endereco: p.clienteEndereco,
+        numero: p.clienteNumero,
+        bairro: p.clienteBairro,
+        pontoReferencia: p.clienteReferencia
+      },
+      cep: p.clienteCep,
+      valores: {
+        itens: p.valoresItens,
+        entrega: p.taxasEntrega,
+        desconto: p.desconto,
+        total: p.total
+      },
+      taxaCartao: p.taxasCartao,
+    };
+  });
+  res.json(formatado);
 });
 
 exports.buscar = asyncHandler(async (req, res) => {
