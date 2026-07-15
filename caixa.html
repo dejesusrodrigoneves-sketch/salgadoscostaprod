@@ -218,7 +218,7 @@ async function carregarResumo(){
   document.getElementById('caixaCard').style.display = 'block';
   try {
     const caixa = await api('/caixa/hoje');
-    trocoInicial = caixa.valorInicial || 0;
+    trocoInicial = Number(caixa.valorInicial) || 0;
     document.getElementById('trocoInicial').textContent = trocoInicial.toFixed(2);
     const hojeStr = new Date().toISOString().split('T')[0];
     const pedidos = await api('/pedidos?createdAtFrom=' + hojeStr + 'T00:00:00&createdAtTo=' + hojeStr + 'T23:59:59');
