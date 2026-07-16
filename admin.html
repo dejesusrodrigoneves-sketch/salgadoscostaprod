@@ -924,6 +924,7 @@ function renderCard(p, docId) {
   const card = document.createElement('div');
   card.className = 'order-card status-' + p.status;
   card.dataset.status = p.status;
+  card.dataset.id = docId;
 
   const nome = p.cliente?.nome || 'Cliente';
   const total = fmtMoeda(p.valores?.total);
@@ -1161,6 +1162,10 @@ let primeiraCarga = true;
 
 async function carregarPedidos() {
   try {
+    var openIds = [];
+    document.querySelectorAll('.order-card.open').forEach(function(c) {
+      if (c.dataset.id) openIds.push(c.dataset.id);
+    });
     var pedidos = await api('/pedidos');
     Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
     pedidos.forEach(function(p) {
@@ -1172,6 +1177,11 @@ async function carregarPedidos() {
     });
     updateStats();
     atualizarBadgeEsteira();
+
+    openIds.forEach(function(id) {
+      var card = document.querySelector('.order-card[data-id="' + id + '"]');
+      if (card) card.classList.add('open');
+    });
 
     var pendentesAtuais = pedidos.filter(function(p) { return p.status === 'pendente'; });
     var novosIds = pendentesAtuais.filter(function(p) {
