@@ -82,10 +82,10 @@ const addItemToArray = prod => {
     <div class="card">
         <div>
             <div class="cardImg">
-<img src="${prod.img || ''}" alt="${prod.name}" loading="lazy">
+<img src="${prod.img || ''}" alt="${escapeHtml(prod.name)}" loading="lazy">
             </div>
-            <h4>${prod.name}</h4>
-            <p>${prod.description}</p>
+            <h4>${escapeHtml(prod.name)}</h4>
+            <p>${escapeHtml(prod.description)}</p>
         </div>
         <div>
             <p class="price">R$ <span>${price}</span></p>
@@ -130,9 +130,9 @@ const allPromotions = () => {
               : '<button class="btn btn-add" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>';
             promoItems += `<div class="card">
                 <div>
-                    <div class="cardImg"><img src="${prod.img || ''}" alt="${prod.name}" loading="lazy"></div>
-                    <h4>${prod.name}</h4>
-                    <p>${prod.description}</p>
+                    <div class="cardImg"><img src="${prod.img || ''}" alt="${escapeHtml(prod.name)}" loading="lazy"></div>
+                    <h4>${escapeHtml(prod.name)}</h4>
+                    <p>${escapeHtml(prod.description)}</p>
                 </div>
                 <div>
                     <p class="oldPrice">R$ ${lastPrice}</p>
@@ -390,7 +390,22 @@ async function carregarConfigLoja() {
 
     // Update quick info
     const qiDel = document.getElementById('qiDelivery');
-    if (qiDel) qiDel.textContent = config.taxaEntrega ? 'R$ ' + Number(config.taxaEntrega).toFixed(2).replace('.', ',') : 'Grátis';
+    if (qiDel) {
+      var bairros = config.bairrosAtendidos;
+      if (Array.isArray(bairros) && bairros.length > 0) {
+        var taxas = bairros.map(function(b) { return Number(b.taxa); }).filter(function(t) { return !isNaN(t) && t >= 0; });
+        if (taxas.length > 0) {
+          var min = Math.min.apply(null, taxas);
+          var unica = taxas.every(function(t) { return t === min; });
+          var fmt = 'R$ ' + min.toFixed(2).replace('.', ',');
+          qiDel.textContent = unica ? fmt : 'a partir de ' + fmt;
+        } else {
+          qiDel.textContent = 'Consulte-nos';
+        }
+      } else {
+        qiDel.textContent = 'Consulte-nos';
+      }
+    }
     const qiTime = document.getElementById('qiTime');
     if (qiTime) qiTime.textContent = config.tempoMedio || '30-40 min';
     const tel = config.telefone || '5521966017085';
@@ -399,11 +414,16 @@ async function carregarConfigLoja() {
 
     // Update footer logo
     const logoEl = document.getElementById('logo');
-    if (logoEl) logoEl.innerHTML = nome.replace(' ', '<br />');
+    if (logoEl) {
+      logoEl.textContent = '';
+      var span = document.createElement('span');
+      span.textContent = nome;
+      logoEl.appendChild(span);
+    }
 
     // Update copyright
     const crEl = document.getElementById('footerCopyright');
-    if (crEl) crEl.innerHTML = nome + ' - 2024 &copy; Todos os direitos reservados.';
+    if (crEl) crEl.textContent = nome + ' - 2024 \u00A9 Todos os direitos reservados.';
 
     // Update WhatsApp links
     const waFloat = document.getElementById('whatsappFloatLink');
@@ -416,7 +436,13 @@ async function carregarConfigLoja() {
     if (addrEl && config.endereco) {
       const parts = [config.endereco, config.numero].filter(Boolean).join(', ');
       const bairro = config.bairro || '';
-      addrEl.innerHTML = '<b><font color="black">' + parts + '<br />' + bairro + '</font></b>';
+      addrEl.innerHTML = '';
+      var bold = document.createElement('b');
+      bold.style.color = 'black';
+      bold.appendChild(document.createTextNode(parts));
+      bold.appendChild(document.createElement('br'));
+      bold.appendChild(document.createTextNode(bairro));
+      addrEl.appendChild(bold);
     }
 
     // Update map
@@ -776,7 +802,22 @@ document.addEventListener('keydown', function(e) {
 });
 
 function atualizarUserMenu(user) {
-  userDropdown.innerHTML = '<h4>Olá, ' + user.nome + '</h4><button id="btnEditProfile">Editar perfil</button><button id="btnMyOrders">Meus pedidos <span id="orderCount"></span></button><button id="btnLogout">Sair</button>';
+  userDropdown.innerHTML = '';
+  var h4 = document.createElement('h4');
+  h4.textContent = 'Ol\u00E1, ' + user.nome;
+  userDropdown.appendChild(h4);
+  var btns = [
+    { id: 'btnEditProfile', text: 'Editar perfil' },
+    { id: 'btnMyOrders', html: 'Meus pedidos <span id="orderCount"></span>' },
+    { id: 'btnLogout', text: 'Sair' }
+  ];
+  btns.forEach(function(b) {
+    var btn = document.createElement('button');
+    btn.id = b.id;
+    if (b.html) btn.innerHTML = b.html;
+    else btn.textContent = b.text;
+    userDropdown.appendChild(btn);
+  });
 
   document.getElementById("btnEditProfile").addEventListener("click", function() {
     registerOverlay.classList.remove("hidden");
