@@ -59,12 +59,15 @@ const DEFAULT_THEME = {
   borderRadiusLg: '24px',
 };
 
-function parseTheme(empresa) {
-  if (!empresa.themeSettings) return { ...DEFAULT_THEME };
-  const raw = typeof empresa.themeSettings === 'string'
+function parseRawTheme(empresa) {
+  if (!empresa.themeSettings) return {};
+  return typeof empresa.themeSettings === 'string'
     ? JSON.parse(empresa.themeSettings)
     : empresa.themeSettings;
-  return { ...DEFAULT_THEME, ...raw };
+}
+
+function parseTheme(empresa) {
+  return { ...DEFAULT_THEME, ...parseRawTheme(empresa) };
 }
 
 function formatImageUrl(img) {
@@ -76,14 +79,15 @@ function formatImageUrl(img) {
 }
 
 function formatEmpresa(empresa) {
+  const raw = parseRawTheme(empresa);
   return {
     nome: empresa.nome || '',
     slug: empresa.slug || '',
     logo: empresa.logo || '',
     logoUrl: formatImageUrl(empresa.logo),
-    capa: empresa.capa || '',
-    capaUrl: formatImageUrl(empresa.capa),
-    bairrosAtendidos: Array.isArray(empresa.bairrosAtendidos) ? empresa.bairrosAtendidos : [],
+    capa: raw.capa || '',
+    capaUrl: formatImageUrl(raw.capa),
+    bairrosAtendidos: Array.isArray(raw.bairrosAtendidos) ? raw.bairrosAtendidos : [],
     telefone: empresa.telefone || '',
     endereco: empresa.endereco || '',
     numero: empresa.numero || '',
@@ -113,11 +117,19 @@ async function updateSettings(data) {
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
-    'latitude', 'longitude', 'descricao', 'logo', 'capa', 'bairrosAtendidos', 'themeSettings',
+    'latitude', 'longitude', 'descricao', 'logo', 'themeSettings',
   ];
   const payload = {};
   for (const key of allowed) {
     if (data[key] !== undefined) payload[key] = data[key];
+  }
+  // Store capa and bairrosAtendidos inside themeSettings JSON (no migration needed)
+  if (data.capa !== undefined || data.bairrosAtendidos !== undefined) {
+    const empresa = await sql.buscarEmpresa(1);
+    const current = empresa?.themeSettings ? (typeof empresa.themeSettings === 'string' ? JSON.parse(empresa.themeSettings) : empresa.themeSettings) : {};
+    if (data.capa !== undefined) current.capa = data.capa;
+    if (data.bairrosAtendidos !== undefined) current.bairrosAtendidos = data.bairrosAtendidos;
+    payload.themeSettings = current;
   }
   return sql.atualizarEmpresa(1, payload);
 }
