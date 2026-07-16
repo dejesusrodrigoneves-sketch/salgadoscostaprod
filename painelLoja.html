@@ -386,6 +386,25 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
         </div>
       </div>
 
+      <div class="form-section">
+        <h4><i class="fas fa-image"></i> Banner da Loja</h4>
+        <div class="row">
+          <div class="lbl">Banner (capa)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <input type="file" id="confCapaFile" accept="image/*" />
+            <input type="hidden" id="confCapa" />
+            <img id="confCapaPreview" style="max-width:300px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4><i class="fas fa-truck"></i> Bairros Atendidos</h4>
+        <p class="tip">Cadastre os bairros que sua loja atende e o valor da taxa de entrega para cada um.</p>
+        <div id="bairrosContainer"></div>
+        <button class="btn add" id="btnAddBairro" type="button" style="margin-top:8px;"><i class="fas fa-plus"></i> Adicionar Bairro</button>
+      </div>
+
       <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
         <button class="btn save" id="btnSalvarConfig"><i class="fas fa-save"></i> Salvar Configurações</button>
         <button class="btn refresh" id="btnRecarregarConfig"><i class="fas fa-sync-alt"></i> Recarregar</button>

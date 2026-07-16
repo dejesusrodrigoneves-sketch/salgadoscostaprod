@@ -9,7 +9,7 @@ function toast(msg, type, duration) {
   var el = document.createElement('div');
   el.id = '_toast_' + Date.now();
   el.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;background:' + (colors[type] || colors.info) + ';color:#fff;padding:12px 18px;border-radius:10px;font-weight:500;font-size:13px;font-family:Inter,Montserrat,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.15);animation:slideInRight 0.3s;max-width:360px;display:flex;align-items:center;gap:8px;cursor:pointer;';
-  el.innerHTML = (icons[type] ? '<i class="fas fa-' + icons[type] + '"></i> ' : '') + msg;
+  el.innerHTML = (icons[type] ? '<i class="fas fa-' + icons[type] + '"></i> ' : '') + escapeHtml(msg);
   el.onclick = function () { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(function () { el.remove(); }, 300); };
   document.body.appendChild(el);
   if (duration > 0) {
@@ -23,7 +23,7 @@ function confirmModal(msg) {
   return new Promise(function (resolve) {
     var ov = document.createElement('div');
     ov.className = 'modal-overlay';
-    ov.innerHTML = '<div class="modal-box"><h3>Confirmação</h3><p>' + msg + '</p><div class="modal-actions"><button class="btn-modal-cancel" id="_mdCancel">Cancelar</button><button class="btn-modal-confirm" id="_mdConfirm">Confirmar</button></div></div>';
+    ov.innerHTML = '<div class="modal-box"><h3>Confirmação</h3><p>' + escapeHtml(msg) + '</p><div class="modal-actions"><button class="btn-modal-cancel" id="_mdCancel">Cancelar</button><button class="btn-modal-confirm" id="_mdConfirm">Confirmar</button></div></div>';
     document.body.appendChild(ov);
     ov.querySelector('#_mdConfirm').onclick = function () { ov.remove(); resolve(true); };
     ov.querySelector('#_mdCancel').onclick = function () { ov.remove(); resolve(false); };

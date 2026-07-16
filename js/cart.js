@@ -22,14 +22,7 @@ const btnGenerateOrder = document.getElementById("generateOrder");
 const radiosEntrega = document.querySelectorAll("input[name='tipoEntrega']");
 const formaPagamento = document.getElementById("formaPagamento");
 const showcep = document.getElementById("regCep");
-const taxasPorBairro = {
-  "Centro": 7.00,
-  "São Vicente": 4.00,
-  "Heliópolis": 6.50,
-  "Jardim Redentor": 8.00,
-  "Belford Roxo": 9.00,
-  "Pauline": 5.00
-};
+var bairrosAtendidos = [];
 
 
 // Verifica login
@@ -78,14 +71,39 @@ function calcularTaxaEntregaPorBairro() {
   const bairro = document.getElementById("bairroCliente").value.trim();
   if (!bairro) return;
 
-  // procura taxa
-  const taxa = taxasPorBairro[bairro] ?? 0;
-  deliveryValue = taxa;
+  var encontrado = null;
+  for (var i = 0; i < bairrosAtendidos.length; i++) {
+    if (bairrosAtendidos[i].nome.toLowerCase() === bairro.toLowerCase()) {
+      encontrado = bairrosAtendidos[i];
+      break;
+    }
+  }
 
-  // atualiza valores em tela
+  if (encontrado) {
+    deliveryValue = Number(encontrado.taxa);
+    document.getElementById('bairroNaoAtendidoOverlay')?.classList.add('hidden');
+  } else {
+    deliveryValue = 0;
+    document.getElementById('bairroNaoAtendidoOverlay')?.classList.remove('hidden');
+  }
+
   updateValores();
 }
 
+
+function carregarBairros() {
+  fetch('/api/public/loja/settings').then(function(r) { return r.json(); }).then(function(config) {
+    if (Array.isArray(config.bairrosAtendidos)) {
+      bairrosAtendidos = config.bairrosAtendidos;
+    }
+  }).catch(function(e) { console.warn('Erro ao carregar bairros:', e); });
+}
+
+function fecharOverlayBairro() {
+  document.getElementById('bairroNaoAtendidoOverlay')?.classList.add('hidden');
+}
+
+carregarBairros();
 
 // ---------------- HELPER FUNCTIONS ---------------- //
 function toast(msg){
@@ -192,7 +210,7 @@ function renderizaItens(){
 
   let html = "";
   Object.entries(grouped).forEach(([catName, entries]) => {
-    html += `<div class="category-group"><h3 class="cat-header">${catName} <span class="cat-count">${entries.length} item(ns)</span></h3>`;
+    html += `<div class="category-group"><h3 class="cat-header">${escapeHtml(catName)} <span class="cat-count">${entries.length} item(ns)</span></h3>`;
     entries.forEach(({ prod, item }) => {
       let precoItem;
       if (pacotesFixos.includes(prod.id) || pacotesEspeciais.includes(prod.id)) {
@@ -204,10 +222,10 @@ function renderizaItens(){
 
       html += `
       <div class="item" id="item-${item.id}">
-        <img src="${item.img}" alt="${item.name}" loading="lazy" />
+        <img src="${item.img}" alt="${escapeHtml(item.name)}" loading="lazy" />
         <div>
-          <p class="title">${item.name}</p>
-          <p>${item.description}</p>
+          <p class="title">${escapeHtml(item.name)}</p>
+          <p>${escapeHtml(item.description)}</p>
           <div class="bottom">
             <div class="counter">
               <button onclick="remItem(${item.id})">-</button>
@@ -224,7 +242,7 @@ function renderizaItens(){
           .filter(([idSabor,qtd]) => qtd>0)
           .map(([idSabor,qtd]) => {
             const s = window.products.find(p => p.id == idSabor);
-            return `${qtd}x ${s.name}`;
+            return `${qtd}x ${escapeHtml(s.name)}`;
           });
         html += `<p class="caixaItem">${saboresArray.join(', <br />')}</p>`;
       }
@@ -811,7 +829,7 @@ async function generateOrder() {
 // ---------------- OVERLAY CONFIRMAÇÃO ---------------- //
 function mostrarConfirmacaoPedido(orderId, itens, total) {
   document.getElementById("overlayOrderId").textContent = orderId;
-  document.getElementById("overlayDetails").innerHTML = itens.join('<br>') + '<br><br><strong>Total: R$ ' + total.toFixed(2).replace('.', ',') + '</strong>';
+  document.getElementById("overlayDetails").innerHTML = itens.map(function(i) { return escapeHtml(i); }).join('<br>') + '<br><br><strong>Total: R$ ' + total.toFixed(2).replace('.', ',') + '</strong>';
   document.getElementById("orderOverlay").classList.remove("hidden");
 }
 

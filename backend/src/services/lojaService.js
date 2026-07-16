@@ -67,11 +67,23 @@ function parseTheme(empresa) {
   return { ...DEFAULT_THEME, ...raw };
 }
 
+function formatImageUrl(img) {
+  if (!img) return null;
+  if (img.startsWith('http')) return img;
+  const base = process.env.SUPABASE_URL;
+  if (!base) return null;
+  return base + '/storage/v1/object/public/produtos/' + img;
+}
+
 function formatEmpresa(empresa) {
   return {
     nome: empresa.nome || '',
     slug: empresa.slug || '',
     logo: empresa.logo || '',
+    logoUrl: formatImageUrl(empresa.logo),
+    capa: empresa.capa || '',
+    capaUrl: formatImageUrl(empresa.capa),
+    bairrosAtendidos: Array.isArray(empresa.bairrosAtendidos) ? empresa.bairrosAtendidos : [],
     telefone: empresa.telefone || '',
     endereco: empresa.endereco || '',
     numero: empresa.numero || '',
@@ -101,7 +113,7 @@ async function updateSettings(data) {
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
-    'latitude', 'longitude', 'descricao', 'logo', 'themeSettings',
+    'latitude', 'longitude', 'descricao', 'logo', 'capa', 'bairrosAtendidos', 'themeSettings',
   ];
   const payload = {};
   for (const key of allowed) {

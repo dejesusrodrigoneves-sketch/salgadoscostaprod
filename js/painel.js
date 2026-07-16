@@ -581,10 +581,16 @@ async function carregarConfigLoja() {
     document.getElementById('confLatitude').value = settings.latitude || '';
     document.getElementById('confLongitude').value = settings.longitude || '';
     document.getElementById('confLogo').value = settings.logo || '';
-    if (settings.logo) {
-      document.getElementById('confLogoPreview').src = 'img/' + settings.logo;
+    if (settings.logoUrl) {
+      document.getElementById('confLogoPreview').src = settings.logoUrl;
       document.getElementById('confLogoPreview').style.display = 'block';
     }
+    document.getElementById('confCapa').value = settings.capa || '';
+    if (settings.capaUrl) {
+      document.getElementById('confCapaPreview').src = settings.capaUrl;
+      document.getElementById('confCapaPreview').style.display = 'block';
+    }
+    renderBairros(settings.bairrosAtendidos || []);
   } catch (e) {
     console.warn('Erro ao carregar config loja:', e.message);
   }
@@ -624,6 +630,82 @@ document.getElementById('confLogoFile')?.addEventListener('change', async functi
   }
 });
 
+// Banner upload handler
+document.getElementById('confCapaFile')?.addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Imagem muito grande! Máximo 5MB.', 'danger');
+    this.value = '';
+    return;
+  }
+  const allowed = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+  if (!allowed.test(file.name)) {
+    toast('Formato inválido. Use jpg, png, gif, webp ou svg.', 'danger');
+    this.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('confCapaPreview').src = e.target.result; document.getElementById('confCapaPreview').style.display = 'block'; };
+  reader.readAsDataURL(file);
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(API_BASE + '/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) {
+      toast(data.error || 'Erro no upload', 'danger');
+      return;
+    }
+    document.getElementById('confCapa').value = data.filename;
+    toast('Banner enviado: ' + data.filename);
+  } catch (e) {
+    toast('Falha no upload do banner: ' + e.message, 'danger');
+  }
+});
+
+// ===== Bairros Atendidos =====
+function renderBairros(lista) {
+  const container = document.getElementById('bairrosContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  (lista || []).forEach(function(b, i) { addBairroRow(b.nome, b.taxa); });
+  if (!lista || lista.length === 0) addBairroRow('', '');
+}
+
+function addBairroRow(nome, taxa) {
+  const container = document.getElementById('bairrosContainer');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'bairro-row';
+  div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+  div.innerHTML =
+    '<input type="text" class="bairro-nome" placeholder="Nome do bairro" value="' + escapeHtml(nome || '') + '" style="flex:2;padding:6px 10px;border:1px solid var(--border);border-radius:6px;" />' +
+    '<input type="number" step="0.01" min="0" class="bairro-taxa" placeholder="Taxa R$" value="' + (taxa != null ? taxa : '') + '" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:6px;" />' +
+    '<button class="btn remove-bairro" type="button" style="padding:6px 10px;background:var(--danger);color:#fff;border:none;border-radius:6px;cursor:pointer;"><i class="fas fa-times"></i></button>';
+  div.querySelector('.remove-bairro').onclick = function() {
+    div.remove();
+  };
+  container.appendChild(div);
+}
+
+function collectBairros() {
+  const linhas = document.querySelectorAll('#bairrosContainer .bairro-row');
+  const result = [];
+  linhas.forEach(function(row) {
+    const nome = row.querySelector('.bairro-nome').value.trim();
+    const taxa = parseFloat(row.querySelector('.bairro-taxa').value);
+    if (nome && !isNaN(taxa) && taxa >= 0) {
+      result.push({ nome: nome, taxa: taxa });
+    }
+  });
+  return result;
+}
+
+document.getElementById('btnAddBairro')?.addEventListener('click', function() {
+  addBairroRow('', '');
+});
+
 document.getElementById('btnSalvarConfig')?.addEventListener('click', async () => {
   const payload = {
     nome: document.getElementById('confNome').value.trim(),
@@ -638,6 +720,8 @@ document.getElementById('btnSalvarConfig')?.addEventListener('click', async () =
     latitude: document.getElementById('confLatitude').value.trim() || null,
     longitude: document.getElementById('confLongitude').value.trim() || null,
     logo: document.getElementById('confLogo').value.trim() || null,
+    capa: document.getElementById('confCapa').value.trim() || null,
+    bairrosAtendidos: collectBairros(),
   };
   try {
     await apiRequest('/loja/settings', { method: 'PUT', body: JSON.stringify(payload) });
