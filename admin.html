@@ -467,9 +467,6 @@ body {
 .btn-finalizar { color: var(--success); }
 .btn-finalizar:hover { background: #DCFCE7; border-color: var(--success); }
 
-.btn-whatsapp { color: var(--success); }
-.btn-whatsapp:hover { background: #DCFCE7; border-color: var(--success); }
-
 .btn-print { color: var(--text-muted); }
 .btn-print:hover { background: var(--border); border-color: var(--text-muted); }
 
@@ -820,11 +817,6 @@ function fmtItens(itens) {
   return html;
 }
 
-function enviarWhatsapp(numero, mensagem) {
-  const link = 'https://api.whatsapp.com/send?phone=+55' + numero + '&text=' + encodeURIComponent(mensagem);
-  window.open(link, '_blank');
-}
-
 function gerarHTMLImpressao(p) {
   let html = `
     <html><head><style>
@@ -967,7 +959,6 @@ function renderCard(p, docId) {
           <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
           <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
           <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
-          <button class="btn btn-whatsapp" data-action="whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
           <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
         `}
@@ -1033,14 +1024,6 @@ function renderCard(p, docId) {
     } catch(e) {
       if (loadEl.parentNode) loadEl.remove();
       toast('❌ Erro: ' + e.message, 'danger');
-    }
-  };
-
-  card.querySelector('[data-action="whatsapp"]').onclick = () => {
-    if (p.cliente?.whatsapp) {
-      enviarWhatsapp(p.cliente.whatsapp, 'Olá ' + nome + ', tudo sobre seu pedido!');
-    } else {
-      toast('Cliente sem WhatsApp cadastrado', 'warning');
     }
   };
 
