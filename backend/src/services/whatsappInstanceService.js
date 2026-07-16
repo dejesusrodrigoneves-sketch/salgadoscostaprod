@@ -8,6 +8,25 @@ function buildInstanceName() {
 }
 
 async function listar() {
+  const instancias = await sql.listarWhatsAppInstances();
+  for (const inst of instancias) {
+    if (config.evolutionUrl && config.evolutionApiKey) {
+      try {
+        const { data } = await axios.get(
+          `${config.evolutionUrl}/instance/connectionState/${inst.instanceId}`,
+          { headers: { apikey: config.evolutionApiKey } }
+        );
+        const rawStatus = data?.instance?.state || data?.state || 'disconnected';
+        const status = rawStatus.toLowerCase();
+        if (status !== inst.connectionStatus) {
+          await sql.atualizarWhatsAppInstance(inst.id, { connectionStatus: status });
+          inst.connectionStatus = status;
+        }
+      } catch (err) {
+        console.error('Evolution API error checking status for ' + inst.instanceId + ':', err.message);
+      }
+    }
+  }
   return sql.listarWhatsAppInstances();
 }
 
@@ -167,7 +186,8 @@ async function status(id) {
         `${config.evolutionUrl}/instance/connectionState/${instancia.instanceId}`,
         { headers: { apikey: config.evolutionApiKey } }
       );
-      const status = data?.instance?.state || data?.state || 'disconnected';
+      const rawStatus = data?.instance?.state || data?.state || 'disconnected';
+      const status = rawStatus.toLowerCase();
       const phone = data?.instance?.phone?.number || data?.phone?.number || null;
       await sql.atualizarWhatsAppInstance(id, {
         connectionStatus: status,
