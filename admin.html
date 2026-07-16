@@ -975,48 +975,65 @@ function renderCard(p, docId) {
     </div>
   `;
 
-  if (isPendente) {
-    card.querySelector('[data-action="aceitar"]').onclick = async () => {
-      await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'producao' }) });
-      toast('Pedido aceito e enviado para produção!', 'success');
-      carregarPedidos();
+  function notificarComLoading(acao, status, extraData, msgSucesso) {
+    return async function() {
+      var loadEl = toast('📤 Enviando notificação para o cliente...', 'info', 0);
+      await new Promise(function(r) { setTimeout(r, 3000); });
+      try {
+        var body = { status: status, ...(extraData || {}) };
+        await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify(body) });
+        if (loadEl.parentNode) loadEl.remove();
+        toast(msgSucesso, 'success');
+        carregarPedidos();
+      } catch(e) {
+        if (loadEl.parentNode) loadEl.remove();
+        toast('❌ Erro: ' + e.message, 'danger');
+      }
     };
+  }
+
+  if (isPendente) {
+    card.querySelector('[data-action="aceitar"]').onclick = notificarComLoading('aceitar', 'producao', null, '✅ Pedido aceito e notificação enviada!');
     card.querySelector('[data-action="print"]').onclick = () => imprimirPedido(p);
     return card;
   }
 
-  card.querySelector('[data-action="producao"]').onclick = async () => {
-    await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'producao' }) });
-    toast('Pedido enviado para produção', 'warning');
-    carregarPedidos();
-  };
+  card.querySelector('[data-action="producao"]').onclick = notificarComLoading('producao', 'producao', null, '✅ Pedido em produção e notificação enviada!');
 
-  card.querySelector('[data-action="pronto"]').onclick = async () => {
-    await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'pronto' }) });
-    toast(nome + ', seu pedido está pronto!', 'success');
-    carregarPedidos();
-  };
+  card.querySelector('[data-action="pronto"]').onclick = notificarComLoading('pronto', 'pronto', null, '✅ Pedido pronto e notificação enviada!');
 
-  card.querySelector('[data-action="rota"]').onclick = async () => {
+  card.querySelector('[data-action="rota"]').onclick = async function() {
     const driverId = await selecionarEntregadorModal(nome);
     if (!driverId) return;
-    await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'emRota', entregadorId: driverId }) });
+    var loadEl = toast('📤 Enviando notificação para o cliente...', 'info', 0);
+    await new Promise(function(r) { setTimeout(r, 3000); });
     try {
+      await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'em_rota', entregadorId: driverId }) });
       await api('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(driverId), pedidoId: docId, valor: Number(p.total) || 0 }) });
+      if (loadEl.parentNode) loadEl.remove();
+      toast('✅ Pedido em rota e notificação enviada!', 'success');
+      carregarPedidos();
     } catch(e) {
-      toast('Erro ao registrar entrega, mas status foi atualizado', 'warning');
+      if (loadEl.parentNode) loadEl.remove();
+      toast('❌ Erro: ' + e.message, 'danger');
     }
-    toast('Pedido em rota com ' + driverId + '!', 'info');
-    carregarPedidos();
   };
 
-  card.querySelector('[data-action="finalizar"]').onclick = async () => {
+  card.querySelector('[data-action="finalizar"]').onclick = async function() {
     const ok = await confirmModal('Deseja finalizar o pedido de ' + nome + '?');
     if (!ok) return;
-    await api('/pedidos/' + docId + '/finalizar', { method: 'POST' });
-    toast('Pedido finalizado!', 'success');
-    carregarPedidos();
-    atualizarBadgeEsteira();
+    var loadEl = toast('📤 Enviando notificação de finalização...', 'info', 0);
+    await new Promise(function(r) { setTimeout(r, 3000); });
+    try {
+      await api('/pedidos/' + docId + '/finalizar', { method: 'POST' });
+      if (loadEl.parentNode) loadEl.remove();
+      toast('✅ Pedido finalizado e notificação enviada!', 'success');
+      carregarPedidos();
+      atualizarBadgeEsteira();
+    } catch(e) {
+      if (loadEl.parentNode) loadEl.remove();
+      toast('❌ Erro: ' + e.message, 'danger');
+    }
   };
 
   card.querySelector('[data-action="whatsapp"]').onclick = () => {

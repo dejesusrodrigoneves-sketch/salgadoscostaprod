@@ -58,6 +58,7 @@ async function notificarStatus(pedido, status) {
     producao: '\uD83C\uDF54 Olá ' + clienteNome + '!\n\nSeu pedido ' + pedidoId + ' entrou em produção.',
     pronto: '\u2705 Olá ' + clienteNome + '!\n\nSeu pedido ' + pedidoId + ' está pronto para retirada.',
     em_rota: '\uD83D\uDE9A Olá ' + clienteNome + '!\n\nSeu pedido está a caminho!',
+    finalizado: '\uD83C\uDF89 Olá ' + clienteNome + '!\n\nSeu pedido ' + pedidoId + ' foi finalizado. Obrigado pela prefer\u00EAncia!',
   };
 
   const msg = mensagens[status];

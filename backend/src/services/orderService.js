@@ -49,7 +49,9 @@ async function deletarPedido(id) {
 async function finalizarPedido(id) {
   const pedido = await sql.buscarPedido(id);
   if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
-  return sql.atualizarPedido(id, { status: 'finalizado', finalizadoEm: new Date() });
+  const atualizado = await sql.atualizarPedido(id, { status: 'finalizado', finalizadoEm: new Date() });
+  whatsapp.notificarStatus(atualizado, 'finalizado').catch(err => console.error('WhatsApp notify (finalizar) failed:', err.message));
+  return atualizado;
 }
 
 async function atualizarStatus(id, status) {
@@ -64,8 +66,8 @@ async function atualizarStatus(id, status) {
     darBaixaEstoque(pedidoCompleto).catch(err => console.error('Erro baixa estoque:', err));
   }
 
-  if (['producao', 'pronto', 'em_rota'].includes(status)) {
-    whatsapp.notificarStatus(pedido, status).catch(() => {});
+  if (['producao', 'pronto', 'em_rota', 'finalizado'].includes(status)) {
+    whatsapp.notificarStatus(pedido, status).catch(err => console.error('WhatsApp notify failed:', err.message));
   }
   return pedido;
 }

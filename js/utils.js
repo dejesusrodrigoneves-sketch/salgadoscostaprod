@@ -1,16 +1,21 @@
 // ========== utils.js — Shared utilities ==========
 
 // Toast notification (inline, sem dependência externa)
-function toast(msg, type) {
+function toast(msg, type, duration) {
   type = type || 'success';
+  duration = duration !== undefined ? duration : 4000;
   var colors = { success: '#16a34a', danger: '#dc2626', warning: '#f59e0b', info: '#3b82f6' };
   var icons = { success: 'check-circle', danger: 'times-circle', warning: 'exclamation-circle', info: 'info-circle' };
   var el = document.createElement('div');
+  el.id = '_toast_' + Date.now();
   el.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;background:' + (colors[type] || colors.info) + ';color:#fff;padding:12px 18px;border-radius:10px;font-weight:500;font-size:13px;font-family:Inter,Montserrat,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.15);animation:slideInRight 0.3s;max-width:360px;display:flex;align-items:center;gap:8px;cursor:pointer;';
   el.innerHTML = (icons[type] ? '<i class="fas fa-' + icons[type] + '"></i> ' : '') + msg;
   el.onclick = function () { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(function () { el.remove(); }, 300); };
   document.body.appendChild(el);
-  setTimeout(function () { if (el.parentNode) { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(function () { el.remove(); }, 300); } }, 4000);
+  if (duration > 0) {
+    setTimeout(function () { if (el.parentNode) { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(function () { el.remove(); }, 300); } }, duration);
+  }
+  return el;
 }
 
 // Confirm modal (returns Promise<boolean>)
