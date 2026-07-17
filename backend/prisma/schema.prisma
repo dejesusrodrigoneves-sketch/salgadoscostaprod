@@ -12,7 +12,10 @@ model Empresa {
   nome            String
   slug            String            @unique
   logo            String?
+  capa            String?
+  bairrosAtendidos Json              @default("[]") @map("bairros_atendidos")
   createdAt       DateTime          @default(now()) @map("criado_em")
+
 
   // Store contact
   telefone        String?
