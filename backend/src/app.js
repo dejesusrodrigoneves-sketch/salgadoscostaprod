@@ -24,9 +24,14 @@ const entregaRoutes = require('./routes/entregaRoutes');
 const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+var corsOrigin = process.env.CORS_ORIGIN || '*';
+if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
+  corsOrigin = corsOrigin.split(',').map(function(s) { return s.trim(); });
+}
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ type: ['application/json', 'application/json;charset=utf-8'] }));
 if (!process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, '..', '..', 'public')));
   app.use(express.static(path.join(__dirname, '..', '..')));
 }
 app.use('/api', apiLimiter);

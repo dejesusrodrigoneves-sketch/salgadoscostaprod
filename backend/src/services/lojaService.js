@@ -9,6 +9,7 @@ function isWorkingDay(workingDays) {
 
 function isWithinHours(openingTime, closingTime) {
   if (!openingTime || !closingTime) return true;
+  if (typeof openingTime !== 'string' || typeof closingTime !== 'string') return true;
   const now = new Date();
   const minutos = now.getHours() * 60 + now.getMinutes();
   const [hIni, mIni] = openingTime.split(':').map(Number);
