@@ -80,14 +80,18 @@ function formatImageUrl(img) {
 
 function formatEmpresa(empresa) {
   const raw = parseRawTheme(empresa);
+  const capa = empresa.capa || raw.capa || '';
+  const bairrosAtendidos = Array.isArray(empresa.bairrosAtendidos)
+    ? empresa.bairrosAtendidos
+    : (Array.isArray(raw.bairrosAtendidos) ? raw.bairrosAtendidos : []);
   return {
     nome: empresa.nome || '',
     slug: empresa.slug || '',
     logo: empresa.logo || '',
     logoUrl: formatImageUrl(empresa.logo),
-    capa: raw.capa || '',
-    capaUrl: formatImageUrl(raw.capa),
-    bairrosAtendidos: Array.isArray(raw.bairrosAtendidos) ? raw.bairrosAtendidos : [],
+    capa: capa,
+    capaUrl: formatImageUrl(capa),
+    bairrosAtendidos: bairrosAtendidos,
     telefone: empresa.telefone || '',
     endereco: empresa.endereco || '',
     numero: empresa.numero || '',
@@ -117,13 +121,13 @@ async function updateSettings(data) {
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
-    'latitude', 'longitude', 'descricao', 'logo', 'themeSettings',
+    'latitude', 'longitude', 'descricao', 'logo', 'capa', 'bairrosAtendidos', 'themeSettings',
   ];
   const payload = {};
   for (const key of allowed) {
     if (data[key] !== undefined) payload[key] = data[key];
   }
-  // Store capa and bairrosAtendidos inside themeSettings JSON (no migration needed)
+  // Keep themeSettings in sync for backward compat
   if (data.capa !== undefined || data.bairrosAtendidos !== undefined) {
     const empresa = await sql.buscarEmpresa(1);
     const current = empresa?.themeSettings ? (typeof empresa.themeSettings === 'string' ? JSON.parse(empresa.themeSettings) : empresa.themeSettings) : {};
