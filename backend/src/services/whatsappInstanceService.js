@@ -3,10 +3,6 @@ const QRCode = require('qrcode');
 const sql = require('../repositories/sqlRepository');
 const config = require('../config/env');
 
-function buildInstanceName() {
-  return 'loja_1';
-}
-
 async function listar() {
   const instancias = await sql.listarWhatsAppInstances();
   for (const inst of instancias) {
@@ -30,7 +26,14 @@ async function listar() {
   return sql.listarWhatsAppInstances();
 }
 
-async function criar(role) {
+async function criar(role, instanceName, phoneNumber) {
+  if (!instanceName || !phoneNumber) {
+    throw Object.assign(
+      new Error('Nome da instância e número de telefone são obrigatórios.'),
+      { status: 400 }
+    );
+  }
+
   const existentes = await sql.listarWhatsAppInstances();
 
   if (role !== 'superadmin' && existentes.length >= 1) {
@@ -39,8 +42,6 @@ async function criar(role) {
       { status: 409 }
     );
   }
-
-  const instanceName = buildInstanceName();
 
   const jaExisteMesmoNome = existentes.find(i => i.instanceId === instanceName);
   if (jaExisteMesmoNome) {
@@ -56,7 +57,7 @@ async function criar(role) {
     try {
       const { data } = await axios.post(
         `${config.evolutionUrl}/instance/create`,
-        { instanceName, integration: 'WHATSAPP-BAILEYS', qrcode: true },
+        { instanceName, integration: 'WHATSAPP-BAILEYS', qrcode: true, number: phoneNumber },
         { headers: { apikey: config.evolutionApiKey } }
       );
       evolutionData = data;
@@ -72,6 +73,7 @@ async function criar(role) {
   const instancia = await sql.criarWhatsAppInstance({
     empresaId: 1,
     instanceId: instanceName,
+    phoneNumber,
     connectionStatus: evolutionData ? 'qrcode' : 'disconnected',
     qrCode: evolutionData?.qrcode?.code || evolutionData?.qrcode?.pairingCode || null,
     isActive: true,

@@ -9,7 +9,8 @@ exports.listar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const resultado = await service.criar(req.user.role);
+  const { instanceName, phoneNumber } = req.body;
+  const resultado = await service.criar(req.user.role, instanceName, phoneNumber);
   res.status(201).json(resultado);
 });
 

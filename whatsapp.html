@@ -62,6 +62,12 @@ body {
 .toast-info { background:#3b82f6; }
 @keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
 .info-box { background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:13px; color:#0369a1; }
+.modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9998; align-items:center; justify-content:center; }
+.modal-content { background:white; border-radius:12px; padding:24px; width:90%; max-width:460px; box-shadow:0 8px 32px rgba(0,0,0,0.2); }
+.modal-content h3 { margin-bottom:16px; font-size:16px; }
+.modal-content input { width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:inherit; margin-bottom:12px; }
+.modal-content input:focus { outline:none; border-color:#25d366; box-shadow:0 0 0 3px rgba(37,211,102,0.15); }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -82,6 +88,18 @@ body {
 <div id="qrContainer"></div>
 
 <div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="criarModal">
+  <div class="modal-content">
+    <h3><i class="fas fa-plus-circle" style="color:#25d366;"></i> Criar Instância WhatsApp</h3>
+    <input id="inputInstanceName" type="text" placeholder="Nome da instância (ex: WhatsApp Matriz)" />
+    <input id="inputPhoneNumber" type="text" placeholder="Número da loja (ex: 5511999999999)" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarCriacao()">Criar</button>
+    </div>
+  </div>
+</div>
 
 <script src="js/utils.js"></script>
 <script>
@@ -219,10 +237,30 @@ async function carregarInstancias() {
   }
 }
 
-async function criarInstancia() {
+function criarInstancia() {
+  document.getElementById('criarModal').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('criarModal').style.display = 'none';
+}
+
+async function confirmarCriacao() {
+  const instanceName = document.getElementById('inputInstanceName').value.trim();
+  const phoneRaw = document.getElementById('inputPhoneNumber').value.trim();
+  if (!instanceName) return toast('Informe o nome da instância', 'danger');
+  if (!phoneRaw) return toast('Informe o número da loja', 'danger');
+  const phoneNumber = phoneRaw.replace(/\D/g, '');
+  if (phoneNumber.length < 10) return toast('Número inválido. Informe DDI + DDD + número.', 'danger');
   try {
-    const res = await apiRequest('/whatsapp/criar', { method: 'POST' });
+    await apiRequest('/whatsapp/criar', {
+      method: 'POST',
+      body: JSON.stringify({ instanceName, phoneNumber }),
+    });
     toast('Instância criada com sucesso!');
+    fecharModal();
+    document.getElementById('inputInstanceName').value = '';
+    document.getElementById('inputPhoneNumber').value = '';
     carregarInstancias();
     const instancias = await apiRequest('/whatsapp');
     if (instancias.length > 0) gerarQR(instancias[0].id);
