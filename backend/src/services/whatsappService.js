@@ -2,6 +2,11 @@ const axios = require('axios');
 const config = require('../config/env');
 const sql = require('../repositories/sqlRepository');
 
+function normalizarNumero(numero) {
+  const telefone = numero.replace(/\D/g, '');
+  return telefone.startsWith('55') ? telefone : `55${telefone}`;
+}
+
 async function enviarMensagem(numero, mensagem) {
   if (!config.evolutionUrl || !config.evolutionApiKey) {
     console.warn('WhatsApp: EVOLUTION_URL ou EVOLUTION_API_KEY não configurados');
@@ -20,10 +25,10 @@ async function enviarMensagem(numero, mensagem) {
   }
 
   try {
-    const telefone = numero.replace(/\D/g, '');
+    const telefone = normalizarNumero(numero);
     return await axios.post(
       `${config.evolutionUrl}/message/sendText/${instancia.instanceId}`,
-      { number: `55${telefone}`, text: mensagem },
+      { number: telefone, text: mensagem },
       { headers: { apikey: config.evolutionApiKey, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
@@ -38,10 +43,10 @@ async function enviarMensagemDireta(instanceId, numero, mensagem) {
   }
 
   try {
-    const telefone = numero.replace(/\D/g, '');
+    const telefone = normalizarNumero(numero);
     return await axios.post(
       `${config.evolutionUrl}/message/sendText/${instanceId}`,
-      { number: `55${telefone}`, text: mensagem },
+      { number: telefone, text: mensagem },
       { headers: { apikey: config.evolutionApiKey, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
