@@ -204,4 +204,10 @@ async function status(id) {
   return instancia;
 }
 
-module.exports = { listar, criar, deletar, gerarQrCode, reconectar, status };
+async function statusAtivo() {
+  const instancia = await sql.buscarInstanciaAtiva();
+  if (!instancia) return null;
+  return status(instancia.id);
+}
+
+module.exports = { listar, criar, deletar, gerarQrCode, reconectar, status, statusAtivo };

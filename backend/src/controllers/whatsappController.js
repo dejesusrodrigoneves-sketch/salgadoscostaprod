@@ -35,7 +35,7 @@ exports.status = asyncHandler(async (req, res) => {
 });
 
 exports.enviarTeste = asyncHandler(async (req, res) => {
-  const instancia = await sql.buscarWhatsAppInstance(Number(req.params.id));
+  const instancia = await service.status(req.params.id);
   if (!instancia) {
     return res.status(404).json({ error: 'Instância não encontrada' });
   }
@@ -53,4 +53,18 @@ exports.enviarTeste = asyncHandler(async (req, res) => {
   );
 
   res.json({ success: true, message: 'Mensagem de teste enviada', to: instancia.phoneNumber });
+});
+
+exports.enviarContatoPedido = asyncHandler(async (req, res) => {
+  const { telefone, mensagem } = req.body;
+  if (!telefone || !mensagem) return res.status(400).json({ error: 'telefone e mensagem obrigatórios' });
+
+  const instancia = await service.statusAtivo();
+  if (instancia && (instancia.connectionStatus === 'connected' || instancia.connectionStatus === 'open')) {
+    await whatsapp.enviarMensagem(telefone, mensagem);
+    return res.json({ success: true, via: 'evolution' });
+  }
+
+  const link = `https://wa.me/55${telefone.replace(/\D/g, '')}?text=${encodeURIComponent(mensagem)}`;
+  res.json({ success: true, via: 'link', link });
 });
