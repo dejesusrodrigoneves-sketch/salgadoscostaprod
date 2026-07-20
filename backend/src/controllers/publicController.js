@@ -99,7 +99,7 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
 })];
 
 exports.criarPedido = [authenticatePublic, asyncHandler(async (req, res) => {
-  const { clienteNome, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens } = req.body;
+  const { clienteNome, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, total } = req.body;
   if (!clienteNome || !itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ error: 'Dados do pedido incompletos' });
   }
@@ -132,10 +132,10 @@ exports.criarPedido = [authenticatePublic, asyncHandler(async (req, res) => {
       troco: troco ? Number(troco) : null,
       status: 'pendente',
       valoresItens,
-      taxasEntrega: 0,
-      taxasCartao: 0,
-      desconto: 0,
-      total: valoresItens,
+      taxasEntrega: taxasEntrega !== undefined ? Number(taxasEntrega) : 0,
+      taxasCartao: taxasCartao !== undefined ? Number(taxasCartao) : 0,
+      desconto: desconto !== undefined ? Number(desconto) : 0,
+      total: total !== undefined ? Number(total) : valoresItens,
       itens: { create: itensPedido },
     },
     include: { itens: true },
