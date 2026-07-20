@@ -105,18 +105,6 @@ function fecharOverlayBairro() {
 
 carregarBairros();
 
-// ---------------- HELPER FUNCTIONS ---------------- //
-function toast(msg){
-  Toastify({
-    text: msg,
-    duration: 4000,
-    close: true,
-    gravity: "bottom",
-    position: "right",
-    style: { background: "#FF7F0A", boxShadow: "0 0 160px 0 #0008" }
-  }).showToast();
-}
-
 function getCart(){ return JSON.parse(localStorage.getItem('cart')) || []; }
 function setCart(cart){ localStorage.setItem("cart", JSON.stringify(cart)); }
 
