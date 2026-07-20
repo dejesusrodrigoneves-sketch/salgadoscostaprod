@@ -809,6 +809,10 @@ async function generateOrder() {
     itens: cart.map(function(prod) {
       return { produtoId: prod.id, quantidade: prod.qtd || 1, sabores: prod.sabores ? JSON.stringify(prod.sabores) : null };
     }),
+    taxasEntrega: deliveryValueLocal,
+    taxasCartao: taxaCartaoLocal,
+    desconto: desconto,
+    total: totalFinal,
   };
 
   try {
