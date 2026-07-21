@@ -141,7 +141,7 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({ id: pedido.id, status: pedido.status });
-})];
+});
 
 exports.buscarPedido = asyncHandler(async (req, res) => {
   const pedido = await sql.buscarPedido(req.params.id);
