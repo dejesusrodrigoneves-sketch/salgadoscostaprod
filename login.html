@@ -186,7 +186,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         token: data.token,
         _expiry: Date.now() + 86400000,
       }));
-      window.location.href = data.user.role === 'superadmin' ? 'dashboard.html?superadmin=true' : 'dashboard.html';
+      window.location.href = 'dashboard.html';
       return;
     }
 
@@ -259,7 +259,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 if (authUser) {
   // Already logged in, redirect
-  const target = authUser.role === 'superadmin' ? 'dashboard.html?superadmin=true' : 'dashboard.html';
+  const target = 'dashboard.html';
   if (window.location.pathname.includes('login.html') || window.location.pathname === '/login') {
     window.location.href = target;
   }

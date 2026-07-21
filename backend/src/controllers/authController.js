@@ -4,7 +4,9 @@ const { asyncHandler } = require('../middleware/errorHandler');
 exports.login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
-  const result = await authService.login(username, password);
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'];
+  const result = await authService.login(username, password, ip, userAgent);
   res.json(result);
 });
 

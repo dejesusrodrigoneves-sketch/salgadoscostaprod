@@ -241,6 +241,17 @@ model Cupom {
   @@map("cupons")
 }
 
+model LoginLog {
+  id         Int      @id @default(autoincrement())
+  usuarioId  Int      @map("usuario_id")
+  username   String
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  loggedAt   DateTime @default(now()) @map("logado_em")
+
+  @@map("login_logs")
+}
+
 model WhatsAppInstance {
   id               Int       @id @default(autoincrement())
   empresaId        Int       @map("empresa_id")
