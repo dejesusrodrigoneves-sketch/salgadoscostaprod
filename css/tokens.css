@@ -1,0 +1,57 @@
+/* ═══════════════════════════════════════════════════════
+   Design Tokens — SIC.ia
+   Infraestrutura compartilhada entre todas as páginas
+   Cores de marca permanecem no :root de cada página
+   ═══════════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Z-Index System */
+  --z-base:     1;
+  --z-sticky:   10;
+  --z-dropdown: 100;
+  --z-overlay:  200;
+  --z-modal:    300;
+  --z-toast:    400;
+
+  /* Status Colors (usados em admin.html, etc) */
+  --danger-bg:       #FEF2F2;
+  --danger-bg-dark:  #3D1A1A;
+  --warning-bg:      #FEF3C7;
+  --warning-bg-dark: #3D2E0A;
+  --success-bg:      #DCFCE7;
+  --success-bg-dark: #0A3D1A;
+
+  /* Typography */
+  --font: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /* Spacing (base 4px) */
+  --s-4:   4px;
+  --s-8:   8px;
+  --s-12:  12px;
+  --s-16:  16px;
+  --s-20:  20px;
+  --s-24:  24px;
+  --s-32:  32px;
+  --s-40:  40px;
+  --s-48:  48px;
+  --s-64:  64px;
+  --s-80:  80px;
+
+  /* Radius */
+  --radius-sm:   6px;
+  --radius:      8px;
+  --radius-lg:   16px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.08);
+
+  /* Layout */
+  --max-w: 1280px;
+}

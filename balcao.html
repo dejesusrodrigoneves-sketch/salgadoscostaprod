@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <meta charset="UTF-8">
 <title>PDV - Caixa</title>
 
@@ -9,8 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/balcao.css">
-<script src="js/theme.js"></script>
 </head>
 
 <body>
@@ -192,16 +192,16 @@ function atualizarFormulario() {
 
   let camposComuns = `
     <strong>Informações</strong><br>
-    <input type="text" id="nomeCliente" placeholder="Nome">
-    <input type="number" id="whatsappCliente" placeholder="WhatsApp">
+    <input type="text" id="nomeCliente" aria-label="Nome do cliente" placeholder="Nome">
+    <input type="number" id="whatsappCliente" aria-label="WhatsApp do cliente" placeholder="WhatsApp">
   `;
 
   let camposDelivery = `
-    <input type="number" id="cepCliente" placeholder="CEP">
-    <input type="text" id="enderecoCliente" placeholder="Endereço">
-    <input type="number" id="numeroCasa" placeholder="Número da casa">
-    <input type="text" id="bairroCliente" placeholder="Bairro">
-    <input type="text" id="referenciaCliente" placeholder="Ponto de referência">
+    <input type="number" id="cepCliente" aria-label="CEP" placeholder="CEP">
+    <input type="text" id="enderecoCliente" aria-label="Endereço" placeholder="Endereço">
+    <input type="number" id="numeroCasa" aria-label="Número da casa" placeholder="Número da casa">
+    <input type="text" id="bairroCliente" aria-label="Bairro" placeholder="Bairro">
+    <input type="text" id="referenciaCliente" aria-label="Ponto de referência" placeholder="Ponto de referência">
   `;
 
   let pagamento = `
@@ -641,6 +641,6 @@ function calcularTotalFinal() {
 window.addEventListener("DOMContentLoaded", atualizarFormulario);
 
 </script>
-
+<script src="js/theme.js" defer></script>
 </body>
 </html>

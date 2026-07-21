@@ -3,50 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <title>Alterar Senha</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="js/theme.js"></script>
-
-<style>
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  background: #f1f5f9; color: #1e293b;
-  min-height: 100vh; display:flex; align-items:center; justify-content:center; padding:20px;
-}
-.card {
-  background: white; border-radius: 16px; padding: 32px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08); max-width: 420px; width: 100%;
-  animation: fadeUp 0.4s ease;
-}
-@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-
-.card h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; display:flex; align-items:center; gap:8px; }
-.card h1 i { color: #f97316; }
-.card .sub { font-size: 13px; color: #64748b; margin-bottom: 24px; }
-
-.form-group { margin-bottom: 16px; }
-.form-group label { display:block; font-size:12px; font-weight:600; color:#64748b; margin-bottom:4px; }
-.form-group input {
-  width:100%; padding:12px 14px; border:1px solid #e2e8f0; border-radius:10px;
-  font-size:14px; font-family:inherit; outline:none; transition:0.2s;
-}
-.form-group input:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,0.1); }
-
-.btn {
-  width:100%; padding:13px; border:none; border-radius:10px;
-  font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
-  transition:0.2s; display:flex; align-items:center; justify-content:center; gap:8px;
-}
-.btn-primary { background:#f97316; color:white; }
-.btn-primary:hover { background:#ea580c; }
-
-.msg { display:none; padding:12px; border-radius:8px; font-size:13px; margin-top:16px; }
-.msg.show { display:block; }
-.msg-success { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
-.msg-error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
-</style>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/alterar-senha-page.css">
 </head>
 <body>
 
@@ -56,19 +17,19 @@ body {
 
   <form id="changePassForm">
     <div class="form-group">
-      <label>Usuário</label>
+      <label for="currentUser">Usuário</label>
       <input type="text" id="currentUser" readonly style="background:#f8fafc;color:#94a3b8;">
     </div>
     <div class="form-group">
-      <label>Senha Atual</label>
+      <label for="currentPass">Senha Atual</label>
       <input type="password" id="currentPass" placeholder="Sua senha atual" required>
     </div>
     <div class="form-group">
-      <label>Nova Senha</label>
+      <label for="newPass">Nova Senha</label>
       <input type="password" id="newPass" placeholder="Mínimo 6 caracteres" required>
     </div>
     <div class="form-group">
-      <label>Confirmar Nova Senha</label>
+      <label for="newPass2">Confirmar Nova Senha</label>
       <input type="password" id="newPass2" placeholder="Repita a nova senha" required>
     </div>
     <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar</button>
@@ -129,5 +90,6 @@ function showMsg(text, type) {
   msg.className = `msg show msg-${type}`;
 }
 </script>
+<script src="js/theme.js" defer></script>
 </body>
 </html>

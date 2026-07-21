@@ -19,6 +19,7 @@ html {
 body {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--secondary, #FFFAF8);
   color: var(--text, #2D1A12);
   font-family: var(--font, 'Plus Jakarta Sans', sans-serif);
@@ -171,7 +172,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  min-width: 340px;
+  min-width: min(340px, 100%);
 }
 
 .checkout h3 {
@@ -582,7 +583,7 @@ hr {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: var(--z-modal);
   backdrop-filter: blur(4px);
   animation: fadeIn 0.2s ease;
 }

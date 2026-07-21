@@ -3,77 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <title>Super Admin - Fábrica de Salgados</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="js/theme.js"></script>
-
-<style>
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  background: #f1f5f9;
-  color: #1e293b;
-  padding: 24px;
-  min-height: 100vh;
-}
-h1 { font-size: 20px; font-weight: 700; margin-bottom: 20px; display:flex; align-items:center; gap:8px; }
-h1 i { color: #f97316; }
-
-.card {
-  background: white; border-radius: 12px; padding: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 16px;
-}
-.card h2 { font-size: 16px; margin-bottom: 16px; display:flex; align-items:center; gap:8px; }
-
-.tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-.tab {
-  padding: 10px 20px; border:1px solid #e2e8f0; border-radius:8px;
-  background:white; font-size:13px; font-weight:600; cursor:pointer;
-  transition:all 0.2s; font-family:inherit; color:#64748b;
-}
-.tab:hover { border-color:#f97316; color:#f97316; }
-.tab.active { background:#f97316; color:white; border-color:#f97316; }
-.tab-content { display:none; }
-.tab-content.active { display:block; animation:fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-
-.user-table { width:100%; border-collapse:collapse; font-size:13px; }
-.user-table th { background:#f8fafc; color:#64748b; font-weight:600; padding:12px 10px; text-align:left; border-bottom:2px solid #e2e8f0; }
-.user-table td { padding:10px; border-bottom:1px solid #f1f5f9; }
-.user-table tr:hover td { background:#f8fafc; }
-
-input, select {
-  padding: 10px 14px; border:1px solid #e2e8f0; border-radius:8px;
-  font-size:13px; font-family:inherit; outline:none; width:100%; margin-bottom:10px;
-  transition:0.2s;
-}
-input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,115,22,0.1); }
-
-.btn {
-  padding: 10px 18px; border:none; border-radius:8px; font-weight:600; font-size:13px;
-  cursor:pointer; font-family:inherit; transition:all 0.2s; display:inline-flex; align-items:center; gap:6px;
-}
-.btn:active { transform:scale(0.97); }
-.btn-primary { background:#f97316; color:white; }
-.btn-primary:hover { background:#ea580c; }
-.btn-danger { background:#dc2626; color:white; }
-.btn-danger:hover { background:#b91c1c; }
-.btn-sm { padding:6px 12px; font-size:11px; }
-
-.toast-container { position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
-.toast { padding:12px 18px; border-radius:10px; color:white; font-size:13px; font-weight:500; animation:toastIn 0.3s ease; cursor:pointer; box-shadow:0 8px 24px rgba(0,0,0,0.12); }
-.toast-success { background:#16a34a; }
-.toast-danger { background:#dc2626; }
-.toast-info { background:#3b82f6; }
-@keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
-
-@media(max-width:768px) {
-  body { padding:16px; }
-  .user-table { font-size:12px; }
-  .tabs { flex-direction:column; }
-}
-</style>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/superadmin-page.css">
 </head>
 <body>
 
@@ -89,17 +23,19 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
 <div class="tab-content active" id="tabUsuarios">
   <div class="card">
     <h2><i class="fas fa-list"></i> Usuários Cadastrados</h2>
+    <div style="overflow-x:auto">
     <table class="user-table">
       <thead><tr><th>Usuário</th><th>Papel</th><th>Loja</th><th>Criado em</th><th>Ações</th></tr></thead>
       <tbody id="userTableBody"></tbody>
     </table>
+    </div>
   </div>
   <div class="card">
     <h2><i class="fas fa-plus-circle"></i> Cadastrar Novo Usuário</h2>
     <div style="max-width:400px;">
-      <input type="text" id="newUsername" placeholder="Nome de usuário">
-      <input type="password" id="newPassword" placeholder="Senha">
-      <select id="newRole">
+      <input type="text" id="newUsername" aria-label="Nome de usuário" placeholder="Nome de usuário">
+      <input type="password" id="newPassword" aria-label="Senha" placeholder="Senha">
+      <select id="newRole" aria-label="Papel do usuário">
         <option value="user">Usuário</option>
         <option value="admin">Administrador</option>
         <option value="superadmin">Super Admin</option>
@@ -115,9 +51,9 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
   <div class="card">
     <h2><i class="fas fa-exchange-alt"></i> Alterar Senha de Usuário</h2>
     <div style="max-width:400px;">
-      <select id="userSelect"><option value="">Carregando...</option></select>
-      <input type="password" id="newPassInput" placeholder="Nova senha">
-      <input type="password" id="newPassConfirm" placeholder="Confirmar nova senha">
+      <select id="userSelect" aria-label="Selecionar usuário"><option value="">Carregando...</option></select>
+      <input type="password" id="newPassInput" aria-label="Nova senha" placeholder="Nova senha">
+      <input type="password" id="newPassConfirm" aria-label="Confirmar nova senha" placeholder="Confirmar nova senha">
       <button class="btn btn-primary" onclick="alterarSenha()"><i class="fas fa-save"></i> Salvar</button>
     </div>
     <div class="toast" id="passMsg" style="display:none;margin-top:10px;"></div>
@@ -128,10 +64,12 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
 <div class="tab-content" id="tabLogs">
   <div class="card">
     <h2><i class="fas fa-history"></i> Histórico de Login</h2>
+    <div style="overflow-x:auto">
     <table class="user-table">
       <thead><tr><th>Usuário</th><th>IP</th><th>User-Agent</th><th>Data/Hora</th></tr></thead>
       <tbody id="logTableBody"></tbody>
     </table>
+    </div>
   </div>
 </div>
 
@@ -178,7 +116,7 @@ async function carregarUsuarios() {
     var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', user: 'Usuário' };
     usuarios.forEach(function(u) {
       var roleClass = u.role === 'superadmin' ? ' style="color:#f97316;font-weight:700;"' : '';
-      tbody.innerHTML += '<tr><td><strong>' + u.username + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || u.role) + '</td><td>' + (u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" onclick="excluirUsuario(' + u.id + ',\'' + u.username + '\')"><i class="fas fa-trash"></i></button></td></tr>';
+      tbody.innerHTML += '<tr><td><strong>' + u.username + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || u.role) + '</td><td>' + (u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" aria-label="Excluir usuário ' + u.username + '" onclick="excluirUsuario(' + u.id + ',\'' + u.username + '\')"><i class="fas fa-trash"></i></button></td></tr>';
       select.innerHTML += '<option value="' + u.id + '" data-user="' + u.username + '">' + u.username + '</option>';
     });
   } catch(e) {
@@ -256,5 +194,6 @@ carregarUsuarios();
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+<script src="js/theme.js" defer></script>
 </body>
 </html>
