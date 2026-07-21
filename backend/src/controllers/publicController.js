@@ -98,13 +98,12 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
   res.json(pedidos);
 })];
 
-exports.criarPedido = [authenticatePublic, asyncHandler(async (req, res) => {
-  const { clienteNome, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, total } = req.body;
+exports.criarPedido = asyncHandler(async (req, res) => {
+  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, total } = req.body;
   if (!clienteNome || !itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ error: 'Dados do pedido incompletos' });
   }
   const pedidoId = await sql.nextPedidoId();
-  const clienteWhatsapp = req.cliente.telefone;
 
   let valoresItens = 0;
   const itensPedido = [];

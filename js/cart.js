@@ -689,12 +689,6 @@ async function getLatLon(enderecoCompleto) {
 
 // ---------------- GERAR PEDIDO ---------------- //
 async function generateOrder() {
-  const token = localStorage.getItem('clientToken');
-  if (!token) {
-    toast("Faça login ou cadastre-se para finalizar o pedido!", 'warning');
-    return;
-  }
-
   const tipoEntrega = document.querySelector("input[name='tipoEntrega']:checked")?.value || "";
   const nome = document.getElementById("nome")?.value.trim() || "";
   const endereco = document.getElementById("endereco")?.value.trim() || "";
@@ -705,6 +699,7 @@ async function generateOrder() {
   const pontoReferencia = document.getElementById("pontoReferencia")?.value.trim() || "";
   const formaPagamentoValue = document.getElementById("formaPagamento")?.value || "";
   const troco = parseFloat(document.getElementById("trocoPara")?.value) || 0;
+  const whatsapp = document.getElementById("whatsapp")?.value.replace(/\D/g, '') || "";
 
   let cep = "";
   if (tipoEntrega === "delivery") {
@@ -786,6 +781,7 @@ async function generateOrder() {
 
   const payload = {
     clienteNome: nome,
+    clienteWhatsapp: whatsapp,
     clienteEndereco: endereco,
     clienteNumero: numero,
     clienteBairro: bairro,
