@@ -40,3 +40,11 @@ firebase-debug.*.log
 *.bak
 *.backup
 .vercel
+
+# Auditoria responsiva (runtime / exclusoes locais)
+.playwright-mcp/
+docs/screenshots/
+
+# Windows file artifacts
+NUL
+
