@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <title>Painel — Loja</title>
 
 <script src="js/utils.js"></script>
@@ -13,112 +13,10 @@ var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
 if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
 </script>
 <link rel="stylesheet" href="css/painelstyle.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/painelloja-page.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="js/theme.js"></script>
 
-<style>
-:root {
-  --bg: #0f172a; --card: #0b1224; --muted: #94a3b8; --text: #e2e8f0;
-  --brand: #22c55e; --brand-2: #3b82f6; --warn: #f59e0b; --danger: #ef4444;
-  --ok: #10b981; --ring: #22c55e55;
-}
-*{ box-sizing: border-box }
-html,body{ height:100%; margin:0; font-family:'Inter', sans-serif; background: var(--bg); color:var(--text); }
-.wrapper{ max-width:1200px; margin:32px auto; padding:0 16px; }
-header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
-.title{ font-weight:800; font-size:clamp(20px,2vw+12px,32px); display:flex; align-items:center; gap:10px }
-
-.grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:16px }
-.card{ grid-column: span 12; background: linear-gradient(180deg,#0e1630,#0b1224); border:1px solid #1f2a4d; border-radius:20px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25) }
-@media(min-width:900px){ .card.half{ grid-column: span 12 } }
-.card h3{ margin:0 0 12px; font-size:18px; font-weight:800; display:flex; align-items:center; gap:8px }
-.hr{ height:1px; background:linear-gradient(90deg, transparent, #263463, transparent); margin:12px 0 }
-
-/* Tabs */
-.tabs{ display:flex; gap:8px; flex-wrap:wrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
-.tab-btn{ cursor:pointer; border:1px solid #22315b; background:#0a1224; color:var(--text); padding:10px 16px; border-radius:12px; font-weight:700; transition:.2s; flex:0 0 auto; font-family:inherit; font-size:13px; }
-.tab-btn[aria-selected="true"], .tab-btn:hover{ outline:2px solid var(--ring); background:linear-gradient(180deg,#0e1a35,#0a1224); }
-.hidden{ display:none !important }
-
-/* Skeleton */
-.skeleton-row{ background:linear-gradient(90deg,#0e1630 25%,#1a2440 50%,#0e1630 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:8px; height:48px; margin-bottom:8px; }
-@keyframes shimmer{ 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* Modal */
-.modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:10000; animation:fadeIn .2s; }
-.modal-box{ background:linear-gradient(180deg,#0e1630,#0b1224); border:1px solid #1f2a4d; border-radius:16px; padding:28px; max-width:380px; width:90%; animation:slideUp .2s; }
-@keyframes slideUp{ from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
-.modal-box h3{ font-size:16px; margin-bottom:8px; }
-.modal-box p{ font-size:13px; color:var(--muted); margin-bottom:20px; line-height:1.5; }
-.modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
-.btn-modal-confirm{ padding:10px 18px; background:linear-gradient(90deg,var(--danger),#dc2626); color:#fff; border:none; border-radius:10px; font-weight:700; cursor:pointer; font-family:inherit; font-size:13px; }
-.btn-modal-cancel{ padding:10px 18px; background:#0a1224; border:1px solid #22315b; color:var(--muted); border-radius:10px; font-weight:600; cursor:pointer; font-family:inherit; font-size:13px; }
-
-/* Form sections */
-.form-section{ background:#0a1224; border:1px solid #1f2a4d; border-radius:12px; padding:16px; margin-bottom:12px; }
-.form-section h4{ font-size:12px; color:var(--brand-2); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
-
-.row{ display:grid; grid-template-columns:140px 1fr; gap:8px; align-items:center; margin-bottom:8px; }
-.row .lbl{ color:var(--muted); font-size:11px; font-weight:700; text-transform:uppercase; }
-.row input, .row select, .row textarea{
-  width:100%; padding:10px 12px; border-radius:10px; border:1px solid #22315b; background:#0f172a; color:var(--text); outline:none; font-weight:500; font-size:13px; font-family:inherit;
-}
-.row input:focus, .row select:focus, .row textarea:focus{ box-shadow:0 0 0 3px var(--ring); border-color:#3856a3 }
-.row textarea{ resize:vertical; min-height:60px }
-.row .inline{ display:flex; gap:10px; align-items:center }
-.chip{ padding:5px 10px; border-radius:999px; font-size:11px; border:1px solid #22315b; background:#0a1224; color:var(--muted); font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer; }
-.chip input[type="checkbox"]{ width:auto; margin:0; accent-color:var(--brand); }
-
-/* Buttons */
-.btn{ cursor:pointer; border:none; padding:10px 16px; border-radius:12px; font-weight:700; font-family:inherit; font-size:13px; transition:transform .04s, opacity .2s; display:inline-flex; align-items:center; gap:6px; }
-.btn:active{ transform:translateY(1px) }
-.btn.save{ background:linear-gradient(90deg,var(--brand),#16a34a); color:#04120a }
-.btn.refresh{ background:linear-gradient(90deg,var(--brand-2),#2563eb); color:#081222 }
-.btn.pause{ background:linear-gradient(90deg,#64748b,#475569); color:#0c111b }
-.btn.danger{ background:linear-gradient(90deg,var(--danger),#dc2626); color:#1b0707 }
-.btn.ghost{ background:#0a1224; border:1px solid #22315b; color:var(--text) }
-.btn-sm{ padding:6px 12px; font-size:11px; border-radius:8px; }
-
-/* Table */
-.table-wrapper{ overflow-x:auto; }
-.table{ width:100%; border-collapse:separate; border-spacing:0 6px; font-size:13px; }
-.table th{ text-align:left; font-size:11px; color:var(--muted); font-weight:800; text-transform:uppercase; padding:4px 8px; white-space:nowrap; }
-.table td{ background:linear-gradient(180deg,#0d1633,#0b1224); border:1px solid #1f2a4d; border-left:none; border-right:none; padding:10px 8px; font-weight:500; }
-.table td .actions{ display:flex; gap:4px; flex-wrap:wrap; }
-img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; margin-right:6px; vertical-align:middle }
-.dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px }
-.dot.active{ background:var(--ok) }
-.dot.paused{ background:var(--warn) }
-
-/* Status pills */
-.pill{ display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600; }
-.pill-active{ background:rgba(16,185,129,0.15); color:#4ade80; }
-.pill-paused{ background:rgba(245,158,11,0.15); color:#fbbf24; }
-.pill-estoque{ background:rgba(239,68,68,0.15); color:#fca5a5; }
-.pill-baixo{ background:rgba(245,158,11,0.15); color:#fbbf24; }
-
-/* Toolbar */
-.toolbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-.toolbar input, .toolbar select{ padding:8px 12px; border-radius:8px; border:1px solid #22315b; background:#0a1224; color:var(--text); outline:none; font-size:12px; font-family:inherit; }
-.toolbar input:focus, .toolbar select:focus{ border-color:var(--brand-2); }
-.toolbar .btn{ padding:8px 14px; font-size:12px; }
-
-/* Tips */
-.tip{ font-size:11px; color:var(--muted); padding:4px 0; }
-
-@media(max-width:600px){
-  .row{ grid-template-columns:1fr; gap:4px; }
-  .row .lbl{ margin-bottom:2px; font-size:10px; }
-  .table td, .table th{ font-size:11px; padding:6px 4px; white-space:normal; }
-  .card{ padding:12px; border-radius:12px; }
-  .toolbar{ flex-direction:column; align-items:stretch; }
-  .toolbar input, .toolbar select{ width:100%; }
-  .form-section{ padding:12px; }
-  .modal-box{ padding:20px; }
-}
-.highlight-edit{ animation:pulseEdit 1s ease; box-shadow:0 0 0 4px rgba(59,130,246,0.5); }
-@keyframes pulseEdit{ 0%{transform:scale(1)} 50%{transform:scale(1.02)} 100%{transform:scale(1)} }
-</style>
 </head>
 <body>
 
@@ -188,8 +86,8 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
     <!-- Toolbar -->
     <div class="card" style="padding:12px 16px;">
       <div class="toolbar">
-        <input type="text" id="busca" placeholder="Buscar por nome ou ID..." style="flex:1;min-width:150px;">
-        <select id="filtroStatus">
+        <input type="text" id="busca" aria-label="Buscar por nome ou ID" placeholder="Buscar por nome ou ID..." style="flex:1;min-width:150px;">
+        <select id="filtroStatus" aria-label="Filtrar por status">
           <option value="">Todos os status</option>
           <option value="active">Ativos</option>
           <option value="paused">Pausados</option>
@@ -238,7 +136,7 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
             <div style="display:flex;flex-direction:column;gap:8px;">
               <input type="file" id="prodImgFile" accept="image/*" />
               <input type="hidden" id="prodImg" />
-              <img id="prodImgPreview" style="max-width:150px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
+              <img id="prodImgPreview" loading="lazy" style="max-width:150px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
             </div>
           </div>
         </div>
@@ -303,7 +201,7 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
         <h4><i class="fas fa-plus-circle"></i> Nova Categoria</h4>
         <div class="row">
           <div class="lbl">Nome</div>
-          <input type="text" id="catNome" placeholder="Ex.: Salgadinhos 20g, Salgadinho 45g..." />
+          <input type="text" id="catNome" aria-label="Nome da categoria" placeholder="Ex.: Salgadinhos 20g, Salgadinho 45g..." />
         </div>
         <div style="display:flex; gap:8px; margin-top:8px;">
           <button class="btn save" id="btnSalvarCategoria"><i class="fas fa-save"></i> Salvar</button>
@@ -331,15 +229,15 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
         <h4><i class="fas fa-info-circle"></i> Informações da Loja</h4>
         <div class="row">
           <div class="lbl">Nome da Loja</div>
-          <input type="text" id="confNome" placeholder="Ex.: Fábrica de Salgados Costa" />
+          <input type="text" id="confNome" aria-label="Nome da loja" placeholder="Ex.: Fábrica de Salgados Costa" />
         </div>
         <div class="row">
           <div class="lbl">WhatsApp (com DDD)</div>
-          <input type="text" id="confTelefone" placeholder="5521966017085" />
+          <input type="text" id="confTelefone" aria-label="WhatsApp com DDD" placeholder="5521966017085" />
         </div>
         <div class="row">
           <div class="lbl">Descrição</div>
-          <textarea id="confDescricao" rows="3" placeholder="Sobre a loja..."></textarea>
+          <textarea id="confDescricao" aria-label="Descrição" rows="3" placeholder="Sobre a loja..."></textarea>
         </div>
       </div>
 
@@ -347,35 +245,35 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
         <h4><i class="fas fa-map-marker-alt"></i> Endereço</h4>
         <div class="row">
           <div class="lbl">Logradouro</div>
-          <input type="text" id="confEndereco" />
+          <input type="text" id="confEndereco" aria-label="Logradouro" />
         </div>
         <div class="row">
           <div class="lbl">Número</div>
-          <input type="text" id="confNumero" />
+          <input type="text" id="confNumero" aria-label="Número" />
         </div>
         <div class="row">
           <div class="lbl">Bairro</div>
-          <input type="text" id="confBairro" />
+          <input type="text" id="confBairro" aria-label="Bairro" />
         </div>
         <div class="row">
           <div class="lbl">Cidade</div>
-          <input type="text" id="confCidade" />
+          <input type="text" id="confCidade" aria-label="Cidade" />
         </div>
         <div class="row">
           <div class="lbl">Estado</div>
-          <input type="text" id="confEstado" maxlength="2" placeholder="RJ" />
+          <input type="text" id="confEstado" aria-label="Estado" maxlength="2" placeholder="RJ" />
         </div>
         <div class="row">
           <div class="lbl">CEP</div>
-          <input type="text" id="confCep" placeholder="Somente números" />
+          <input type="text" id="confCep" aria-label="CEP" placeholder="Somente números" />
         </div>
         <div class="row">
           <div class="lbl">Latitude</div>
-          <input type="text" id="confLatitude" placeholder="-22.764..." />
+          <input type="text" id="confLatitude" aria-label="Latitude" placeholder="-22.764..." />
         </div>
         <div class="row">
           <div class="lbl">Longitude</div>
-          <input type="text" id="confLongitude" placeholder="-43.399..." />
+          <input type="text" id="confLongitude" aria-label="Longitude" placeholder="-43.399..." />
         </div>
       </div>
 
@@ -386,7 +284,7 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
           <div style="display:flex;flex-direction:column;gap:8px;">
             <input type="file" id="confLogoFile" accept="image/*" />
             <input type="hidden" id="confLogo" />
-            <img id="confLogoPreview" style="max-width:150px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
+            <img id="confLogoPreview" loading="lazy" style="max-width:150px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
           </div>
         </div>
       </div>
@@ -398,7 +296,7 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
           <div style="display:flex;flex-direction:column;gap:8px;">
             <input type="file" id="confCapaFile" accept="image/*" />
             <input type="hidden" id="confCapa" />
-            <img id="confCapaPreview" style="max-width:300px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
+            <img id="confCapaPreview" loading="lazy" style="max-width:300px;max-height:150px;border-radius:8px;display:none;object-fit:cover;" />
           </div>
         </div>
       </div>
@@ -481,5 +379,6 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="js/painel.js?=2"></script>
+<script src="js/theme.js" defer></script>
 </body>
 </html>

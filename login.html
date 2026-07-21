@@ -2,109 +2,12 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <title>Login - Fábrica de Salgados Costa</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="js/theme.js"></script>
-
-<style>
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--secondary, #FFFAF8);
-  padding: 20px;
-}
-
-.container {
-  width: 100%;
-  max-width: 460px;
-  animation: fadeUp 0.5s ease;
-}
-
-@keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-
-.brand { text-align:center; margin-bottom:28px; }
-.brand .icon {
-  width: 64px; height: 64px;
-  background: var(--primary, #F26D3D);
-  border-radius: 18px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px; color: white; margin: 0 auto 16px;
-  box-shadow: 0 8px 24px rgba(242,109,61,0.3);
-}
-.brand h1 { font-size: 22px; font-weight: 800; color: var(--text, #2D1A12); }
-.brand p { font-size: 13px; color: var(--text-muted, #7C7C7C); margin-top:4px; }
-
-.card {
-  background: var(--surface, #FFFFFF);
-  border-radius: 20px;
-  padding: 32px;
-  border: 1px solid var(--border, #E8E4DF);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
-}
-
-.tabs { display:flex; gap:4px; margin-bottom:24px; background: var(--secondary, #FFFAF8); border-radius:10px; padding:4px; border: 1px solid var(--border, #E8E4DF); }
-.tab {
-  flex:1; padding:10px; text-align:center; border:none; border-radius:8px;
-  font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
-  background:transparent; color: var(--text-muted, #7C7C7C); transition:all 0.2s;
-}
-.tab.active { background: var(--primary, #F26D3D); color:white; }
-
-.form-group { margin-bottom:16px; }
-.form-group label { display:block; font-size:11px; font-weight:600; color: var(--text-muted, #7C7C7C); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px; }
-.form-group input {
-  width:100%; padding:12px 14px; background: var(--secondary, #FFFAF8); border:1px solid var(--border, #E8E4DF);
-  border-radius:10px; color: var(--text, #2D1A12); font-size:14px; font-family:inherit; outline:none; transition:0.2s;
-}
-.form-group input:focus { border-color: var(--primary, #F26D3D); box-shadow:0 0 0 3px rgba(242,109,61,0.12); }
-.form-group input::placeholder { color: var(--text-muted, #7C7C7C); }
-
-.btn {
-  width:100%; padding:13px; border:none; border-radius:10px;
-  font-size:14px; font-weight:700; cursor:pointer; font-family:inherit;
-  transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px;
-}
-.btn-primary { background: var(--primary, #F26D3D); color:white; }
-.btn-primary:hover { transform:translateY(-1px); box-shadow:0 8px 24px rgba(242,109,61,0.35); background: var(--primary-hover, #E05A2A); }
-.btn-primary:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
-.btn-ghost { background:transparent; color: var(--text-muted, #7C7C7C); border:1px solid var(--border, #E8E4DF); }
-.btn-ghost:hover { color: var(--text, #2D1A12); border-color: var(--primary, #F26D3D); }
-
-.spinner-btn { display:none; width:18px; height:18px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.6s linear infinite; }
-.btn.loading .spinner-btn { display:inline-block; }
-@keyframes spin { to { transform:rotate(360deg); } }
-
-.error { display:none; padding:10px 14px; background:rgba(220,38,38,0.08); border:1px solid rgba(220,38,38,0.15); border-radius:8px; color: var(--danger, #dc2626); font-size:13px; margin-top:12px; }
-.error.show { display:block; animation:shake 0.3s; }
-@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
-
-.success-msg { padding:10px 14px; background:rgba(76,175,80,0.08); border:1px solid rgba(76,175,80,0.15); border-radius:8px; color: var(--success, #4CAF50); font-size:13px; margin-top:12px; display:none; }
-.success-msg.show { display:block; }
-
-.form-box { display:none; }
-.form-box.active { display:block; animation:fadeIn 0.3s; }
-@keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-
-.footer { text-align:center; margin-top:16px; font-size:12px; color: var(--text-muted, #7C7C7C); }
-
-/* Super Admin panel after login */
-.super-panel { display:none; }
-.super-panel.active { display:block; }
-.user-list { display:flex; flex-direction:column; gap:8px; margin:12px 0; max-height:300px; overflow-y:auto; }
-.user-item { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background: var(--secondary, #FFFAF8); border-radius:8px; border: 1px solid var(--border, #E8E4DF); }
-.user-item .uname { font-weight:600; font-size:13px; color: var(--text, #2D1A12); }
-.user-item .udate { font-size:11px; color: var(--text-muted, #7C7C7C); }
-.user-item .btn-sm { padding:5px 10px; font-size:11px; border:none; border-radius:6px; cursor:pointer; font-family:inherit; background: var(--primary-bg, #FFF0EA); color: var(--text-muted, #7C7C7C); transition:0.2s; }
-.user-item .btn-sm:hover { background: var(--primary, #F26D3D); color:white; }
-
-@media(max-width:480px) { .card { padding:24px; } .brand .icon { width:52px; height:52px; font-size:22px; } }
-</style>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/login-page.css">
 </head>
 <body>
 
@@ -122,11 +25,11 @@ body {
     <div class="form-box active" id="boxLogin">
       <form id="loginForm">
         <div class="form-group">
-          <label>Usuário</label>
+          <label for="loginUser">Usuário</label>
           <input type="text" id="loginUser" placeholder="Seu usuário" required autocomplete="username">
         </div>
         <div class="form-group">
-          <label>Senha</label>
+          <label for="loginPass">Senha</label>
           <input type="password" id="loginPass" placeholder="Sua senha" required autocomplete="current-password">
         </div>
         <button type="submit" class="btn btn-primary" id="btnLogin">
@@ -265,5 +168,6 @@ if (authUser) {
   }
 }
 </script>
+<script src="js/theme.js" defer></script>
 </body>
 </html>

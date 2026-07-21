@@ -64,11 +64,7 @@
 
     .grid{ display:grid; grid-template-columns: repeat(12, 1fr); gap:16px }
     .card{ grid-column: span 12; background: linear-gradient(180deg,#0e1630,#0b1224); border:1px solid #1f2a4d; border-radius:20px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.25) }
-    @media(min-width:900px){ .card.half{ grid-column: span 12 } }
-
-    @media(max-width: 1200px) {
-  .card.half { grid-column: span 12 !important; } /* tablets */
-}
+@media(min-width:900px){ .card.half{ grid-column: span 6 } }
 
 .highlight-edit {
   animation: pulseEdit 1s ease;

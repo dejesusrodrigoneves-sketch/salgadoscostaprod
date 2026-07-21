@@ -48,6 +48,9 @@
       set('--surface',   '#191919');
       set('--text',      '#FFFCE1');
       set('--text-muted','#7C7C6F');
+      set('--danger-bg',  '#3D1A1A');
+      set('--warning-bg', '#3D2E0A');
+      set('--success-bg', '#0A3D1A');
     }
   }
 

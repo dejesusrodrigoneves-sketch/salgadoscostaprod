@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/tokens.css">
 <link rel="stylesheet" href="./css/style.css">
-<script src="js/theme.js"></script>
 <link rel="manifest" href="/manifest.json">
 <link rel="shortcut icon" href="img/IMG-20250821-WA0028.jpg" type="image/x-icon">
 <title id="pageTitle">Fabrica de Salgados Costa | Cardapio Online</title>
@@ -45,7 +45,7 @@
   </div>
   <div id="searchBar">
     <span class="iconify-inline" data-icon="mdi:magnify"></span>
-    <input type="text" id="searchInput" placeholder="Buscar no cardápio...">
+    <input type="text" id="searchInput" aria-label="Buscar no cardápio" placeholder="Buscar no cardápio...">
   </div>
   <div class="cardsMenu" id="showMenu"></div>
 </div>
@@ -146,8 +146,8 @@
 <!-- User Dropdown -->
 <div id="userDropdown" class="hidden">
   <h3>Login</h3>
-  <input type="text" id="loginPhone" placeholder="Telefone" />
-  <input type="password" id="loginPassword" placeholder="Senha" />
+  <input type="text" id="loginPhone" aria-label="Telefone" placeholder="Telefone" />
+  <input type="password" id="loginPassword" aria-label="Senha" placeholder="Senha" />
   <button id="btnLogin">Entrar</button>
   <button id="btnShowRegister">Cadastrar-me</button>
 </div>
@@ -156,14 +156,14 @@
 <div id="registerOverlay" class="hidden">
   <div class="registerBox">
     <h3>Criar conta</h3>
-    <input type="text" id="regNome" placeholder="Nome completo" />
-    <input type="text" id="regPhone" placeholder="21999999999" />
-    <input type="password" id="regPassword" placeholder="Senha" />
-    <input type="text" id="regCep" placeholder="Digite seu CEP (sem traços ou espaços)" />
-    <input type="text" id="regEndereco" placeholder="Endereço" />
-    <input type="text" id="regNumero" placeholder="Número" />
-    <input type="text" id="regBairro" placeholder="Bairro" />
-    <input type="text" id="regPonto" placeholder="Ponto de referência" />
+    <input type="text" id="regNome" aria-label="Nome completo" placeholder="Nome completo" />
+    <input type="text" id="regPhone" aria-label="Telefone" placeholder="21999999999" />
+    <input type="password" id="regPassword" aria-label="Senha" placeholder="Senha" />
+    <input type="text" id="regCep" aria-label="CEP" placeholder="Digite seu CEP (sem traços ou espaços)" />
+    <input type="text" id="regEndereco" aria-label="Endereço" placeholder="Endereço" />
+    <input type="text" id="regNumero" aria-label="Número" placeholder="Número" />
+    <input type="text" id="regBairro" aria-label="Bairro" placeholder="Bairro" />
+    <input type="text" id="regPonto" aria-label="Ponto de referência" placeholder="Ponto de referência" />
     <button id="btnRegister">Cadastrar</button>
     <button id="btnCloseRegister">Cancelar</button>
   </div>
@@ -199,5 +199,6 @@
   </div>
 </div>
 
+<script src="js/theme.js" defer></script>
 </body>
 </html>
