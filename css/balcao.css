@@ -268,7 +268,7 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--border, #ECECEC);
+  background: var(--border, #0e100f);
   border-radius: 100px;
   padding: 2px;
 }
