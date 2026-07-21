@@ -1,19 +1,23 @@
 const bcrypt = require('bcryptjs');
 const sql = require('../repositories/sqlRepository');
+const tokenService = require('./tokenService');
+const prisma = require('../config/prisma');
 
 const SALT_ROUNDS = 10;
 
-async function login(username, password) {
+async function login(username, password, ip, userAgent) {
   const user = await sql.buscarUsuario(username);
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 401 });
 
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) throw Object.assign(new Error('Senha incorreta'), { status: 401 });
 
-  const token = Buffer.from(JSON.stringify({
-    id: user.id, username: user.username, role: user.role,
-    empresaId: 1, lojaNome: user.lojaNome,
-  })).toString('base64url');
+  const payload = { id: user.id, username: user.username, role: user.role, empresaId: 1, lojaNome: user.lojaNome };
+  const token = tokenService.gerarToken(payload);
+
+  await prisma.loginLog.create({
+    data: { usuarioId: user.id, username: user.username, ip, userAgent },
+  }).catch(() => {});
 
   return { token, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
 }
@@ -44,10 +48,8 @@ async function criarConta({ username, password, lojaNome }) {
     role: 'admin',
   });
 
-  const token = Buffer.from(JSON.stringify({
-    id: user.id, username: user.username, role: user.role,
-    empresaId: user.empresaId, lojaNome: user.lojaNome,
-  })).toString('base64url');
+  const payload = { id: user.id, username: user.username, role: user.role, empresaId: user.empresaId, lojaNome: user.lojaNome };
+  const token = tokenService.gerarToken(payload);
 
   return { token, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
 }

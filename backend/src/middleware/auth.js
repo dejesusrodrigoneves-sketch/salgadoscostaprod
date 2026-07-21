@@ -1,3 +1,5 @@
+const tokenService = require('../services/tokenService');
+
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -5,8 +7,7 @@ function authenticate(req, res, next) {
   }
   try {
     const token = authHeader.split(' ')[1];
-    const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = JSON.parse(Buffer.from(base64, 'base64').toString());
+    const decoded = tokenService.verificarToken(token);
     req.user = decoded;
     next();
   } catch (err) {

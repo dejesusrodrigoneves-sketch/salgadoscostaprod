@@ -472,9 +472,7 @@ const pageTitle = document.getElementById('pageTitle');
 let notifCount = 0;
 let currentPage = 'admin.html';
 
-// Use URL param to detect superadmin access
-const urlParams = new URLSearchParams(window.location.search);
-const isSuperAdmin = authUser.role === 'superadmin' || urlParams.get('superadmin') === 'true';
+const role = authUser.role || 'user';
 
 const menuSections = [
   {
@@ -482,32 +480,45 @@ const menuSections = [
     items: [
       { icon: 'fa-box', label: 'Pedidos', page: 'admin.html' },
       { icon: 'fa-cash-register', label: 'Lançar Pedido', page: 'balcao.html' },
-      { icon: 'fa-store', label: 'Painel Loja', page: 'painelLoja.html' },
-    ]
-  },
-  {
-    title: 'Financeiro',
-    items: [
-      { icon: 'fa-chart-bar', label: 'Relatórios', page: 'relatorios.html' },
-      { icon: 'fa-wallet', label: 'Controle de Caixa', page: 'caixa.html' },
-    ]
-  },
-  {
-    title: 'Entregas',
-    items: [
-      { icon: 'fa-truck', label: 'Entregadores', page: 'entregador.html' },
-    ]
-  },
-  {
-    title: 'Integrações',
-    items: [
-      { icon: 'fab fa-whatsapp', label: 'WhatsApp', page: 'whatsapp.html' },
     ]
   }
 ];
 
+// Admin+ sections
+if (role === 'admin' || role === 'superadmin') {
+  menuSections.push(
+    {
+      title: 'Financeiro',
+      items: [
+        { icon: 'fa-chart-bar', label: 'Relatórios', page: 'relatorios.html' },
+        { icon: 'fa-wallet', label: 'Controle de Caixa', page: 'caixa.html' },
+      ]
+    },
+    {
+      title: 'Entregas',
+      items: [
+        { icon: 'fa-truck', label: 'Entregadores', page: 'entregador.html' },
+      ]
+    },
+    {
+      title: 'Painel',
+      items: [
+        { icon: 'fa-store', label: 'Painel Loja', page: 'painelLoja.html' },
+      ]
+    }
+  );
+}
+
+// Todos veem Integrações (WhatsApp)
+menuSections.push({
+  title: 'Integrações',
+  items: [
+    { icon: 'fab fa-whatsapp', label: 'WhatsApp', page: 'whatsapp.html' },
+  ]
+});
+
 // Super Admin section
-if (isSuperAdmin) {
+if (role === 'superadmin') {
   menuSections.push({
     title: 'Administração',
     items: [
@@ -586,7 +597,8 @@ function closeSidebar() {
 
 // Show user info
 const userName = authUser.username || 'Admin';
-const roleBadge = isSuperAdmin ? 'Super Admin' : 'Usuário';
+const roleLabels = { superadmin: 'Super Admin', admin: 'Admin', user: 'Usuário' };
+const roleBadge = roleLabels[role] || 'Usuário';
 document.getElementById('userInfo').innerHTML = '<i class=\"fas fa-user-circle\"></i> ' + userName + ' <span style=\"font-size:10px;color:#94a3b8;font-weight:400;\">(' + roleBadge + ')</span>';
 
 function logout() {

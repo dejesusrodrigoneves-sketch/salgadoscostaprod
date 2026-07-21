@@ -42,4 +42,12 @@ router.put('/:id/password', asyncHandler(async (req, res) => {
   res.json({ success: true });
 }));
 
+router.get('/logs', asyncHandler(async (req, res) => {
+  const logs = await prisma.loginLog.findMany({
+    orderBy: { loggedAt: 'desc' },
+    take: 100,
+  });
+  res.json(logs);
+}));
+
 module.exports = router;

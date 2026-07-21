@@ -82,6 +82,7 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
 <div class="tabs">
   <button class="tab active" onclick="switchTab('usuarios',this)"><i class="fas fa-users"></i> Usuários</button>
   <button class="tab" onclick="switchTab('senhas',this)"><i class="fas fa-key"></i> Gerenciar Senhas</button>
+  <button class="tab" onclick="switchTab('logs',this)"><i class="fas fa-history"></i> Histórico de Login</button>
 </div>
 
 <!-- Users tab -->
@@ -89,7 +90,7 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
   <div class="card">
     <h2><i class="fas fa-list"></i> Usuários Cadastrados</h2>
     <table class="user-table">
-      <thead><tr><th>Usuário</th><th>Loja</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Usuário</th><th>Papel</th><th>Loja</th><th>Criado em</th><th>Ações</th></tr></thead>
       <tbody id="userTableBody"></tbody>
     </table>
   </div>
@@ -98,6 +99,11 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
     <div style="max-width:400px;">
       <input type="text" id="newUsername" placeholder="Nome de usuário">
       <input type="password" id="newPassword" placeholder="Senha">
+      <select id="newRole">
+        <option value="user">Usuário</option>
+        <option value="admin">Administrador</option>
+        <option value="superadmin">Super Admin</option>
+      </select>
       <button class="btn btn-primary" onclick="cadastrarUsuario()"><i class="fas fa-user-plus"></i> Cadastrar</button>
     </div>
     <div class="toast" id="registerMsg" style="display:none;margin-top:10px;"></div>
@@ -115,6 +121,17 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
       <button class="btn btn-primary" onclick="alterarSenha()"><i class="fas fa-save"></i> Salvar</button>
     </div>
     <div class="toast" id="passMsg" style="display:none;margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Login Logs tab -->
+<div class="tab-content" id="tabLogs">
+  <div class="card">
+    <h2><i class="fas fa-history"></i> Histórico de Login</h2>
+    <table class="user-table">
+      <thead><tr><th>Usuário</th><th>IP</th><th>User-Agent</th><th>Data/Hora</th></tr></thead>
+      <tbody id="logTableBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -141,8 +158,9 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas' };
+  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', logs: 'tabLogs' };
   document.getElementById(map[tab]).classList.add('active');
+  if (tab === 'logs') carregarLogs();
 }
 
 // Load users via API
@@ -156,9 +174,11 @@ async function carregarUsuarios() {
       tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">Nenhum usuário cadastrado</td></tr>';
       return;
     }
-    tbody.innerHTML = '';
+      tbody.innerHTML = '';
+    var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', user: 'Usuário' };
     usuarios.forEach(function(u) {
-      tbody.innerHTML += '<tr><td><strong>' + u.username + '</strong></td><td>' + (u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" onclick="excluirUsuario(' + u.id + ',\'' + u.username + '\')"><i class="fas fa-trash"></i></button></td></tr>';
+      var roleClass = u.role === 'superadmin' ? ' style="color:#f97316;font-weight:700;"' : '';
+      tbody.innerHTML += '<tr><td><strong>' + u.username + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || u.role) + '</td><td>' + (u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" onclick="excluirUsuario(' + u.id + ',\'' + u.username + '\')"><i class="fas fa-trash"></i></button></td></tr>';
       select.innerHTML += '<option value="' + u.id + '" data-user="' + u.username + '">' + u.username + '</option>';
     });
   } catch(e) {
@@ -169,12 +189,15 @@ async function carregarUsuarios() {
 async function cadastrarUsuario() {
   const username = document.getElementById('newUsername').value.trim();
   const password = document.getElementById('newPassword').value.trim();
+  const role = document.getElementById('newRole').value;
   if (!username || !password) { toast('Preencha todos os campos', 'danger'); return; }
   if (password.length < 6) { toast('Senha deve ter 6+ caracteres', 'danger'); return; }
+  if (role === 'superadmin' && !(await confirmModal('ATENÇÃO: você está criando um Super Admin com acesso total ao sistema. Confirma?'))) return;
   try {
-    await api('/usuarios', { method: 'POST', body: JSON.stringify({ username, password, lojaNome: username }) });
+    await api('/usuarios', { method: 'POST', body: JSON.stringify({ username, password, lojaNome: username, role }) });
     document.getElementById('newUsername').value = '';
     document.getElementById('newPassword').value = '';
+    document.getElementById('newRole').value = 'user';
     toast('Usuário ' + username + ' cadastrado!');
     carregarUsuarios();
   } catch(e) {
@@ -210,8 +233,26 @@ async function alterarSenha() {
   }
 }
 
+async function carregarLogs() {
+  const tbody = document.getElementById('logTableBody');
+  try {
+    const logs = await api('/usuarios/logs');
+    if (!logs || logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">Nenhum login registrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    logs.forEach(function(l) {
+      const ua = l.userAgent ? l.userAgent.substring(0, 80) : '-';
+      const data = l.loggedAt ? new Date(l.loggedAt).toLocaleString('pt-BR') : '-';
+      tbody.innerHTML += '<tr><td>' + l.username + '</td><td>' + (l.ip || '-') + '</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(l.userAgent || '') + '">' + escapeHtml(ua) + '</td><td>' + data + '</td></tr>';
+    });
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">Erro ao carregar logs</td></tr>';
+  }
+}
+
 carregarUsuarios();
-carregarEmpresas();
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
