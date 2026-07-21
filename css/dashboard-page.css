@@ -40,7 +40,7 @@ html, body {
   display: flex;
   flex-direction: column;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease;
-  z-index: 1000;
+  z-index: var(--z-overlay);
   position: relative;
   flex-shrink: 0;
 }
@@ -287,7 +287,7 @@ html, body {
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  z-index: 10;
+  z-index: var(--z-sticky);
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
