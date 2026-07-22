@@ -372,6 +372,7 @@ html, body {
     height: 100%;
     transform: translateX(-100%);
     width: 280px;
+    z-index: var(--z-modal);
   }
   .sidebar.open {
     transform: translateX(0);
@@ -381,7 +382,8 @@ html, body {
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.5);
-    z-index: 999;
+    z-index: var(--z-overlay);
+    pointer-events: none;
   }
   .sidebar-overlay.active {
     display: block;
