@@ -81,6 +81,21 @@ tr:hover td { background: #f8fafc; }
 }
 .grafico-container h3 { font-size: 14px; color: #64748b; margin-bottom: 12px; }
 
+/* Chart.js needs a bounded parent (fixed height) to detect size changes —
+   otherwise the responsive loop grows the canvas unboundedly. */
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 300px;
+}
+.chart-wrap canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .filtro-datas {
   display: flex;
   gap: 12px;
