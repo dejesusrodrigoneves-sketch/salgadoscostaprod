@@ -43,7 +43,9 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
       <h3><i class="fas fa-chart-bar"></i> Faturamento Diário</h3>
       <button class="btn btn-sm" onclick="carregarRelatoriosDia()" aria-label="Atualizar gráfico"><i class="fas fa-sync-alt"></i> Atualizar</button>
     </div>
-    <canvas id="graficoFaturamentoDia" height="100"></canvas>
+    <div class="chart-wrap">
+      <canvas id="graficoFaturamentoDia"></canvas>
+    </div>
   </div>
 </div>
 
@@ -60,7 +62,9 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 
   <div class="grafico-container" id="graficoPeriodoContainer" style="display:none;">
     <h3>Faturamento do Período</h3>
-    <canvas id="graficoFaturamentoPeriodo" height="100"></canvas>
+    <div class="chart-wrap">
+      <canvas id="graficoFaturamentoPeriodo"></canvas>
+    </div>
   </div>
 
   <div id="relatoriosPeriodo" style="margin-top:12px;">
