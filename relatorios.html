@@ -39,7 +39,10 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
     </div>
   </div>
   <div class="grafico-container">
-    <h3><i class="fas fa-chart-bar"></i> Faturamento Diário</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3><i class="fas fa-chart-bar"></i> Faturamento Diário</h3>
+      <button class="btn btn-sm" onclick="carregarRelatoriosDia()" aria-label="Atualizar gráfico"><i class="fas fa-sync-alt"></i> Atualizar</button>
+    </div>
     <canvas id="graficoFaturamentoDia" height="100"></canvas>
   </div>
 </div>
@@ -76,9 +79,11 @@ function abrirAba(evt, abaId){
 const tabela = document.getElementById('relatoriosTabela');
 const ctxDia = document.getElementById('graficoFaturamentoDia').getContext('2d');
 let graficoDia;
-var relTimer = null;
+let isLoadingDia = false;
 
 function carregarRelatoriosDia() {
+  if (isLoadingDia) return;
+  isLoadingDia = true;
   var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
   fetch('/api/pedidos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function(r) { return r.json(); }).then(function(pedidos) {
     let dadosPorDia = {};
@@ -109,10 +114,9 @@ function carregarRelatoriosDia() {
       data: { labels: labels, datasets: [{ label: 'Valor total (R$)', data: valores, backgroundColor: '#f97316', borderRadius: 4 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true } } }
     });
-  }).catch(function(e) { console.error('Erro carregar relatorios:', e); });
+  }).catch(function(e) { console.error('Erro carregar relatorios:', e); }).finally(function() { isLoadingDia = false; });
 }
 carregarRelatoriosDia();
-relTimer = setInterval(carregarRelatoriosDia, 30000);
 
 const ctxPeriodo = document.getElementById('graficoFaturamentoPeriodo').getContext('2d');
 let graficoPeriodo;
@@ -168,6 +172,12 @@ function carregarRelatoriosPeriodo(){
     });
   }).catch(function(e) { container.innerHTML = '<p style="color:#94a3b8;">Erro ao carregar: ' + e.message + '</p>'; });
 }
+
+// Cleanup charts on page unload
+window.addEventListener('beforeunload', function() {
+  if (graficoDia) graficoDia.destroy();
+  if (graficoPeriodo) graficoPeriodo.destroy();
+});
 </script>
 <script src="js/theme.js" defer></script>
 </body>
