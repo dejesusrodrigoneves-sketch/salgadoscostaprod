@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Entregadores - Fabrica de salgados Costa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/relatorios-page.css">
+<script src="js/utils.js"></script>
+<script>
+if(!authGuard()) throw new Error('Redirect');
+var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
+if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
+</script>
+</head>
+<body>
+
+<h1><i class="fas fa-truck"></i> Relatório de Entregadores</h1>
+
+<div class="card">
+  <h2 style="font-size:16px;margin-bottom:16px;"><i class="fas fa-filter"></i> Filtros</h2>
+  <div class="filtro-datas" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <label>De <input type="date" id="dataInicio"></label>
+    <label>Até <input type="date" id="dataFim"></label>
+    <label>Entregador
+      <select id="filtroEntregador">
+        <option value="">Todos</option>
+      </select>
+    </label>
+    <button onclick="carregarRelatorio()"><i class="fas fa-filter"></i> Filtrar</button>
+  </div>
+</div>
+
+<div id="relatorioContainer">
+  <p style="color:#94a3b8;font-size:13px;">Selecione um período para visualizar.</p>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
+const TOKEN = authUser ? (authUser.token || '') : '';
+
+async function apiRequest(path, options = {}) {
+  const url = API + path;
+  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+  const res = await fetch(url, { ...options, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
+    throw new Error(err.error || 'Erro');
+  }
+  return res.json();
+}
+
+function fmtMoeda(v) {
+  return 'R$ ' + (Number(v) || 0).toFixed(2).replace('.', ',');
+}
+
+function fmtItens(itens) {
+  if (!Array.isArray(itens) || itens.length === 0) return '<span style="color:#94a3b8;">—</span>';
+  return itens.map(function(i) {
+    var q = Number(i.quantidade) || 1;
+    var p = Number(i.precoUnitario || 0);
+    return '<div>' + q + 'x Produto #' + i.produtoId + ' — ' + fmtMoeda(p) + '</div>';
+  }).join('');
+}
+
+async function carregarEntregadores() {
+  try {
+    const list = await apiRequest('/entregadores?ativo=true');
+    const sel = document.getElementById('filtroEntregador');
+    list.forEach(function(d) {
+      var opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.nome;
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    toast && toast('Erro ao carregar entregadores: ' + e.message, 'danger');
+  }
+}
+
+async function carregarRelatorio() {
+  const inicio = document.getElementById('dataInicio').value;
+  const fim = document.getElementById('dataFim').value;
+  const entregador = document.getElementById('filtroEntregador').value;
+  const container = document.getElementById('relatorioContainer');
+
+  if (!inicio || !fim) { container.innerHTML = '<p style="color:#94a3b8;">Selecione período válido.</p>'; return; }
+
+  container.innerHTML = '<p style="color:#94a3b8;">Carregando...</p>';
+
+  var query = '?inicio=' + encodeURIComponent(inicio) + '&fim=' + encodeURIComponent(fim);
+  if (entregador) query += '&entregador=' + encodeURIComponent(entregador);
+
+  try {
+    const data = await apiRequest('/entregas/resumo-periodo' + query);
+    renderRelatorio(data);
+  } catch(e) {
+    container.innerHTML = '<p style="color:#dc2626;">Erro: ' + e.message + '</p>';
+  }
+}
+
+function renderRelatorio(data) {
+  const container = document.getElementById('relatorioContainer');
+
+  if (!data.entregadores || data.entregadores.length === 0) {
+    container.innerHTML = '<div class="card"><p style="color:#94a3b8;">Nenhuma entrega no período.</p></div>';
+    return;
+  }
+
+  let html = '';
+  html += '<div class="card">';
+  html += '<div style="overflow-x:auto"><table>';
+  html += '<thead><tr><th>Entregador</th><th>Nº Entregas</th><th>Valor Total</th><th>Pedidos</th></tr></thead>';
+  html += '<tbody>';
+  data.entregadores.forEach(function(d) {
+    const pedidosHTML = d.pedidos.map(function(p) {
+      return '<div class="pedido-card" style="margin-bottom:8px;padding:8px;background:#f8fafc;border-radius:6px;font-size:12px;">'
+        + '<strong>#' + p.pedidoId + '</strong> — ' + p.cliente + '<br>'
+        + '<strong>Total pedido:</strong> ' + fmtMoeda(p.totalPedido) + '<br>'
+        + '<strong>Valor entrega:</strong> ' + fmtMoeda(p.valor) + '<br>'
+        + '<strong>Itens:</strong><br>' + fmtItens(p.itens)
+        + '</div>';
+    }).join('');
+    html += '<tr>';
+    html += '<td><strong>' + d.nome + '</strong></td>';
+    html += '<td>' + d.entregas + '</td>';
+    html += '<td>' + fmtMoeda(d.valorTotal) + '</td>';
+    html += '<td>' + pedidosHTML + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  html += '<tfoot><tr style="background:#f1f5f9;font-weight:700;">';
+  html += '<td>TOTAL GERAL</td>';
+  html += '<td>' + data.totalEntregas + '</td>';
+  html += '<td>' + fmtMoeda(data.totalValor) + '</td>';
+  html += '<td>—</td>';
+  html += '</tr></tfoot>';
+  html += '</table></div></div>';
+
+  container.innerHTML = html;
+}
+
+(function init() {
+  var hoje = new Date().toISOString().slice(0, 10);
+  document.getElementById('dataInicio').value = hoje;
+  document.getElementById('dataFim').value = hoje;
+  carregarEntregadores();
+  carregarRelatorio();
+})();
+</script>
+<script src="js/theme.js" defer></script>
+</body>
+</html>

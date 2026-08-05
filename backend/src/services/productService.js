@@ -1,4 +1,5 @@
 const sql = require('../repositories/sqlRepository');
+const auditService = require('./auditService');
 
 function sanitize(v) {
   if (typeof v !== 'string') return v;
@@ -29,28 +30,72 @@ async function buscar(id) {
   return formatProduto(produto);
 }
 
-async function criar(data) {
+async function criar(data, ctx = {}) {
   const sanitized = { ...data };
   if (sanitized.name) sanitized.name = sanitize(sanitized.name);
   if (sanitized.description) sanitized.description = sanitize(sanitized.description);
   if (sanitized.img) sanitized.img = sanitize(sanitized.img);
-  return sql.criarProduto(sanitized);
+  const produto = await sql.criarProduto(sanitized);
+
+  auditService.audit({
+    ...ctx,
+    action: 'produto.create',
+    module: 'produtos',
+    targetType: 'produto',
+    targetId: produto.id,
+    after: { name: produto.name, price: Number(produto.price), status: produto.status, estoqueAtual: produto.estoqueAtual },
+    changedFields: Object.keys(sanitized),
+  });
+
+  return produto;
 }
 
-async function atualizar(id, data) {
+async function atualizar(id, data, ctx = {}) {
   const produto = await sql.buscarProduto(id);
   if (!produto) throw Object.assign(new Error('Produto não encontrado'), { status: 404 });
   const sanitized = { ...data };
   if (sanitized.name) sanitized.name = sanitize(sanitized.name);
   if (sanitized.description) sanitized.description = sanitize(sanitized.description);
   if (sanitized.img) sanitized.img = sanitize(sanitized.img);
-  return sql.atualizarProduto(id, sanitized);
+  const atualizado = await sql.atualizarProduto(id, sanitized);
+
+  const changedFields = Object.keys(sanitized);
+  const before = {};
+  const after = {};
+  for (const key of changedFields) {
+    before[key] = produto[key];
+    after[key] = sanitized[key];
+  }
+
+  auditService.audit({
+    ...ctx,
+    action: 'produto.update',
+    module: 'produtos',
+    targetType: 'produto',
+    targetId: id,
+    before,
+    after,
+    changedFields,
+  });
+
+  return atualizado;
 }
 
-async function deletar(id) {
+async function deletar(id, ctx = {}) {
   const produto = await sql.buscarProduto(id);
   if (!produto) throw Object.assign(new Error('Produto não encontrado'), { status: 404 });
-  return sql.deletarProduto(id);
+  await sql.deletarProduto(id);
+
+  auditService.audit({
+    ...ctx,
+    action: 'produto.delete',
+    module: 'produtos',
+    targetType: 'produto',
+    targetId: id,
+    after: { name: produto.name, price: Number(produto.price), status: produto.status },
+    changedFields: ['name', 'price', 'status'],
+    severity: 'warning',
+  });
 }
 
 module.exports = { listar, buscar, criar, atualizar, deletar };

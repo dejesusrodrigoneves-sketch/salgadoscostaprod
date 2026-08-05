@@ -1,5 +1,6 @@
 const service = require('../services/lojaService');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getCtx } = require('../middleware/context');
 
 exports.statusPublic = asyncHandler(async (req, res) => {
   const { slug } = req.query;
@@ -18,6 +19,6 @@ exports.settings = asyncHandler(async (req, res) => {
 });
 
 exports.updateSettings = asyncHandler(async (req, res) => {
-  const settings = await service.updateSettings(req.body);
+  const settings = await service.updateSettings(req.body, getCtx(req));
   res.json(settings);
 });

@@ -1,5 +1,6 @@
 const service = require('../services/categoriaService');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getCtx } = require('../middleware/context');
 
 exports.listar = asyncHandler(async (req, res) => {
   const categorias = await service.listar();
@@ -12,16 +13,16 @@ exports.buscar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const categoria = await service.criar({ ...req.body, empresaId: 1 });
+  const categoria = await service.criar({ ...req.body, empresaId: 1 }, getCtx(req));
   res.status(201).json(categoria);
 });
 
 exports.atualizar = asyncHandler(async (req, res) => {
-  const categoria = await service.atualizar(req.params.id, req.body);
+  const categoria = await service.atualizar(req.params.id, req.body, getCtx(req));
   res.json(categoria);
 });
 
 exports.deletar = asyncHandler(async (req, res) => {
-  await service.deletar(req.params.id);
+  await service.deletar(req.params.id, getCtx(req));
   res.json({ success: true });
 });

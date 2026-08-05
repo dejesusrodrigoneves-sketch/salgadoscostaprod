@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
 const sql = require('../repositories/sqlRepository');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getCtx } = require('../middleware/context');
+const auditService = require('../services/auditService');
 const tokenService = require('../services/tokenService');
 const productService = require('../services/productService');
 
@@ -51,6 +53,17 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
   }
   const existing = await sql.buscarCliente(telefone);
   if (existing) {
+    auditService.audit({
+      ...getCtx(req),
+      action: 'cliente.register_failed',
+      module: 'clientes',
+      actorType: 'cliente',
+      actorUsername: telefone,
+      targetType: 'cliente',
+      targetId: existing.id,
+      severity: 'warning',
+      reason: 'telefone_existente',
+    });
     return res.status(409).json({ error: 'Cliente já cadastrado com este telefone' });
   }
   const passwordHash = password ? await bcrypt.hash(password, SALT_ROUNDS) : null;
@@ -59,21 +72,70 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
     nome, telefone, endereco, numero, bairro, cep, pontoReferencia, passwordHash,
   });
   const token = tokenService.gerarToken({ id: cliente.id, empresaId: 1, telefone: cliente.telefone, nome: cliente.nome });
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'cliente.register',
+    module: 'clientes',
+    actorType: 'cliente',
+    actorId: cliente.id,
+    actorUsername: cliente.telefone,
+    targetType: 'cliente',
+    targetId: cliente.id,
+    after: { nome: cliente.nome, telefone: cliente.telefone },
+    changedFields: ['nome', 'telefone', 'passwordHash'],
+  });
+
   res.status(201).json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone } });
 });
 
 exports.loginCliente = asyncHandler(async (req, res) => {
   const { telefone, password } = req.body;
   if (!telefone) return res.status(400).json({ error: 'Telefone é obrigatório' });
+  const base = { ...getCtx(req), module: 'clientes' };
   const cliente = await sql.buscarCliente(telefone);
-  if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+  if (!cliente) {
+    auditService.audit({
+      ...base,
+      action: 'cliente.login_failed',
+      actorType: 'anon',
+      actorUsername: telefone,
+      severity: 'warning',
+      reason: 'cliente_nao_encontrado',
+    });
+    return res.status(404).json({ error: 'Cliente não encontrado' });
+  }
   if (cliente.passwordHash && password) {
     const match = await bcrypt.compare(password, cliente.passwordHash);
-    if (!match) return res.status(401).json({ error: 'Senha incorreta' });
+    if (!match) {
+      auditService.audit({
+        ...base,
+        action: 'cliente.login_failed',
+        actorType: 'cliente',
+        actorId: cliente.id,
+        actorUsername: cliente.telefone,
+        targetType: 'cliente',
+        targetId: cliente.id,
+        severity: 'warning',
+        reason: 'senha_incorreta',
+      });
+      return res.status(401).json({ error: 'Senha incorreta' });
+    }
   } else if (cliente.passwordHash && !password) {
     return res.status(401).json({ error: 'Senha necessária' });
   }
   const token = tokenService.gerarToken({ id: cliente.id, empresaId: 1, telefone: cliente.telefone, nome: cliente.nome });
+
+  auditService.audit({
+    ...base,
+    action: 'cliente.login',
+    actorType: 'cliente',
+    actorId: cliente.id,
+    actorUsername: cliente.telefone,
+    targetType: 'cliente',
+    targetId: cliente.id,
+  });
+
   res.json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia } });
 });
 
@@ -85,7 +147,29 @@ exports.clientePerfil = [authenticatePublic, asyncHandler(async (req, res) => {
 
 exports.atualizarCliente = [authenticatePublic, asyncHandler(async (req, res) => {
   const { nome, endereco, numero, bairro, cep, pontoReferencia } = req.body;
+  const existente = await sql.buscarClientePorId(req.cliente.id);
+  if (!existente) return res.status(404).json({ error: 'Cliente não encontrado' });
   const cliente = await sql.atualizarCliente(req.cliente.id, { nome, endereco, numero, bairro, cep, pontoReferencia });
+
+  const changedFields = ['nome', 'endereco', 'numero', 'bairro', 'cep', 'pontoReferencia'].filter((k) => req.body[k] !== undefined);
+  const before = {};
+  const after = {};
+  for (const key of changedFields) {
+    before[key] = existente[key];
+    after[key] = req.body[key];
+  }
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'cliente.update',
+    module: 'clientes',
+    targetType: 'cliente',
+    targetId: req.cliente.id,
+    before,
+    after,
+    changedFields,
+  });
+
   res.json({ id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia });
 })];
 
@@ -138,6 +222,24 @@ exports.criarPedido = asyncHandler(async (req, res) => {
       itens: { create: itensPedido },
     },
     include: { itens: true },
+  });
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'pedido.create',
+    module: 'pedidos',
+    targetType: 'pedido',
+    targetId: pedido.id,
+    after: {
+      clienteNome: pedido.clienteNome,
+      clienteWhatsapp: pedido.clienteWhatsapp,
+      total: Number(pedido.total),
+      status: pedido.status,
+      tipoEntrega: pedido.tipoEntrega,
+      formaPagamento: pedido.formaPagamento,
+    },
+    changedFields: ['clienteNome', 'clienteWhatsapp', 'total', 'status', 'tipoEntrega', 'formaPagamento'],
+    metadata: { itensCount: itensPedido.length, url: req.context?.path },
   });
 
   res.status(201).json({ id: pedido.id, status: pedido.status });

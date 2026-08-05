@@ -54,7 +54,27 @@ const sql = {
     return prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
   },
   async criarPedido(data) {
-    return prisma.pedido.create({ data });
+    const payload = { ...data };
+    if (Array.isArray(data.itens)) {
+      let valoresItens = 0;
+      payload.itens = { create: [] };
+      for (const item of data.itens) {
+        const produto = await this.buscarProduto(item.produtoId);
+        const preco = Number(produto ? produto.price : 0);
+        const qtd = Number(item.quantidade) || 1;
+        valoresItens += preco * qtd;
+        payload.itens.create.push({
+          produtoId: Number(item.produtoId),
+          quantidade: qtd,
+          precoUnitario: preco,
+          sabores: item.sabores || null,
+        });
+      }
+      if (data.valoresItens === undefined || data.valoresItens === null) {
+        payload.valoresItens = valoresItens;
+      }
+    }
+    return prisma.pedido.create({ data: payload, include: { itens: true } });
   },
   async atualizarPedido(id, data) {
     return prisma.pedido.update({ where: { id }, data });
