@@ -59,12 +59,14 @@ function api(path, opts) {
   <div class="tab" data-tab="producao"><i class="fas fa-cog"></i> Produção <span class="tab-count" id="tabCountProducao">0</span></div>
   <div class="tab" data-tab="pronto"><i class="fas fa-check-circle"></i> Pronto <span class="tab-count" id="tabCountPronto">0</span></div>
   <div class="tab" data-tab="emRota"><i class="fas fa-truck"></i> Em Rota <span class="tab-count" id="tabCountRota">0</span></div>
+   <div class="tab" data-tab="finalizado"><i class="fas fa-check-double"></i> Finalizados <span class="tab-count" id="tabCountFinalizado">0</span></div>
 </div>
 
 <div id="pendente" class="tab-content active"></div>
 <div id="producao" class="tab-content"></div>
 <div id="pronto" class="tab-content"></div>
 <div id="emRota" class="tab-content"></div>
+<div id="finalizado" class="tab-content"></div>
 
 <div class="toast-container" id="toastContainer"></div>
 
@@ -77,7 +79,8 @@ const containers = {
   pendente: document.getElementById('pendente'),
   producao: document.getElementById('producao'),
   pronto: document.getElementById('pronto'),
-  'em_rota': document.getElementById('emRota')
+  'em_rota': document.getElementById('emRota'),
+  finalizado: document.getElementById('finalizado')
 };
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -236,7 +239,7 @@ function atualizarBadgeEsteira() {
 
 function renderCard(p, docId) {
   const statusMap = {
-    pendente: 'Pendente', producao: 'Produção', pronto: 'Pronto', emRota: 'Em Rota'
+    pendente: 'Pendente', producao: 'Produção', pronto: 'Pronto', emRota: 'Em Rota', finalizado: 'Finalizado'
   };
 
   const card = document.createElement('div');
@@ -285,6 +288,7 @@ function renderCard(p, docId) {
           <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
           <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
           <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
+          ${p.status === 'finalizado' ? `<button class="btn btn-edit" data-action="editar"><i class="fas fa-edit"></i> Editar</button>` : ''}
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
           <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
         `}
@@ -363,6 +367,10 @@ function renderCard(p, docId) {
     atualizarBadgeEsteira();
     toast('Pedido excluído', 'danger');
   };
+
+  if (p.status === 'finalizado') {
+    card.querySelector('[data-action="editar"]').onclick = () => modalEditarItens(p);
+  }
 
   return card;
 }

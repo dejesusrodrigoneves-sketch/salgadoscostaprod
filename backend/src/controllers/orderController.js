@@ -3,6 +3,7 @@ const whatsapp = require('../services/whatsappService');
 const whatsappInstance = require('../services/whatsappInstanceService');
 const sql = require('../repositories/sqlRepository');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getCtx } = require('../middleware/context');
 
 exports.listar = asyncHandler(async (req, res) => {
   const pedidos = await orderService.listarFiltrado(req.query);
@@ -36,17 +37,17 @@ exports.buscar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const pedido = await orderService.criar({ ...req.body, empresaId: 1 });
+  const pedido = await orderService.criar({ ...req.body, empresaId: 1 }, getCtx(req));
   res.status(201).json(pedido);
 });
 
 exports.deletar = asyncHandler(async (req, res) => {
-  await orderService.deletarPedido(req.params.id);
+  await orderService.deletarPedido(req.params.id, getCtx(req));
   res.json({ success: true });
 });
 
 exports.finalizar = asyncHandler(async (req, res) => {
-  const pedido = await orderService.finalizarPedido(req.params.id);
+  const pedido = await orderService.finalizarPedido(req.params.id, getCtx(req));
 
   if (pedido.clienteWhatsapp) {
     try {
@@ -67,7 +68,7 @@ exports.atualizarStatus = asyncHandler(async (req, res) => {
   if (!status) return res.status(400).json({ error: 'status obrigatório' });
   const pedido = await sql.buscarPedido(req.params.id);
   if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
-  const atualizado = await orderService.atualizarStatus(req.params.id, status);
+  const atualizado = await orderService.atualizarStatus(req.params.id, status, getCtx(req));
 
   const mensagens = {
     producao: `🍳 Olá ${pedido.clienteNome}!\n\nSeu pedido ${pedido.id} entrou em produção.`,
@@ -87,4 +88,11 @@ exports.atualizarStatus = asyncHandler(async (req, res) => {
   }
 
   res.json(atualizado);
+});
+
+exports.editarPedido = asyncHandler(async (req, res) => {
+  const { total, itens, formaPagamento, tipoEntrega, bairro, taxasEntrega, taxasCartao, desconto, troco } = req.body;
+  if (!total || !itens) return res.status(400).json({ error: 'total e itens obrigatórios' });
+  const pedido = await orderService.editarPedido(req.params.id, req.body, getCtx(req));
+  res.json(pedido);
 });
