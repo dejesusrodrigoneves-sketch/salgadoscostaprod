@@ -1,4 +1,5 @@
 const sql = require('../repositories/sqlRepository');
+const auditService = require('./auditService');
 
 function isWorkingDay(workingDays) {
   if (!Array.isArray(workingDays) || workingDays.length === 0) return true;
@@ -118,7 +119,7 @@ async function getSettings() {
   return formatEmpresa(empresa);
 }
 
-async function updateSettings(data) {
+async function updateSettings(data, ctx = {}) {
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
@@ -136,7 +137,32 @@ async function updateSettings(data) {
     if (data.bairrosAtendidos !== undefined) current.bairrosAtendidos = data.bairrosAtendidos;
     payload.themeSettings = current;
   }
-  return sql.atualizarEmpresa(1, payload);
+
+  const empresa = await sql.buscarEmpresa(1);
+  const changedFields = Object.keys(payload);
+  const before = {};
+  const after = {};
+  for (const key of changedFields) {
+    before[key] = key === 'themeSettings'
+      ? (empresa?.themeSettings ? (typeof empresa.themeSettings === 'string' ? JSON.parse(empresa.themeSettings) : empresa.themeSettings) : {})
+      : empresa?.[key];
+    after[key] = payload[key];
+  }
+
+  const result = await sql.atualizarEmpresa(1, payload);
+
+  auditService.audit({
+    ...ctx,
+    action: 'loja.settings_update',
+    module: 'loja',
+    targetType: 'empresa',
+    targetId: 1,
+    before,
+    after,
+    changedFields,
+  });
+
+  return result;
 }
 
 module.exports = { getStatus, getSettings, updateSettings };

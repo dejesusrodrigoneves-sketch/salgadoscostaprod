@@ -1,5 +1,7 @@
 const prisma = require('../config/prisma');
 const logger = require('../config/logger');
+const auditService = require('./auditService');
+const sql = require('../repositories/sqlRepository');
 
 async function listarEntregas(data) {
   const where = { empresaId: 1 };
@@ -15,7 +17,7 @@ async function listarEntregas(data) {
   });
 }
 
-async function registrarEntrega(entregadorId, pedidoId, valor) {
+async function registrarEntrega(entregadorId, pedidoId, valor, ctx = {}) {
   const existente = await prisma.entregaDiaria.findFirst({
     where: { empresaId: 1, pedidoId },
   });
@@ -32,10 +34,21 @@ async function registrarEntrega(entregadorId, pedidoId, valor) {
     },
   });
   logger.info(`Entrega registrada: pedido ${pedidoId}, entregador ${entregadorId}, valor ${valor}`);
+
+  auditService.audit({
+    ...ctx,
+    action: 'entrega.registrar',
+    module: 'entregas',
+    targetType: 'entrega',
+    targetId: entrega.id,
+    after: { pedidoId, entregadorId: Number(entregadorId), valor: Number(valor || 0) },
+    changedFields: ['pedidoId', 'entregadorId', 'valor'],
+  });
+
   return entrega;
 }
 
-async function removerEntrega(pedidoId) {
+async function removerEntrega(pedidoId, ctx = {}) {
   const entrega = await prisma.entregaDiaria.findFirst({
     where: { empresaId: 1, pedidoId },
   });
@@ -44,7 +57,32 @@ async function removerEntrega(pedidoId) {
   }
   await prisma.entregaDiaria.delete({ where: { id: entrega.id } });
   logger.info(`Entrega removida: pedido ${pedidoId}`);
+
+  auditService.audit({
+    ...ctx,
+    action: 'entrega.remover',
+    module: 'entregas',
+    targetType: 'entrega',
+    targetId: entrega.id,
+    after: { pedidoId, entregadorId: entrega.entregadorId, valor: Number(entrega.valor || 0) },
+    changedFields: ['pedidoId', 'entregadorId', 'valor'],
+    severity: 'warning',
+  });
+
   return { success: true };
+}
+
+function agruparPorEntregador(entregas) {
+  const map = {};
+  for (const e of entregas) {
+    const id = e.entregadorId;
+    if (!map[id]) {
+      map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0 };
+    }
+    map[id].entregas += 1;
+    map[id].valorTotal += Number(e.valor || 0);
+  }
+  return Object.values(map);
 }
 
 async function resumoDiario(data) {
@@ -57,30 +95,62 @@ async function resumoDiario(data) {
     include: { entregador: true },
   });
 
-  const totalEntregas = entregas.length;
-  const totalValor = entregas.reduce((acc, e) => acc + Number(e.valor || 0), 0);
-
-  const entregadoresMap = {};
-  for (const e of entregas) {
-    const id = e.entregadorId;
-    if (!entregadoresMap[id]) {
-      entregadoresMap[id] = {
-        id,
-        nome: e.entregador.nome,
-        entregas: 0,
-        totalValor: 0,
-      };
-    }
-    entregadoresMap[id].entregas += 1;
-    entregadoresMap[id].totalValor += Number(e.valor || 0);
-  }
+  const entregadores = agruparPorEntregador(entregas);
 
   return {
     data: dataInicio.toISOString().slice(0, 10),
-    totalEntregas,
-    totalValor,
-    entregadores: Object.values(entregadoresMap),
+    totalEntregas: entregas.length,
+    totalValor: entregas.reduce((acc, e) => acc + Number(e.valor || 0), 0),
+    entregadores,
   };
 }
 
-module.exports = { listarEntregas, registrarEntrega, removerEntrega, resumoDiario };
+// Helper puro+injetado: recebe entregas ja consultadas e uma fn buscarPedido(id) -> Promise<pedido>.
+// Nao depende de prisma diretamente — testavel via vitest sem DB.
+async function montarResumoPeriodo(entregas, buscarPedidoFn) {
+  const map = {};
+  for (const e of entregas) {
+    const id = e.entregadorId;
+    if (!map[id]) {
+      map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0, pedidos: [] };
+    }
+    map[id].entregas += 1;
+    map[id].valorTotal += Number(e.valor || 0);
+
+    const pedido = await buscarPedidoFn(e.pedidoId).catch(() => null);
+    map[id].pedidos.push({
+      pedidoId: e.pedidoId,
+      valor: Number(e.valor || 0),
+      cliente: pedido ? pedido.clienteNome : '-',
+      itens: pedido && Array.isArray(pedido.itens) ? pedido.itens.map(function (i) {
+        return { produtoId: i.produtoId, quantidade: i.quantidade, precoUnitario: i.precoUnitario };
+      }) : [],
+      totalPedido: pedido ? Number(pedido.total || 0) : 0,
+    });
+  }
+
+  const entregadores = Object.values(map);
+  return {
+    totalEntregas: entregas.length,
+    totalValor: entregas.reduce((acc, e) => acc + Number(e.valor || 0), 0),
+    entregadores,
+  };
+}
+
+async function resumoPorPeriodo(inicio, fim, entregadorId, ctx = {}) {
+  const where = {
+    empresaId: 1,
+    entregadorId: entregadorId ? Number(entregadorId) : undefined,
+    data: { gte: new Date(inicio + 'T00:00:00.000Z'), lte: new Date(fim + 'T23:59:59.999Z') },
+  };
+  const entregas = await prisma.entregaDiaria.findMany({
+    where,
+    include: { entregador: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const resultado = await montarResumoPeriodo(entregas, (id) => sql.buscarPedido(id));
+  return { inicio, fim, ...resultado };
+}
+
+module.exports = { listarEntregas, registrarEntrega, removerEntrega, resumoDiario, resumoPorPeriodo, agruparPorEntregador, montarResumoPeriodo };

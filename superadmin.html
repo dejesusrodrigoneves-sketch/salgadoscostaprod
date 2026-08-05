@@ -6,6 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/superadmin-page.css">
 </head>
@@ -16,7 +18,7 @@
 <div class="tabs">
   <button class="tab active" onclick="switchTab('usuarios',this)"><i class="fas fa-users"></i> Usuários</button>
   <button class="tab" onclick="switchTab('senhas',this)"><i class="fas fa-key"></i> Gerenciar Senhas</button>
-  <button class="tab" onclick="switchTab('logs',this)"><i class="fas fa-history"></i> Histórico de Login</button>
+  <button class="tab" onclick="switchTab('registros',this)"><i class="fas fa-scroll"></i> Registros</button>
 </div>
 
 <!-- Users tab -->
@@ -60,20 +62,57 @@
   </div>
 </div>
 
-<!-- Login Logs tab -->
-<div class="tab-content" id="tabLogs">
+<!-- Empresas tab removida (single-tenant) -->
+
+<!-- Audit logs tab -->
+<div class="tab-content" id="tabRegistros">
   <div class="card">
-    <h2><i class="fas fa-history"></i> Histórico de Login</h2>
-    <div style="overflow-x:auto">
-    <table class="user-table">
-      <thead><tr><th>Usuário</th><th>IP</th><th>User-Agent</th><th>Data/Hora</th></tr></thead>
-      <tbody id="logTableBody"></tbody>
-    </table>
+    <h2><i class="fas fa-scroll"></i> Registros de Auditoria</h2>
+    <div class="audit-filters">
+      <div>
+        <label for="filtroUsuario">Usuário</label>
+        <select id="filtroUsuario" aria-label="Filtrar por usuário"><option value="">Todos os usuários</option></select>
+      </div>
+      <div>
+        <label for="filtroModulo">Módulo</label>
+        <select id="filtroModulo" aria-label="Filtrar por módulo">
+          <option value="">Todos os módulos</option>
+          <option value="cliente">cliente</option>
+          <option value="whatsapp">whatsapp</option>
+          <option value="auth">auth</option>
+          <option value="pedido">pedido</option>
+          <option value="geral">geral</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtroSeveridade">Severidade</label>
+        <select id="filtroSeveridade" aria-label="Filtrar por severidade">
+          <option value="">Todas</option>
+          <option value="info">Info</option>
+          <option value="warning">Aviso</option>
+          <option value="critical">Crítico</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtroInicio">De</label>
+        <input type="date" id="filtroInicio" aria-label="Data inicial">
+      </div>
+      <div>
+        <label for="filtroFim">Até</label>
+        <input type="date" id="filtroFim" aria-label="Data final">
+      </div>
+      <div class="audit-filters-actions">
+        <button class="btn btn-primary" id="btnLimparFiltros"><i class="fas fa-eraser"></i> Limpar filtros</button>
+      </div>
+    </div>
+    <div class="audit-summary" id="timelineErro" style="display:none;"></div>
+    <div class="timeline" id="timeline"><div class="timeline-empty">Carregando...</div></div>
+    <div class="audit-footer">
+      <span id="auditContador"></span>
+      <button class="btn btn-primary" id="btnLoadMore" style="display:none;"><i class="fas fa-plus"></i> Carregar mais</button>
     </div>
   </div>
 </div>
-
-<!-- Empresas tab removida (single-tenant) -->
 
 <div class="toast-container" id="toastContainer"></div>
 
@@ -96,9 +135,9 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', logs: 'tabLogs' };
+  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros' };
   document.getElementById(map[tab]).classList.add('active');
-  if (tab === 'logs') carregarLogs();
+  if (tab === 'registros') superadminAudit.carregarAudit(1);
 }
 
 // Load users via API
@@ -171,29 +210,12 @@ async function alterarSenha() {
   }
 }
 
-async function carregarLogs() {
-  const tbody = document.getElementById('logTableBody');
-  try {
-    const logs = await api('/usuarios/logs');
-    if (!logs || logs.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">Nenhum login registrado</td></tr>';
-      return;
-    }
-    tbody.innerHTML = '';
-    logs.forEach(function(l) {
-      const ua = l.userAgent ? l.userAgent.substring(0, 80) : '-';
-      const data = l.loggedAt ? new Date(l.loggedAt).toLocaleString('pt-BR') : '-';
-      tbody.innerHTML += '<tr><td>' + l.username + '</td><td>' + (l.ip || '-') + '</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(l.userAgent || '') + '">' + escapeHtml(ua) + '</td><td>' + data + '</td></tr>';
-    });
-  } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">Erro ao carregar logs</td></tr>';
-  }
-}
-
 carregarUsuarios();
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+<script src="js/superadmin-audit.js" type="module"></script>
+<script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
 </body>
 </html>

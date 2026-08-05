@@ -21,6 +21,7 @@ export default defineConfig({
         'alterar-senha': resolve(__dirname, 'alterar-senha.html'),
         cart: resolve(__dirname, 'view/cart.html'),
         whatsapp: resolve(__dirname, 'whatsapp.html'),
+        'relatorios-entregadores': resolve(__dirname, 'relatorios-entregadores.html'),
       },
     },
   },

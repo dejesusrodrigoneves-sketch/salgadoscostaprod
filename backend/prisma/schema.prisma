@@ -155,6 +155,7 @@ model Entregador {
   chavePix  String?          @map("chave_pix")
   ativo     Boolean          @default(true)
   createdAt DateTime         @default(now()) @map("criado_em")
+  entregas  EntregaDiaria[]
 
   @@map("entregadores")
 }
@@ -165,6 +166,7 @@ model EntregaDiaria {
   empresa       Empresa    @relation(fields: [empresaId], references: [id])
   data          DateTime
   entregadorId  Int        @map("entregador_id")
+  entregador    Entregador @relation(fields: [entregadorId], references: [id])
   pedidoId      String     @map("pedido_id")
   valor         Decimal?   @db.Decimal(10, 2)
   createdAt     DateTime   @default(now()) @map("criado_em")
@@ -250,6 +252,52 @@ model LoginLog {
   loggedAt   DateTime @default(now()) @map("logado_em")
 
   @@map("login_logs")
+}
+
+model AuditLog {
+  id            BigInt   @id @default(autoincrement())
+  requestId     String   @map("request_id")
+  sessionId     String?  @map("session_id")
+  empresaId     Int      @default(1) @map("empresa_id")
+  actorType     String   @default("admin") @map("actor_type") // admin | cliente | anon | sistema
+  actorId       Int?     @map("actor_id")
+  actorUsername String?  @map("actor_username")
+  actorRole     String?  @map("actor_role")
+  action        String
+  module        String
+  targetType    String?  @map("target_type")
+  targetId      String?  @map("target_id")
+  before        Json?
+  after         Json?
+  changedFields Json?   @map("changed_fields")
+  severity      String   @default("info") // info | warning | critical
+  reason        String?
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("criado_em")
+
+  @@index([empresaId, action])
+  @@index([empresaId, actorId, createdAt])
+  @@index([empresaId, createdAt])
+  @@index([requestId])
+  @@map("audit_logs")
+}
+
+model AppLog {
+  id         BigInt   @id @default(autoincrement())
+  requestId  String   @map("request_id")
+  level      String // debug | info | warn | error
+  message    String
+  module     String?
+  stack      String?
+  meta       Json?
+  empresaId  Int      @default(1) @map("empresa_id")
+  createdAt  DateTime @default(now()) @map("criado_em")
+
+  @@index([empresaId, level, createdAt])
+  @@index([requestId])
+  @@map("app_logs")
 }
 
 model WhatsAppInstance {

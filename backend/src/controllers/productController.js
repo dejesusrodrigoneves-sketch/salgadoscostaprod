@@ -1,5 +1,6 @@
 const productService = require('../services/productService');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getCtx } = require('../middleware/context');
 
 exports.listar = asyncHandler(async (req, res) => {
   const produtos = await productService.listar();
@@ -12,16 +13,16 @@ exports.buscar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const produto = await productService.criar({ ...req.body, empresaId: 1 });
+  const produto = await productService.criar({ ...req.body, empresaId: 1 }, getCtx(req));
   res.status(201).json(produto);
 });
 
 exports.atualizar = asyncHandler(async (req, res) => {
-  const produto = await productService.atualizar(req.params.id, req.body);
+  const produto = await productService.atualizar(req.params.id, req.body, getCtx(req));
   res.json(produto);
 });
 
 exports.deletar = asyncHandler(async (req, res) => {
-  await productService.deletar(req.params.id);
+  await productService.deletar(req.params.id, getCtx(req));
   res.json({ success: true });
 });

@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
+const contextMiddleware = require('./middleware/context');
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
@@ -20,9 +21,11 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const userRoutes = require('./routes/userRoutes');
 const entregaRoutes = require('./routes/entregaRoutes');
+const auditRoutes = require('./routes/auditRoutes');
 
 const app = express();
 
+app.use(contextMiddleware);
 app.use(helmet({ contentSecurityPolicy: false }));
 var corsOrigin = process.env.CORS_ORIGIN || '*';
 if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
@@ -51,6 +54,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/usuarios', userRoutes);
 app.use('/api/entregas', entregaRoutes);
+app.use('/api/audit', auditRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));

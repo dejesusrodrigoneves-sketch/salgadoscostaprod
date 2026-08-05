@@ -1,4 +1,5 @@
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getCtx } = require('../middleware/context');
 const entregaService = require('../services/entregaService');
 
 exports.listar = asyncHandler(async (req, res) => {
@@ -12,12 +13,12 @@ exports.registrar = asyncHandler(async (req, res) => {
   if (!entregadorId || !pedidoId) {
     return res.status(400).json({ error: 'entregadorId e pedidoId são obrigatórios' });
   }
-  const entrega = await entregaService.registrarEntrega(entregadorId, pedidoId, valor);
+  const entrega = await entregaService.registrarEntrega(entregadorId, pedidoId, valor, getCtx(req));
   res.status(201).json(entrega);
 });
 
 exports.remover = asyncHandler(async (req, res) => {
-  const result = await entregaService.removerEntrega(req.params.pedidoId);
+  const result = await entregaService.removerEntrega(req.params.pedidoId, getCtx(req));
   res.json(result);
 });
 
@@ -28,4 +29,17 @@ exports.resumo = asyncHandler(async (req, res) => {
   }
   const resumo = await entregaService.resumoDiario(data);
   res.json(resumo);
+});
+
+exports.resumoPeriodo = asyncHandler(async (req, res) => {
+  const { inicio, fim, entregador } = req.query;
+  if (!inicio || !fim) {
+    return res.status(400).json({ error: 'Parâmetros inicio e fim são obrigatórios (YYYY-MM-DD)' });
+  }
+  const re = /^\d{4}-\d{2}-\d{2}$/;
+  if (!re.test(inicio) || !re.test(fim)) {
+    return res.status(400).json({ error: 'Formato de data inválido. Use YYYY-MM-DD.' });
+  }
+  const resultado = await entregaService.resumoPorPeriodo(inicio, fim, entregador, getCtx(req));
+  res.json(resultado);
 });

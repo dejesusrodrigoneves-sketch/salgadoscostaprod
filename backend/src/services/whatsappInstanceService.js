@@ -2,6 +2,7 @@ const axios = require('axios');
 const QRCode = require('qrcode');
 const sql = require('../repositories/sqlRepository');
 const config = require('../config/env');
+const auditService = require('./auditService');
 
 async function listar() {
   const instancias = await sql.listarWhatsAppInstances();
@@ -26,7 +27,7 @@ async function listar() {
   return sql.listarWhatsAppInstances();
 }
 
-async function criar(role, instanceName, phoneNumber) {
+async function criar(role, instanceName, phoneNumber, ctx = {}) {
   if (!instanceName || !phoneNumber) {
     throw Object.assign(
       new Error('Nome da instância e número de telefone são obrigatórios.'),
@@ -37,6 +38,15 @@ async function criar(role, instanceName, phoneNumber) {
   const existentes = await sql.listarWhatsAppInstances();
 
   if (role !== 'superadmin' && existentes.length >= 1) {
+    auditService.audit({
+      ...ctx,
+      action: 'whatsapp.instance_create_failed',
+      module: 'whatsapp',
+      targetType: 'whatsapp_instance',
+      targetId: instanceName,
+      severity: 'warning',
+      reason: 'limite_uma_instancia',
+    });
     throw Object.assign(
       new Error('Já existe uma instância. Delete a existente para criar uma nova.'),
       { status: 409 }
@@ -45,6 +55,15 @@ async function criar(role, instanceName, phoneNumber) {
 
   const jaExisteMesmoNome = existentes.find(i => i.instanceId === instanceName);
   if (jaExisteMesmoNome) {
+    auditService.audit({
+      ...ctx,
+      action: 'whatsapp.instance_create_failed',
+      module: 'whatsapp',
+      targetType: 'whatsapp_instance',
+      targetId: instanceName,
+      severity: 'warning',
+      reason: 'nome_duplicado',
+    });
     throw Object.assign(
       new Error('Já existe uma instância com este nome.'),
       { status: 409 }
@@ -79,10 +98,20 @@ async function criar(role, instanceName, phoneNumber) {
     isActive: true,
   });
 
+  auditService.audit({
+    ...ctx,
+    action: 'whatsapp.instance_create',
+    module: 'whatsapp',
+    targetType: 'whatsapp_instance',
+    targetId: instancia.id,
+    after: { instanceId: instancia.instanceId, phoneNumber: instancia.phoneNumber, connectionStatus: instancia.connectionStatus },
+    changedFields: ['instanceId', 'phoneNumber', 'connectionStatus'],
+  });
+
   return { instancia, evolutionData };
 }
 
-async function deletar(id) {
+async function deletar(id, ctx = {}) {
   const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
@@ -96,10 +125,21 @@ async function deletar(id) {
     }
   }
 
+  auditService.audit({
+    ...ctx,
+    action: 'whatsapp.instance_delete',
+    module: 'whatsapp',
+    targetType: 'whatsapp_instance',
+    targetId: instancia.id,
+    after: { instanceId: instancia.instanceId, connectionStatus: instancia.connectionStatus },
+    changedFields: ['instanceId'],
+    severity: 'warning',
+  });
+
   await sql.deletarWhatsAppInstance(id);
 }
 
-async function gerarQrCode(id) {
+async function gerarQrCode(id, ctx = {}) {
   const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
@@ -114,8 +154,17 @@ async function gerarQrCode(id) {
       { headers: { apikey: config.evolutionApiKey } }
     );
     data = response.data;
-    console.log('[QR debug] Evolution /connect response:', JSON.stringify(data, null, 2));
   } catch (err) {
+    auditService.audit({
+      ...ctx,
+      action: 'whatsapp.qr_gerado',
+      module: 'whatsapp',
+      targetType: 'whatsapp_instance',
+      targetId: instancia.id,
+      severity: 'warning',
+      reason: 'falha_evolution_api',
+      metadata: { error: err.response?.data?.message || err.response?.data?.error || err.message },
+    });
     const msg = err.response?.data?.message || err.response?.data?.error || err.message;
     throw Object.assign(new Error('Evolution API: ' + msg), { status: err.response?.status || 502 });
   }
@@ -142,6 +191,16 @@ async function gerarQrCode(id) {
 
   await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'qrcode' });
 
+  auditService.audit({
+    ...ctx,
+    action: 'whatsapp.qr_gerado',
+    module: 'whatsapp',
+    targetType: 'whatsapp_instance',
+    targetId: instancia.id,
+    after: { connectionStatus: 'qrcode' },
+    changedFields: ['connectionStatus'],
+  });
+
   if (base64) {
     return { pairingCode, base64, type: 'image', raw: data };
   }
@@ -160,7 +219,7 @@ async function gerarQrCode(id) {
   return { pairingCode: null, base64: null, type: null, raw: data };
 }
 
-async function reconectar(id) {
+async function reconectar(id, ctx = {}) {
   const instancia = await sql.buscarWhatsAppInstance(id);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
@@ -174,6 +233,16 @@ async function reconectar(id) {
   );
 
   await sql.atualizarWhatsAppInstance(id, { connectionStatus: 'reconnecting' });
+
+  auditService.audit({
+    ...ctx,
+    action: 'whatsapp.reconnect',
+    module: 'whatsapp',
+    targetType: 'whatsapp_instance',
+    targetId: instancia.id,
+    after: { connectionStatus: 'reconnecting' },
+    changedFields: ['connectionStatus'],
+  });
 
   return data;
 }

@@ -1,52 +1,50 @@
 const { Router } = require('express');
-const bcrypt = require('bcryptjs');
-const prisma = require('../config/prisma');
-const sql = require('../repositories/sqlRepository');
+const userService = require('../services/userService');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const router = Router();
 router.use(authenticate, authorize('superadmin'));
 
+function ctxFrom(req) {
+  return {
+    requestId: req.context?.requestId,
+    ip: req.context?.ip,
+    userAgent: req.context?.userAgent,
+    path: req.context?.path,
+    actor: {
+      actorType: 'admin',
+      actorId: Number(req.user.id),
+      actorUsername: req.user.username,
+      actorRole: req.user.role,
+    },
+  };
+}
+
 router.get('/', asyncHandler(async (req, res) => {
-  const usuarios = await prisma.usuario.findMany({
-    orderBy: { createdAt: 'desc' },
-    select: { id: true, username: true, role: true, lojaNome: true, createdAt: true },
-  });
+  const usuarios = await userService.listar();
   res.json(usuarios);
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
   const { username, password, lojaNome, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
-  const existing = await prisma.usuario.findUnique({ where: { empresaId_username: { empresaId: 1, username } } });
-  if (existing) return res.status(409).json({ error: 'Usuário já existe' });
-  const hash = await bcrypt.hash(password, 10);
-  const user = await prisma.usuario.create({
-    data: { empresaId: 1, username, passwordHash: hash, lojaNome: lojaNome || username, role: role || 'user' },
-    select: { id: true, username: true, role: true, lojaNome: true },
-  });
+  const user = await userService.criar({ username, password, lojaNome, role }, ctxFrom(req));
   res.status(201).json(user);
 }));
 
 router.delete('/:id', asyncHandler(async (req, res) => {
-  await prisma.usuario.delete({ where: { id: Number(req.params.id) } });
-  res.json({ success: true });
+  res.json(await userService.deletar(req.params.id, ctxFrom(req)));
 }));
 
 router.put('/:id/password', asyncHandler(async (req, res) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'password obrigatório' });
-  const hash = await bcrypt.hash(password, 10);
-  await prisma.usuario.update({ where: { id: Number(req.params.id) }, data: { passwordHash: hash } });
-  res.json({ success: true });
+  res.json(await userService.resetarSenha(req.params.id, password, ctxFrom(req)));
 }));
 
 router.get('/logs', asyncHandler(async (req, res) => {
-  const logs = await prisma.loginLog.findMany({
-    orderBy: { loggedAt: 'desc' },
-    take: 100,
-  });
+  const logs = await userService.listarLogins();
   res.json(logs);
 }));
 

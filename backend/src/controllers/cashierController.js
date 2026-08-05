@@ -1,4 +1,6 @@
 const sql = require('../repositories/sqlRepository');
+const auditService = require('../services/auditService');
+const { getCtx } = require('../middleware/context');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.hoje = asyncHandler(async (req, res) => {
@@ -16,6 +18,18 @@ exports.abrir = asyncHandler(async (req, res) => {
     status: 'aberto',
     abertoEm: new Date(),
   });
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'caixa.abrir',
+    module: 'caixa',
+    targetType: 'caixa',
+    targetId: caixa.id,
+    after: { data, valorInicial: Number(caixa.valorInicial), status: 'aberto' },
+    changedFields: ['valorInicial', 'status'],
+    severity: 'warning',
+  });
+
   res.status(201).json(caixa);
 });
 
@@ -32,6 +46,19 @@ exports.fechar = asyncHandler(async (req, res) => {
     quantidadePedidos: Number(req.body.quantidadePedidos) || 0,
   };
   const atualizado = await sql.atualizarCaixa(caixa.id, { status: 'fechado', fechadoEm: new Date(), ...body });
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'caixa.fechar',
+    module: 'caixa',
+    targetType: 'caixa',
+    targetId: caixa.id,
+    before: { status: caixa.status, valorInicial: Number(caixa.valorInicial) },
+    after: { status: 'fechado', ...body },
+    changedFields: ['status', ...Object.keys(body)],
+    severity: 'warning',
+  });
+
   res.json(atualizado);
 });
 

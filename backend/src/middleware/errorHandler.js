@@ -1,11 +1,14 @@
 const logger = require('../config/logger');
 
 function errorHandler(err, req, res, _next) {
-  logger.error(err.stack || err.message);
+  const requestId = req.context?.requestId || 'no-request';
+  const loggerCtx = { requestId, usuarioId: req.user?.id || req.cliente?.id || null };
+  logger.error(`[requestId=${requestId}]`, err.stack || err.message, loggerCtx);
   const status = err.status || 500;
   res.status(status).json({
     error: err.message || 'Erro interno do servidor',
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(status === 500 && { requestId }),
   });
 }
 
