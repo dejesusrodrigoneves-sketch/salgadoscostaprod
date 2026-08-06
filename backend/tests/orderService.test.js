@@ -221,6 +221,30 @@ describe('processarEdicaoPedido', () => {
     expect('clienteEndereco' in result.updates).toBe(false);
   });
 
+  it('agrupa itens duplicados do pedido por produtoId (soma quantidades)', async () => {
+    const data = {
+      formaPagamento: 'pix',
+      tipoEntrega: 'retirada',
+      taxasEntrega: 0,
+      taxasCartao: 0,
+      desconto: 0,
+      total: '30.00',
+      troco: null,
+      itens: [
+        { produtoId: 6, quantidade: 2, precoUnitario: '0.50' },
+        { produtoId: 7, quantidade: 1, precoUnitario: '10.00' },
+        { produtoId: 6, quantidade: 2, precoUnitario: '0.50' },
+        { produtoId: 7, quantidade: 1, precoUnitario: '10.00' },
+      ],
+      itensRemovidos: [],
+    };
+    const result = await processarEdicaoPedido(pedido, data);
+    expect(result.itensFinal).toEqual([
+      { produtoId: 6, quantidade: 4, precoUnitario: '0.50', sabores: null },
+      { produtoId: 7, quantidade: 2, precoUnitario: '10.00', sabores: null },
+    ]);
+  });
+
   it('passa buscarProdutoFn opcional sem buscar produto (sem controle)', async () => {
     const data = {
       formaPagamento: 'dinheiro',
