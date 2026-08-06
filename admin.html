@@ -289,6 +289,7 @@ function renderCard(p, docId) {
           <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
           <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
           ${p.status === 'finalizado' ? `<button class="btn btn-edit" data-action="editar"><i class="fas fa-edit"></i> Editar</button>` : ''}
+          ${p.tipoEntrega !== 'balcao' ? `<button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>` : ''}
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
           <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
         `}
