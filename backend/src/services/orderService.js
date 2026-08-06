@@ -182,8 +182,9 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
     troco: Number(data.troco ?? 0),
   };
 
-  // Endereço de entrega: grava apenas quando string não-vazia fornecida;
-  // undefined/null/'' => preserva o valor existente no pedido.
+  // Endereço de entrega.
+  // - Entrega = delivery: grava strings não-vazias fornecidas (preserva ausentes).
+  // - Trocou para retirada/balcao (≠ delivery): limpa campos de endereço.
   const camposEndereco = [
     ['bairro', 'clienteBairro'],
     ['endereco', 'clienteEndereco'],
@@ -191,10 +192,16 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
     ['cep', 'clienteCep'],
     ['referencia', 'clienteReferencia'],
   ];
-  for (const [srcKey, destKey] of camposEndereco) {
-    const val = data[srcKey];
-    if (val !== undefined && val !== null && String(val) !== '') {
-      updates[destKey] = String(val);
+  if (String(data.tipoEntrega || '').toLowerCase() !== 'delivery') {
+    for (const [, destKey] of camposEndereco) {
+      updates[destKey] = null;
+    }
+  } else {
+    for (const [srcKey, destKey] of camposEndereco) {
+      const val = data[srcKey];
+      if (val !== undefined && val !== null && String(val) !== '') {
+        updates[destKey] = String(val);
+      }
     }
   }
 
