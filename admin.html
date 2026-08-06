@@ -370,7 +370,7 @@ function renderCard(p, docId) {
   };
 
   if (p.status === 'finalizado') {
-    card.querySelector('[data-action="editar"]').onclick = () => modalEditarItens(p);
+    card.querySelector('[data-action="editar"]').onclick = () => abrirFluxoEdicao(p);
   }
 
   return card;
@@ -596,6 +596,149 @@ function modalEditarItens(p) {
     overlay.querySelector('#modalACancel').onclick = function() { overlay.remove(); resolve(null); };
     overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
   });
+}
+
+// --- Modal B: Editar Valores + orquestração ---
+async function modalEditarValores(p, estado) {
+  // fetch bairros
+  var bairrosAtendidos = [];
+  try {
+    var config = await api('/loja/settings-admin');
+    if (config && Array.isArray(config.bairrosAtendidos)) {
+      bairrosAtendidos = config.bairrosAtendidos;
+    }
+  } catch(e) { console.error('Falha ao buscar settings-admin', e); }
+  estado.bairrosAtendidos = bairrosAtendidos;
+
+  // defaults a partir do pedido
+  estado.formaPagamento = estado.formaPagamento || p.formaPagamento || 'dinheiro';
+  estado.tipoEntrega = estado.tipoEntrega || p.tipoEntrega || 'retirada';
+  estado.bairro = estado.bairro || p.bairro || p.cliente?.bairro || '';
+  estado.desconto = estado.desconto || Number(p.desconto || 0);
+  estado.troco = estado.troco || Number(p.troco || 0);
+
+  function refresh() {
+    var totais = recalcularTotais(estado);
+    estado.taxaEntrega = totais.taxaEntrega;
+    estado.taxaCartao = totais.taxaCartao;
+    estado.total = totais.total;
+    var elSubItens = overlay.querySelector('#valSubItens');
+    var elEntrega   = overlay.querySelector('#valEntrega');
+    var elCartao    = overlay.querySelector('#valCartao');
+    var elTotal     = overlay.querySelector('#valTotal');
+    if (elSubItens) elSubItens.textContent = 'R$ ' + totais.subtotalItens.toFixed(2);
+    if (elEntrega)   elEntrega.textContent   = 'R$ ' + totais.taxaEntrega.toFixed(2);
+    if (elCartao)    elCartao.textContent    = 'R$ ' + totais.taxaCartao.toFixed(2);
+    if (elTotal)     elTotal.textContent     = 'R$ ' + totais.total.toFixed(2);
+    // toggle bairro section visibility
+    var secBairro = overlay.querySelector('#secBairro');
+    if (secBairro) secBairro.style.display = estado.tipoEntrega === 'delivery' ? 'block' : 'none';
+    // toggle troco section
+    var secTroco = overlay.querySelector('#secTroco');
+    if (secTroco) secTroco.style.display = estado.formaPagamento === 'dinheiro' ? 'block' : 'none';
+  }
+
+  function optsBairros() {
+    var sel = estado.bairro || '';
+    var matchFound = bairrosAtendidos.some(function(b) { return b.nome.toLowerCase() === String(sel).toLowerCase(); });
+    var html = bairrosAtendidos.map(function(b) {
+      var selected = (b.nome.toLowerCase() === String(sel).toLowerCase()) ? ' selected' : '';
+      return '<option value="' + b.nome + '"' + selected + '>' + b.nome + ' (R$ ' + Number(b.taxa).toFixed(2) + ')</option>';
+    }).join('');
+    if (!matchFound && sel) html = '<option value="' + sel + '" selected>' + sel + ' (sem taxa)</option>' + html;
+    return html;
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML =
+    '<div class="modal-box" style="max-width:500px;">' +
+      '<h3><i class="fas fa-sliders-h"></i> Ajustar Valores — Pedido #' + p.id + '</h3>' +
+      '<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">' +
+        '<div><label style="font-size:12px;display:block;margin-bottom:4px;">Forma de Pagamento</label>' +
+          '<select id="valFormaPagamento" style="width:100%;padding:6px;">' +
+            '<option value="dinheiro">Dinheiro</option>' +
+            '<option value="pix">PIX</option>' +
+            '<option value="debito">Débito</option>' +
+            '<option value="credito">Crédito</option>' +
+          '</select></div>' +
+        '<div id="secTroco"><label style="font-size:12px;display:block;margin-bottom:4px;">Troco para (R$)</label>' +
+          '<input type="number" id="valTroco" min="0" step="0.01" value="' + Number(estado.troco || 0).toFixed(2) + '" style="width:100%;padding:6px;"></div>' +
+        '<div><label style="font-size:12px;display:block;margin-bottom:4px;">Tipo de Entrega</label>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<label style="flex:1;"><input type="radio" name="valTipoEntrega" value="retirada"> Retirada</label>' +
+            '<label style="flex:1;"><input type="radio" name="valTipoEntrega" value="delivery"> Delivery</label>' +
+          '</div></div>' +
+        '<div id="secBairro"><label style="font-size:12px;display:block;margin-bottom:4px;">Bairro</label>' +
+          '<select id="valBairro" style="width:100%;padding:6px;">' + optsBairros() + '</select></div>' +
+        '<div><label style="font-size:12px;display:block;margin-bottom:4px;">Desconto (R$)</label>' +
+          '<input type="number" id="valDesconto" min="0" step="0.01" value="' + Number(estado.desconto || 0).toFixed(2) + '" style="width:100%;padding:6px;"></div>' +
+        '<div style="padding:12px;background:var(--secondary);border-radius:8px;">' +
+          '<div style="display:flex;justify-content:space-between;"><span>Itens:</span><span id="valSubItens">R$ 0,00</span></div>' +
+          '<div style="display:flex;justify-content:space-between;"><span>Entrega:</span><span id="valEntrega">R$ 0,00</span></div>' +
+          '<div style="display:flex;justify-content:space-between;"><span>Taxa cartão:</span><span id="valCartao">R$ 0,00</span></div>' +
+          '<div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;"><span>Total:</span><span id="valTotal">R$ 0,00</span></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="modal-actions" style="margin-top:16px;">' +
+        '<button class="btn btn-modal-cancel" id="modalBCancel">Cancelar</button>' +
+        '<button class="btn btn-pronto" id="modalBSave"><i class="fas fa-check"></i> Salvar Alterações</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  // init form values
+  overlay.querySelector('#valFormaPagamento').value = estado.formaPagamento;
+  var radios = overlay.querySelectorAll('input[name="valTipoEntrega"]');
+  radios.forEach(function(r) { r.checked = (r.value === estado.tipoEntrega); });
+  refresh();
+
+  // listeners
+  overlay.querySelector('#valFormaPagamento').onchange = function() { estado.formaPagamento = this.value; refresh(); };
+  overlay.querySelector('#valTroco').onchange = function() { estado.troco = Number(this.value) || 0; };
+  overlay.querySelector('#valDesconto').onchange = function() { estado.desconto = Number(this.value) || 0; refresh(); };
+  overlay.querySelector('#valBairro').onchange = function() { estado.bairro = this.value; refresh(); };
+  radios.forEach(function(r) {
+    r.onchange = function() { if (r.checked) { estado.tipoEntrega = r.value; refresh(); } };
+  });
+
+  return new Promise(function(resolve) {
+    overlay.querySelector('#modalBSave').onclick = async function() {
+      try {
+        var payload = {
+          formaPagamento: estado.formaPagamento,
+          tipoEntrega: estado.tipoEntrega,
+          bairro: estado.bairro,
+          taxasEntrega: estado.taxaEntrega,
+          taxasCartao: estado.taxaCartao,
+          desconto: Number(estado.desconto || 0),
+          total: String(estado.total),
+          troco: Number(estado.troco || 0),
+          itens: (estado.itens || []).map(function(i) {
+            return { produtoId: Number(i.produtoId), quantidade: Number(i.quantidade), precoUnitario: String(i.precoUnitario), sabores: i.sabores || null };
+          }),
+        };
+        await api('/pedidos/' + p.id + '/editar', { method: 'PATCH', body: JSON.stringify(payload) });
+        toast('✅ Pedido atualizado!', 'success');
+        overlay.remove();
+        resolve(true);
+      } catch(e) {
+        console.error('Erro ao editar pedido', e);
+        toast('Erro ao salvar: ' + (e.message || 'desconhecido'), 'danger');
+      }
+    };
+    overlay.querySelector('#modalBCancel').onclick = function() { overlay.remove(); resolve(false); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(false); } });
+  });
+}
+
+async function abrirFluxoEdicao(p) {
+  // Modal A → Modal B → carregarPedidos
+  var resultadoItens = await modalEditarItens(p);
+  if (!resultadoItens) return; // cancelado
+  var estado = { itens: resultadoItens.itens };
+  var salvou = await modalEditarValores(p, estado);
+  if (salvou) carregarPedidos();
 }
 
 // --- Web Audio API beep system ---
