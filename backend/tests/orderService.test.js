@@ -150,6 +150,53 @@ describe('processarEdicaoPedido', () => {
     expect(result.movimentosEstoque).toEqual([{ produtoId: 1, delta: 2 }]);
   });
 
+  it('grava endereco/numero/cep/referencia quando fornecidos', async () => {
+    const data = {
+      formaPagamento: 'credito',
+      tipoEntrega: 'delivery',
+      bairro: 'Centro',
+      endereco: 'Rua A',
+      numero: '123',
+      cep: '12345678',
+      referencia: 'Perto da praça',
+      taxasEntrega: 7,
+      taxasCartao: 2.22,
+      desconto: 0,
+      total: '39.22',
+      troco: 0,
+      itens: pedido.itens,
+      itensRemovidos: [],
+    };
+    const result = await processarEdicaoPedido(pedido, data);
+    expect(result.updates).toMatchObject({
+      clienteBairro: 'Centro',
+      clienteEndereco: 'Rua A',
+      clienteNumero: '123',
+      clienteCep: '12345678',
+      clienteReferencia: 'Perto da praça',
+      tipoEntrega: 'delivery',
+    });
+  });
+
+  it('preserva endereco existente quando campo ausente no data', async () => {
+    const pedidoBairro = { ...pedido, clienteBairro: 'Centro', clienteEndereco: 'Rua Velha' };
+    const data = {
+      formaPagamento: 'pix',
+      tipoEntrega: 'retirada',
+      taxasEntrega: 0,
+      taxasCartao: 0,
+      desconto: 0,
+      total: '30.00',
+      troco: null,
+      itens: pedido.itens,
+      itensRemovidos: [],
+    };
+    const result = await processarEdicaoPedido(pedidoBairro, data);
+    // sem bairro/endereco no data -> NAO aparece no updates (preserva banco)
+    expect('clienteBairro' in result.updates).toBe(false);
+    expect('clienteEndereco' in result.updates).toBe(false);
+  });
+
   it('passa buscarProdutoFn opcional sem buscar produto (sem controle)', async () => {
     const data = {
       formaPagamento: 'dinheiro',
