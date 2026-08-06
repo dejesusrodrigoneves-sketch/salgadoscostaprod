@@ -48,3 +48,9 @@ docs/screenshots/
 # Windows file artifacts
 NUL
 
+
+#skills
+
+.skills-lock.json
+.superpowers
+.agents\skills
