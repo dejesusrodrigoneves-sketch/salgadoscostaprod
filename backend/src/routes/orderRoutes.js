@@ -3,7 +3,7 @@ const controller = require('../controllers/orderController');
 const whatsapp = require('../services/whatsappService');
 const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const router = Router();
