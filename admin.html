@@ -29,6 +29,37 @@
   --r-pill:   999px;
   --r-tab:    8px;
 }
+
+.item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.item-name { flex: 1 1 auto; min-width: 0; }
+.leader-dots {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.item-total {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+@media (max-width: 399px) {
+  .leader-dots { display: none; }
+  .item-row { gap: 0.5rem 1rem; }
+}
+
+@media (max-width: 319px) {
+  .item-row { font-size: 12px; }
+}
 </style>
 <script src="js/utils.js"></script>
 <script>
@@ -143,7 +174,12 @@ function fmtItens(itens) {
       var qtd = i.quantidade || 1;
       var preco = Number(i.precoUnitario || 0);
       var nome = prod ? prod.name : (i.produtoNome || 'Produto #' + i.produtoId);
-      html += '<div class="item-row"><strong>' + escapeHtml(qtd + 'x ' + nome) + '</strong><span>R$ ' + preco.toFixed(2).replace('.', ',') + '</span></div>';
+      var totalLinha = (qtd * preco).toFixed(2).replace('.', ',');
+      html += '<div class="item-row">' +
+        '<span class="item-name">' + escapeHtml(qtd + 'x ' + nome) + '</span>' +
+        '<span class="leader-dots">......</span>' +
+        '<span class="item-total">R$ ' + totalLinha + '</span>' +
+        '</div>';
       if (i.sabores) {
         try {
           var saboresObj = typeof i.sabores === 'string' ? JSON.parse(i.sabores) : i.sabores;
@@ -215,7 +251,8 @@ function gerarHTMLImpressao(p) {
         var qtd = i.quantidade || 1;
         var preco = Number(i.precoUnitario || 0);
         var nome = prod ? prod.name : 'Produto #' + i.produtoId;
-        html += '<p><strong>' + escapeHtml(qtd + 'x ' + nome) + ' \u2192 R$ ' + preco.toFixed(2).replace('.', ',') + '</strong></p>';
+        var totalLinha = (qtd * preco).toFixed(2).replace('.', ',');
+        html += '<p><strong>' + escapeHtml(qtd + 'x ' + nome + ' ...... R$ ' + totalLinha) + '</strong></p>';
         if (i.sabores) {
           try {
             var saboresObj = typeof i.sabores === 'string' ? JSON.parse(i.sabores) : i.sabores;
@@ -309,7 +346,6 @@ function renderCard(p, docId) {
           <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
           ${deveMostrarEmRota(p.tipoEntrega) ? `<button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>` : ''}
           <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
-          ${p.status === 'producao' ? `<button class="btn btn-edit" data-action="editar"><i class="fas fa-edit"></i> Editar</button>` : ''}
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
           <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
         `}
@@ -392,7 +428,6 @@ function renderCard(p, docId) {
   };
 
   if (p.status === 'producao') {
-    card.querySelector('[data-action="editar"]').onclick = () => abrirFluxoEdicao(p);
     card.querySelectorAll('[data-campo]').forEach(function(btn) {
       btn.onclick = function() {
         modalCampo(p, btn.dataset.campo).then(function(payload) {
