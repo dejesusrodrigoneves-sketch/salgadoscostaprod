@@ -175,13 +175,28 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
   const updates = {
     formaPagamento: data.formaPagamento,
     tipoEntrega: data.tipoEntrega,
-    clienteBairro: data.bairro ?? '',
     taxasEntrega: Number(data.taxasEntrega ?? 0),
     taxasCartao: Number(data.taxasCartao ?? 0),
     desconto: Number(data.desconto ?? 0),
     total: String(data.total ?? '0'),
     troco: Number(data.troco ?? 0),
   };
+
+  // Endereço de entrega: grava apenas quando string não-vazia fornecida;
+  // undefined/null/'' => preserva o valor existente no pedido.
+  const camposEndereco = [
+    ['bairro', 'clienteBairro'],
+    ['endereco', 'clienteEndereco'],
+    ['numero', 'clienteNumero'],
+    ['cep', 'clienteCep'],
+    ['referencia', 'clienteReferencia'],
+  ];
+  for (const [srcKey, destKey] of camposEndereco) {
+    const val = data[srcKey];
+    if (val !== undefined && val !== null && String(val) !== '') {
+      updates[destKey] = String(val);
+    }
+  }
 
   // Movimentos de estoque: remoção soma (reversão), adição subtrai (baixa),
   // ambos apenas se o produto controlaEstoque.
