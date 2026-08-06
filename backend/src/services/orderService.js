@@ -175,7 +175,7 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
   const updates = {
     formaPagamento: data.formaPagamento,
     tipoEntrega: data.tipoEntrega,
-    bairro: data.bairro ?? '',
+    clienteBairro: data.bairro ?? '',
     taxasEntrega: Number(data.taxasEntrega ?? 0),
     taxasCartao: Number(data.taxasCartao ?? 0),
     desconto: Number(data.desconto ?? 0),
@@ -216,9 +216,9 @@ async function editarPedido(id, data, ctx = {}) {
 
   // Substitui os itens do pedido pelos novos (delete + re-create).
   await prisma.itensPedido.deleteMany({ where: { pedidoId: id } });
-  if (result.itensNovos.length > 0) {
+  if (data.itens && data.itens.length > 0) {
     await prisma.itensPedido.createMany({
-      data: result.itensNovos.map(i => ({
+      data: data.itens.map(i => ({
         pedidoId: id,
         produtoId: Number(i.produtoId),
         quantidade: Number(i.quantidade),
