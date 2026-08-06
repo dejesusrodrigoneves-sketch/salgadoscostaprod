@@ -1,21 +1,24 @@
-# Edição de Pedido Finalizado — Design + Implementation Plan
+# Edição de Pedido em Produção — Design + Implementation Plan
 
-**Data:** 2026-08-04
-**Status:** Aprovado
+**Data:** 2026-08-04 (atualizado 2026-08-06)
+**Status:** Aprovado — edição passa a ser exclusiva para status `producao`
 
 ## Goal
 
-Permitir que admin, superadmin ou user editarem pedidos já finalizados — alterar forma de pagamento (com recálculo de juros de cartão), tipo de entrega (retirada ↔ delivery com taxa por bairro), e adicionar/editar/remover itens do pedido. Sem notificações automáticas ao cliente. Estoque é revertido ao remover itens (se o produto tem controle de estoque ativo).
+Permitir que admin, superusuario ou user editarem pedidos **com status `producao`** — alterar forma de pagamento (com recálculo de juros de cartão), tipo de entrega (retirada ↔ delivery com taxa por bairro), e adicionar/editar/remover itens do pedido. Sem notificações automáticas ao cliente. Estoque revertido ao remover itens e baixa ao adicionar (se o produto tem controle de estoque ativo).
+
+**Regra de edição:** A edição de itens do carrinho é permitida **somente quando o pedido está em `producao`**. Pedidos em `pronto`, `em_rota` e `finalizado` **não** podem editar itens.
 
 ## Contexto
 
-Hoje `admin.html` mostra tabs para pedidos pendente/producao/pronto/emRota. Pedidos com status `finalizado` não têm tab própria e não aparecem mais. O sistema não tem `PATCH` para editar pedidos completos — só `PATCH /api/pedidos/:id/status` que muda o status e `POST /api/pedidos/:id/finalizar` que marca como finalizado. Toda edição pós-finalização hoje é impossível.
+Hoje `admin.html` mostra pedidos pendente/producao/pronto/emRota. O sistema não tem `PATCH` para editar pedidos completos — só `PATCH /api/pedidos/:id/status` e `POST /api/pedidos/:id/finalizar`. Toda edição de itens hoje é impossível.
 
 Decisões confirmadas com o usuário:
-- Edição via **modal overlay** (padrão `selecionarEntregadorModal`) — não form inline.
-- **Dois modais**: Modal A — itens (quantidade editável + remover item + adicionar novo via catálogo de produtos). Modal B — ajustar valores (forma pagamento, tipo entrega, bairro).
-- Backend: nova rota `PATCH /api/pedidos/:id/editar` (authenticate, authorize superadmin/admin/user).
-- Reverter estoque ao remover item (se o produto tem `controlaEstoque`, soma quantidade). Fazer baixa de estoque ao adicionar item (se o produto tem `controlaEstoque`, subtrai quantidade).
+- Edição via **Dois modais** (padrão `selecionarEntregadorModal`) — não interface.
+- **Modal A** — itens (quantidade editável + remover + adicionar via catálogo). **Modal B** — valores (forma pagamento, tipo entrega, bairro).
+- **Botão "Editar" visível apenas quando `status === 'producao'`** (renderização condicional). Ausência de botão para pronto/em rota/finalizado.
+- Backend: rota `PATCH /api/pedidos/:id/editar` (authenticate, authorize superadmin/admin/admin).
+- Estoque: reverter ao remover item (soma, se `controlaEstoque`); baixa ao adicionar item (subtrai, se `controlaEstoque`).
 - Sem notificações automáticas — via clique admin manual.
 
 ### Regras de Juros e Taxa de Entrega
@@ -32,15 +35,14 @@ Decisões confirmadas com o usuário:
 Três camadas com padrão existente (controller/service/repository + page HTML standalone).
 
 1. **Backend** — nova rota + controller + service para `PATCH /api/pedidos/:id/editar`. Recebe pedido completo recalculado e faz insert/delete de itens + reversão de estoque. Auditoria.
-2. **Frontend** — nova tab "Finalizados" no `admin.html`, card com botão "Editar", dois modais sequenciais com os cálculos no client-side (replicando as funções de `cart.js` e `balcao.html` para taxa cartão e taxa entrega).
+2. **Frontend** — card no status `producao` com botão "Editar", dois modais sequenciais com cálculos no client-side (replicando `cart.js` e `balcao.html` para taxa cartão e taxa entrega).
 3. **Menu** — sem alvo (admin.html já existe).
 
 ## Data Flow
 
 ```
-admin.html (tab finalizados)
-  → fetch GET /api/pedidos?status=finalizado
-  → render card "finalizado" com botão Editar
+admin.html (aba Produção — pedidos status producao)
+  → card "producao" com botão Editar (somente status producao)
   → clica "Editar" → Modal A (itens):
       - lista itens + adiciona/remove
       - busca produtos: GET /api/produtos
@@ -82,17 +84,12 @@ router.patch('/:id/editar', authenticate, authorize('superadmin', 'admin', 'user
 
 ### Frontend — admin.html
 
-**Nova tab:**
-```html
-<div class="tab" data-tab="finalizado"><i class="fas fa-check-double"></i> Finalizados <span class="tab-count" id="tabCountFinalizado">0</span></div>
-```
-Inserir após `#tabRota`.
-
-**Card para status `finalizado`:**
-- `order-actions` renderiza: **botão "Editar"** (`data-action="editar"`) + botão "Imprimir"
+**Card para status `producao`:**
+- `order-actions` renderiza: **botão "Editar"** (`data-action="editar"`) **somente quando `p.status === 'producao'`** + botões padrão (Produção/Pronto/Em Rota/Finalizar/Imprimir/Excluir).
+- Botão ausente para `pronto`, `em_rota`, `finalizado`.
 
 **Modal A — "Ajustar Itens do Pedido":**
-- Função `abrirModalEditarItens(p)` (assíncrona)
+- Função `modalEditarItens(p)` (assíncrona)
   - overlay `.modal-overlay` > `.modal-box` (larga, 600px)
   - Lista itens atuais:
     - `itens.forEach` → exibe `produto.name`, input `qtd` (número), `precoUnitario` readonly, botão `❌` remove
@@ -121,7 +118,7 @@ Inserir após `#tabRota`.
 
 ## Erros / Edge Cases
 
-- **Pedido já finalizado** → única validação requerida. Não restritivo.
+- **Pedido com status ≠ `producao`** → botão Editar não renderizado no frontend. Backend pode validar (se desejado) que só edita `producao`.
 - **Item removido de pedido que tem controle de estoque** → `estoqueAtual += quantidade` (não vira negativo por segurança, mas Prisma trata `>=0`).
 - **Item adicionado com produto inexistente** → 404 via Prisma FK constraint.
 - **Bairro selecionado que não existe mais na lista** → taxaEntrega = 0 (bairro removido da API ou não configurado).
@@ -129,7 +126,8 @@ Inserir após `#tabRota`.
 
 ## Fora de Escopo
 
-- Não alterar status finalizado (permanece `finalizado`).
+- Não alterar status do pedido ao editar (permanece `producao`).
+- Não editar pedidos em `pronto`, `em_rota` ou `finalizado`.
 - Não reenviar WhatsApp ao cliente ao editar (só via botão explícito no admin).
 - Fazer baixa de estoque ao adicionar novos itens (se controle ativo).
 - Não criar nova tab/página separada — fica dentro do admin.html.
@@ -145,14 +143,13 @@ Inserir após `#tabRota`.
 
 **Steps:** Escreva os testes primeiro (provider pattern helper) → implement helper → wrap service → add de controller → add rota → validação sintaxe + teste – igual ao capítulo anterior, mas estruturalmente co-locado.
 
-### Task 2: Modais e aba Finalizados no admin.html
+### Task 2: Modais e botão Editar no admin.html
 
 **Modify:** `admin.html`
 
-- [ ] Step 1: add tab "Finalizados" + `#finalizado` tab-content
-- [ ] Step 2: alterar `carregarPedidos` para exibir status finalizado
-- [ ] Step 3: implementar `modalEditarItens(p)` + `modalEditarValores(p)`
-- [ ] Step 4: funções auxiliares `calcularTaxaCartao` + `calcularTaxaEntrega` internas
-- [ ] Step 5: handler `[data-action="editar"]` que abre sequência
+- [ ] Step 1: renderizar botão "Editar" (`data-action="editar"`) **somente quando `p.status === 'producao'`** no card de pedido
+- [ ] Step 2: implementar `modalEditarItens(p)` + `modalEditarValores(p)`
+- [ ] Step 3: funções auxiliares `calcularTaxaCartao` + `calcularTaxaEntrega` internas
+- [ ] Step 4: handler `[data-action="editar"]` que abre sequência
 
 ### 3: Teste manual E2E + build dist

@@ -1,14 +1,6 @@
-# SDD Progress — Frontend Auditoria Superadmin (Etapa 4)
-- Task 1: backend actorId anon/null -> where.actorId=null (routes + repository). Validado via curl. (sem commit — usuário commita depois)
-- Task 2: funções puras js/superadmin-audit.js + tests/superadmin-audit.test.js (10/10 verde).
-- Task 3: DOM wiring completo (timeline, filtros, load more, select). Tests 10/10.
-- Task 4: superadmin.html tab Registros + markup + switchTab + script module.
-- Task 5: CSS timeline (cards, dots severidade, responsivo).
-- Task 6: E2E Playwright 16/16 + load more 50->57 + limpeza (audit=0, clientes=2).
-- Revisao final manual: sem findings criticos.
-- TODO usuario: testar manual localhost + commit.
-- Task 1: aba 'Historico de Login' removida do superadmin.html (3 tabs restantes).
-- Task 2: loginLog.create removido de authService.js:50-52 (para de popular login_logs).
-- Task 3: depopulate.js criado + limpeza executada (logs + dados de teste).
-- Task 4: validacao final — npm test 10/10, login_logs=0 apos 2 logins, dados reais intactos.
-- TODO usuario: testar manual localhost + commit.
+# SDD Progress — Editar Pedido Finalizado Frontend (2026-08-06)
+
+Plano: `docs/superpowers/plans/2026-08-06-editar-pedido-finalizado-frontend.md`
+Branch: `feature/hierarquia-usuarios`
+BASE: `30cbee1d5982ec3f37f969700a349ff8b0355e8d`
+
