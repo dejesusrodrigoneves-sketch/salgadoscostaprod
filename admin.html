@@ -5,6 +5,7 @@
 <title>Pedidos - Fabrica de salgados Costa</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -250,6 +251,10 @@ function renderCard(p, docId) {
   const nome = p.cliente?.nome || 'Cliente';
   const total = fmtMoeda(p.valores?.total);
   const isPendente = p.status === 'pendente';
+  const editavel = p.status === 'producao';
+  const iconeCampo = (icone, titulo, campo) => editavel
+    ? ' <button type="button" class="field-edit" data-campo="' + campo + '" title="' + titulo + '" style="border:none;background:none;color:var(--primary);cursor:pointer;padding:0;font-size:14px;"><i class="bi ' + icone + '"></i></button>'
+    : '';
 
   card.innerHTML = `
     <div class="order-header${isPendente ? ' no-toggle' : ''}" ${isPendente ? '' : 'onclick="this.closest(\'.order-card\').classList.toggle(\'open\')"'}>
@@ -267,16 +272,17 @@ function renderCard(p, docId) {
     <div class="order-body">
       <div class="order-info-grid">
         <div class="info-item"><strong>Whatsapp</strong>${p.cliente?.whatsapp || '-'}</div>
-        <div class="info-item"><strong>Endereço</strong>${p.cliente?.endereco || '-'}, ${p.cliente?.numero || '-'}</div>
-        <div class="info-item"><strong>Bairro</strong>${p.cliente?.bairro || '-'}</div>
-        <div class="info-item"><strong>CEP</strong>${p.cep || '-'}</div>
-        <div class="info-item"><strong>Ref</strong>${p.cliente?.pontoReferencia || '-'}</div>
-        <div class="info-item"><strong>Pagamento</strong>${p.formaPagamento || '-'}</div>
-        <div class="info-item"><strong>Troco</strong>${p.troco ? fmtMoeda(p.troco) : '-'}</div>
+        <div class="info-item"><strong>Endereço</strong>${p.cliente?.endereco || '-'}, ${p.cliente?.numero || '-'}${iconeCampo('bi-geo-alt', 'Editar endereço', 'endereco')}</div>
+        <div class="info-item"><strong>Bairro</strong>${p.cliente?.bairro || '-'}${iconeCampo('bi-signpost', 'Editar bairro', 'bairro')}</div>
+        <div class="info-item"><strong>CEP</strong>${p.cep || '-'}${iconeCampo('bi-mailbox', 'Editar CEP', 'cep')}</div>
+        <div class="info-item"><strong>Ref</strong>${p.cliente?.pontoReferencia || '-'}${iconeCampo('bi-pin-map', 'Editar referência', 'referencia')}</div>
+        <div class="info-item"><strong>Pagamento</strong>${p.formaPagamento || '-'}${iconeCampo('bi-credit-card', 'Editar pagamento', 'pagamento')}</div>
+        <div class="info-item"><strong>Troco</strong>${p.troco ? fmtMoeda(p.troco) : '-'}${iconeCampo('bi-cash-coin', 'Editar troco', 'troco')}</div>
+        <div class="info-item"><strong>Desconto</strong>${fmtMoeda(p.valores?.desconto)}${iconeCampo('bi-percent', 'Editar desconto', 'desconto')}</div>
+        <div class="info-item"><strong>Entrega</strong>${p.tipoEntrega || '-'}${iconeCampo('bi-truck', 'Editar tipo de entrega', 'entrega')}</div>
         <div class="info-item"><strong>Total Itens</strong>${fmtMoeda(p.valores?.itens)}</div>
         <div class="info-item"><strong>Taxa Cartão</strong>${p.taxaCartao ? fmtMoeda(p.taxaCartao) : '-'}</div>
         <div class="info-item"><strong>Taxa Entrega</strong>${fmtMoeda(p.valores?.entrega)}</div>
-        <div class="info-item"><strong>Desconto</strong>${fmtMoeda(p.valores?.desconto)}</div>
       </div>
       ${fmtItens(p.itens)}
       <div class="order-actions">
@@ -372,6 +378,16 @@ function renderCard(p, docId) {
 
   if (p.status === 'producao') {
     card.querySelector('[data-action="editar"]').onclick = () => abrirFluxoEdicao(p);
+    card.querySelectorAll('[data-campo]').forEach(function(btn) {
+      btn.onclick = function() {
+        modalCampo(p, btn.dataset.campo).then(function(payload) {
+          if (!payload) return;
+          api('/pedidos/' + p.id + '/editar', { method: 'PATCH', body: JSON.stringify(payload) })
+            .then(function() { toast('✅ Campo atualizado!', 'success'); carregarPedidos(); })
+            .catch(function(e) { toast('Erro ao salvar: ' + e.message, 'danger'); });
+        });
+      };
+    });
   }
 
   return card;
@@ -475,6 +491,18 @@ function recalcularTotais(estado) {
 // Retorna true apenas para entrega delivery. Retirada = qualquer valor != 'delivery'.
 function deveMostrarEmRota(tipoEntrega) {
   return String(tipoEntrega || '').toLowerCase() === 'delivery';
+}
+
+function optsBairros(est) {
+  var bairrosAtendidos = est.bairrosAtendidos || [];
+  var sel = est.bairro || '';
+  var matchFound = bairrosAtendidos.some(function(b) { return b.nome.toLowerCase() === String(sel).toLowerCase(); });
+  var html = bairrosAtendidos.map(function(b) {
+    var selected = (b.nome.toLowerCase() === String(sel).toLowerCase()) ? ' selected' : '';
+    return '<option value="' + b.nome + '"' + selected + '>' + b.nome + ' (R$ ' + Number(b.taxa).toFixed(2) + ')</option>';
+  }).join('');
+  if (!matchFound && sel) html = '<option value="' + sel + '" selected>' + sel + ' (sem taxa)</option>' + html;
+  return html;
 }
 
 // --- Modal A: Editar Itens ---
@@ -645,17 +673,6 @@ async function modalEditarValores(p, estado) {
     if (secTroco) secTroco.style.display = estado.formaPagamento === 'dinheiro' ? 'block' : 'none';
   }
 
-  function optsBairros() {
-    var sel = estado.bairro || '';
-    var matchFound = bairrosAtendidos.some(function(b) { return b.nome.toLowerCase() === String(sel).toLowerCase(); });
-    var html = bairrosAtendidos.map(function(b) {
-      var selected = (b.nome.toLowerCase() === String(sel).toLowerCase()) ? ' selected' : '';
-      return '<option value="' + b.nome + '"' + selected + '>' + b.nome + ' (R$ ' + Number(b.taxa).toFixed(2) + ')</option>';
-    }).join('');
-    if (!matchFound && sel) html = '<option value="' + sel + '" selected>' + sel + ' (sem taxa)</option>' + html;
-    return html;
-  }
-
   var overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML =
@@ -677,7 +694,7 @@ async function modalEditarValores(p, estado) {
             '<label style="flex:1;"><input type="radio" name="valTipoEntrega" value="delivery"> Delivery</label>' +
           '</div></div>' +
         '<div id="secBairro"><label style="font-size:12px;display:block;margin-bottom:4px;">Bairro</label>' +
-          '<select id="valBairro" style="width:100%;padding:6px;">' + optsBairros() + '</select></div>' +
+          '<select id="valBairro" style="width:100%;padding:6px;">' + optsBairros(estado) + '</select></div>' +
         '<div><label style="font-size:12px;display:block;margin-bottom:4px;">Desconto (R$)</label>' +
           '<input type="number" id="valDesconto" min="0" step="0.01" value="' + Number(estado.desconto || 0).toFixed(2) + '" style="width:100%;padding:6px;"></div>' +
         '<div style="padding:12px;background:var(--secondary);border-radius:8px;">' +
@@ -746,6 +763,274 @@ async function abrirFluxoEdicao(p) {
   var estado = { itens: resultadoItens.itens };
   var salvou = await modalEditarValores(p, estado);
   if (salvou) carregarPedidos();
+}
+
+function montarPayload(est) {
+  formularioControles(est); // garante totais atualizados
+  return {
+    formaPagamento: est.formaPagamento,
+    tipoEntrega: est.tipoEntrega,
+    bairro: est.bairro,
+    endereco: est.endereco,
+    numero: est.numero,
+    cep: est.cep,
+    referencia: est.referencia,
+    taxasEntrega: est.taxaEntrega,
+    taxasCartao: est.taxaCartao,
+    desconto: Number(est.desconto || 0),
+    total: String(est.total),
+    troco: Number(est.troco || 0),
+    itens: est.itens.map(function(i) {
+      return { produtoId: Number(i.produtoId), quantidade: Number(i.quantidade), precoUnitario: String(i.precoUnitario), sabores: i.sabores || null };
+    }),
+  };
+}
+
+function formularioControles(est) {
+  var totais = recalcularTotais(est);
+  est.taxaEntrega = totais.taxaEntrega;
+  est.taxaCartao = totais.taxaCartao;
+  est.total = totais.total;
+  return totais;
+}
+
+async function modalCampo(p, nomeCampo) {
+  var bairrosAtendidos = [];
+  try {
+    var cfg = await api('/loja/settings-admin');
+    if (cfg && Array.isArray(cfg.bairrosAtendidos)) bairrosAtendidos = cfg.bairrosAtendidos;
+  } catch(e) { console.warn('settings-admin falhou', e); }
+
+  var est = {
+    itens: (p.itens || []).map(function(i) {
+      return { produtoId: Number(i.produtoId), quantidade: Number(i.quantidade), precoUnitario: Number(i.precoUnitario), sabores: i.sabores || null };
+    }),
+    formaPagamento: p.formaPagamento || 'dinheiro',
+    tipoEntrega: p.tipoEntrega || 'retirada',
+    bairro: p.cliente?.bairro || '',
+    endereco: p.cliente?.endereco || '',
+    numero: p.cliente?.numero || '',
+    cep: p.cep || '',
+    referencia: p.cliente?.pontoReferencia || '',
+    desconto: Number(p.valores?.desconto || 0),
+    troco: Number(p.troco || 0),
+    bairrosAtendidos: bairrosAtendidos,
+  };
+
+  switch (nomeCampo) {
+    case 'entrega':    return modalEntrega(p, est);
+    case 'pagamento':  return modalCampoSimples(p, est, 'pagamento');
+    case 'troco':      return modalCampoSimples(p, est, 'troco');
+    case 'desconto':   return modalCampoSimples(p, est, 'desconto');
+    case 'bairro':     return modalCampoSimples(p, est, 'bairro');
+    case 'cep':        return modalCampoTexto(p, est, 'cep', 'CEP');
+    case 'referencia': return modalCampoTexto(p, est, 'referencia', 'Ponto de referência');
+    case 'endereco':   return modalEndereco(p, est);
+    default: return Promise.resolve(null);
+  }
+}
+
+function modalCampoSimples(p, est, campo) {
+  return new Promise(function(resolve) {
+    var titulos = { pagamento: 'Forma de Pagamento', troco: 'Troco para (R$)', desconto: 'Desconto (R$)', bairro: 'Bairro' };
+    var corpo = '';
+    if (campo === 'pagamento') {
+      corpo =
+        '<select id="fcVal" style="width:100%;padding:6px;">' +
+          '<option value="dinheiro">Dinheiro</option>' +
+          '<option value="pix">PIX</option>' +
+          '<option value="debito">Débito</option>' +
+          '<option value="credito">Crédito</option>' +
+        '</select>';
+    } else if (campo === 'bairro') {
+      corpo = '<select id="fcVal" style="width:100%;padding:6px;">' + optsBairros(est) + '</select>';
+    } else {
+      corpo = '<input type="number" id="fcVal" min="0" step="0.01" value="' +
+        (campo === 'troco' ? Number(est.troco || 0).toFixed(2) : Number(est.desconto || 0).toFixed(2)) +
+        '" style="width:100%;padding:6px;">';
+    }
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" style="max-width:400px;">' +
+        '<h3>Editar ' + titulos[campo] + ' — #' + p.id + '</h3>' +
+        '<div style="margin-top:12px;">' + corpo + '</div>' +
+        '<div style="margin-top:8px;font-size:13px;">Total atualizado: <strong>R$ <span id="fcTotal"></span></strong></div>' +
+        '<div class="modal-actions" style="margin-top:16px;">' +
+          '<button class="btn btn-modal-cancel" id="fcCancel">Cancelar</button>' +
+          '<button class="btn btn-pronto" id="fcSave">Salvar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    var elVal = overlay.querySelector('#fcVal');
+    if (campo === 'pagamento') elVal.value = est.formaPagamento;
+
+    function refresh() {
+      formularioControles(est);
+      overlay.querySelector('#fcTotal').textContent = 'R$ ' + est.total.toFixed(2);
+    }
+    elVal.onchange = function() {
+      if (campo === 'pagamento') est.formaPagamento = this.value;
+      else if (campo === 'bairro') est.bairro = this.value;
+      else if (campo === 'troco') est.troco = Number(this.value) || 0;
+      else if (campo === 'desconto') est.desconto = Number(this.value) || 0;
+      refresh();
+    };
+    refresh();
+
+    overlay.querySelector('#fcSave').onclick = function() {
+      if (campo === 'pagamento') est.formaPagamento = elVal.value;
+      else if (campo === 'bairro') est.bairro = elVal.value;
+      else if (campo === 'troco') est.troco = Number(elVal.value) || 0;
+      else if (campo === 'desconto') est.desconto = Number(elVal.value) || 0;
+      overlay.remove();
+      resolve(montarPayload(est));
+    };
+    overlay.querySelector('#fcCancel').onclick = function() { overlay.remove(); resolve(null); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
+function modalCampoTexto(p, est, campo, rotulo) {
+  return new Promise(function(resolve) {
+    var valAtual = campo === 'cep' ? (est.cep || '') : (est.referencia || '');
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" style="max-width:400px;">' +
+        '<h3>Editar ' + rotulo + ' — #' + p.id + '</h3>' +
+        '<div style="margin-top:12px;"><input type="text" id="fcVal" value="' + escapeHtml(valAtual) + '" style="width:100%;padding:6px;"></div>' +
+        '<div class="modal-actions" style="margin-top:16px;">' +
+          '<button class="btn btn-modal-cancel" id="fcCancel">Cancelar</button>' +
+          '<button class="btn btn-pronto" id="fcSave">Salvar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#fcSave').onclick = function() {
+      var v = overlay.querySelector('#fcVal').value.trim();
+      if (campo === 'cep') est.cep = v;
+      else est.referencia = v;
+      overlay.remove();
+      resolve(montarPayload(est));
+    };
+    overlay.querySelector('#fcCancel').onclick = function() { overlay.remove(); resolve(null); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
+function modalEndereco(p, est) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" style="max-width:400px;">' +
+        '<h3>Editar Endereço — #' + p.id + '</h3>' +
+        '<div style="margin-top:12px;">' +
+          '<div><label style="font-size:12px;display:block;margin-bottom:4px;">Endereço (rua)</label>' +
+          '<input type="text" id="enRua" value="' + escapeHtml(est.endereco || '') + '" style="width:100%;padding:6px;"></div>' +
+          '<div style="margin-top:8px;"><label style="font-size:12px;display:block;margin-bottom:4px;">Número</label>' +
+          '<input type="text" id="enNum" value="' + escapeHtml(est.numero || '') + '" style="width:100%;padding:6px;"></div>' +
+        '</div>' +
+        '<div class="modal-actions" style="margin-top:16px;">' +
+          '<button class="btn btn-modal-cancel" id="enCancel">Cancelar</button>' +
+          '<button class="btn btn-pronto" id="enSave">Salvar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#enSave').onclick = function() {
+      est.endereco = overlay.querySelector('#enRua').value.trim();
+      est.numero = overlay.querySelector('#enNum').value.trim();
+      overlay.remove();
+      resolve(montarPayload(est));
+    };
+    overlay.querySelector('#enCancel').onclick = function() { overlay.remove(); resolve(null); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
+function modalEntrega(p, est) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+
+    function build() {
+      var isDel = est.tipoEntrega === 'delivery';
+      overlay.innerHTML =
+        '<div class="modal-box" style="max-width:520px;">' +
+          '<h3>Editar Entrega — #' + p.id + '</h3>' +
+          '<div style="margin-top:12px;">' +
+            '<label style="font-size:12px;display:block;margin-bottom:4px;">Tipo de Entrega</label>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<label style="flex:1;"><input type="radio" name="enTipo" value="retirada"' + (isDel ? '' : ' checked') + '> Retirada</label>' +
+              '<label style="flex:1;"><input type="radio" name="enTipo" value="delivery"' + (isDel ? ' checked' : '') + '> Delivery</label>' +
+            '</div>' +
+            '<div id="blocoEntrega" style="margin-top:12px;' + (isDel ? '' : 'display:none;') + '">' +
+              '<div style="display:flex;gap:8px;">' +
+                '<div style="flex:3;"><label style="font-size:12px;display:block;margin-bottom:4px;">Endereço (rua)</label>' +
+                '<input type="text" id="enRua" value="' + escapeHtml(est.endereco || '') + '" style="width:100%;padding:6px;"></div>' +
+                '<div style="flex:1;"><label style="font-size:12px;display:block;margin-bottom:4px;">Número</label>' +
+                '<input type="text" id="enNum" value="' + escapeHtml(est.numero || '') + '" style="width:100%;padding:6px;"></div>' +
+              '</div>' +
+              '<div style="margin-top:8px;"><label style="font-size:12px;display:block;margin-bottom:4px;">Bairro (taxa de entrega)</label>' +
+              '<select id="enBairro" style="width:100%;padding:6px;">' + optsBairros(est) + '</select></div>' +
+              '<div style="margin-top:8px;"><label style="font-size:12px;display:block;margin-bottom:4px;">CEP</label>' +
+              '<input type="text" id="enCep" value="' + escapeHtml(est.cep || '') + '" style="width:100%;padding:6px;"></div>' +
+              '<div style="margin-top:8px;"><label style="font-size:12px;display:block;margin-bottom:4px;">Referência</label>' +
+              '<input type="text" id="enRef" value="' + escapeHtml(est.referencia || '') + '" style="width:100%;padding:6px;"></div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="margin-top:12px;padding:10px;background:var(--secondary);border-radius:8px;">' +
+            '<div style="display:flex;justify-content:space-between;"><span>Taxa entrega:</span><span>R$ <span id="enTaxa"></span></span></div>' +
+            '<div style="display:flex;justify-content:space-between;"><span>Taxa cartão:</span><span>R$ <span id="enCartao"></span></span></div>' +
+            '<div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;"><span>Total:</span><span>R$ <span id="enTotal"></span></span></div>' +
+          '</div>' +
+          '<div class="modal-actions" style="margin-top:16px;">' +
+            '<button class="btn btn-modal-cancel" id="enCancel">Cancelar</button>' +
+            '<button class="btn btn-pronto" id="enSave">Salvar</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+
+      function atualizaRecap() {
+        est.endereco = overlay.querySelector('#enRua') ? overlay.querySelector('#enRua').value.trim() : est.endereco;
+        est.numero = overlay.querySelector('#enNum') ? overlay.querySelector('#enNum').value.trim() : est.numero;
+        est.bairro = overlay.querySelector('#enBairro') ? overlay.querySelector('#enBairro').value : est.bairro;
+        est.cep = overlay.querySelector('#enCep') ? overlay.querySelector('#enCep').value.trim() : est.cep;
+        est.referencia = overlay.querySelector('#enRef') ? overlay.querySelector('#enRef').value.trim() : est.referencia;
+        var t = formularioControles(est);
+        overlay.querySelector('#enTaxa').textContent = 'R$ ' + t.taxaEntrega.toFixed(2);
+        overlay.querySelector('#enCartao').textContent = 'R$ ' + t.taxaCartao.toFixed(2);
+        overlay.querySelector('#enTotal').textContent = 'R$ ' + t.total.toFixed(2);
+      }
+
+      overlay.querySelectorAll('input[name="enTipo"]').forEach(function(r) {
+        r.onchange = function() {
+          est.tipoEntrega = r.value;
+          overlay.querySelector('#blocoEntrega').style.display = r.value === 'delivery' ? '' : 'none';
+          atualizaRecap();
+        };
+      });
+      overlay.querySelector('#enBairro').onchange = function() { atualizaRecap(); };
+      overlay.querySelector('#enRua').oninput = function() { atualizaRecap(); };
+      overlay.querySelector('#enNum').oninput = function() { atualizaRecap(); };
+      overlay.querySelector('#enCep').oninput = function() { atualizaRecap(); };
+      overlay.querySelector('#enRef').oninput = function() { atualizaRecap(); };
+      atualizaRecap();
+
+      overlay.querySelector('#enSave').onclick = function() {
+        atualizaRecap();
+        overlay.remove();
+        resolve(montarPayload(est));
+      };
+      overlay.querySelector('#enCancel').onclick = function() { overlay.remove(); resolve(null); };
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+    }
+    build();
+  });
 }
 
 // --- Web Audio API beep system ---
