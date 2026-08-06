@@ -436,6 +436,40 @@ async function selecionarEntregadorModal(pedidoNome) {
   });
 }
 
+// --- Helpers de cálculo de edição (replica cart.js) ---
+function calcularTaxaCartao(formaPagamento, subtotal) {
+  if (formaPagamento === 'credito') return Number((subtotal * 0.06).toFixed(2));
+  if (formaPagamento === 'debito')  return Number((subtotal * 0.03).toFixed(2));
+  return 0;
+}
+
+function calcularTaxaEntrega(tipoEntrega, bairroNome, bairrosAtendidos) {
+  if (tipoEntrega !== 'delivery') return 0;
+  if (!Array.isArray(bairrosAtendidos) || !bairroNome) return 0;
+  var match = bairrosAtendidos.find(function(b) {
+    return b && b.nome && b.nome.toLowerCase() === String(bairroNome).toLowerCase();
+  });
+  return match && match.taxa ? Number(match.taxa) : 0;
+}
+
+function recalcularTotais(estado) {
+  var bairros = estado.bairrosAtendidos || [];
+  var subtotalItens = (estado.itens || []).reduce(function(acc, i) {
+    return acc + (Number(i.quantidade) * Number(i.precoUnitario || 0));
+  }, 0);
+  var taxaEntrega = calcularTaxaEntrega(estado.tipoEntrega, estado.bairro, bairros);
+  var subtotal = subtotalItens + taxaEntrega - Number(estado.desconto || 0);
+  var taxaCartao = calcularTaxaCartao(estado.formaPagamento, subtotal);
+  var total = subtotal + taxaCartao;
+  return {
+    subtotalItens: Number(subtotalItens.toFixed(2)),
+    subtotal: Number(subtotal.toFixed(2)),
+    taxaEntrega: Number(taxaEntrega.toFixed(2)),
+    taxaCartao: Number(taxaCartao.toFixed(2)),
+    total: Number(total.toFixed(2)),
+  };
+}
+
 // --- Web Audio API beep system ---
 let audioCtx = null;
 let beepLoopId = null;
