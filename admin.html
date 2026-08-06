@@ -470,6 +470,134 @@ function recalcularTotais(estado) {
   };
 }
 
+// --- Modal A: Editar Itens ---
+function modalEditarItens(p) {
+  return new Promise(async (resolve) => {
+    var produtos = window.products || [];
+    if (!produtos.length) {
+      try {
+        var r = await fetch('/api/public/produtos');
+        produtos = await r.json() || [];
+        window.products = produtos;
+      } catch(e) { console.error('Falha ao carregar produtos', e); }
+    }
+
+    // clone itens atuais (deep copy rasa)
+    var itens = (p.itens || []).map(function(i) {
+      return {
+        produtoId: Number(i.produtoId),
+        nome: i.produto ? i.produto.name : (produtos.find(function(pr){ return pr.id === Number(i.produtoId); }) || {}).name || 'Produto #' + i.produtoId,
+        quantidade: Number(i.quantidade),
+        precoUnitario: Number(i.precoUnitario),
+        sabores: i.sabores || null,
+      };
+    });
+
+    function precoTotal() {
+      return itens.reduce(function(acc, i) { return acc + (i.quantidade * i.precoUnitario); }, 0);
+    }
+
+    function renderLista() {
+      return itens.map(function(i, idx) {
+        return '<div class="driver-option" data-idx="' + idx + '" style="flex-direction:column;align-items:stretch;padding:8px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;width:100%;">' +
+            '<span class="driver-name">' + (i.nome || 'Produto') + '</span>' +
+            '<button class="btn btn-delete" style="padding:4px 8px;" data-remove="' + idx + '"><i class="fas fa-times"></i></button>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;margin-top:4px;width:100%;">' +
+            '<label style="font-size:12px;">Qtd:</label>' +
+            '<input type="number" min="1" step="1" value="' + i.quantidade + '" data-qtd="' + idx + '" style="width:70px;padding:4px;">' +
+            '<span style="font-size:12px;color:var(--text-muted);">R$ ' + Number(i.precoUnitario).toFixed(2) + ' / un</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function renderProdutosSelect() {
+      var opts = '<option value="">Selecione...</option>' +
+        produtos.map(function(pr) { return '<option value="' + pr.id + '">' + pr.name + ' (R$ ' + Number(pr.price).toFixed(2) + ')</option>'; }).join('');
+      return opts;
+    }
+
+    function atualizaPreview() {
+      var el = overlay.querySelector('#subtotalPreview');
+      if (el) el.textContent = 'R$ ' + precoTotal().toFixed(2);
+    }
+
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML =
+      '<div class="modal-box" style="max-width:600px;">' +
+        '<h3><i class="fas fa-edit"></i> Editar Itens — Pedido #' + p.id + '</h3>' +
+        '<p style="margin:8px 0 16px;font-size:13px;color:var(--text-muted);">Cliente: ' + (p.clienteNome || p.cliente?.nome || '-') + '</p>' +
+        '<div class="driver-modal-list" id="listaItens">' + renderLista() + '</div>' +
+        '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">' +
+          '<h4 style="font-size:14px;margin-bottom:8px;"><i class="fas fa-plus-circle"></i> Adicionar Item</h4>' +
+          '<div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">' +
+            '<div style="flex:1;min-width:200px;"><label style="font-size:12px;">Produto</label><select id="addProduto" style="width:100%;padding:6px;">' + renderProdutosSelect() + '</select></div>' +
+            '<div style="width:80px;"><label style="font-size:12px;">Qtd</label><input type="number" id="addQtd" min="1" value="1" style="width:100%;padding:6px;"></div>' +
+            '<button class="btn btn-producao" id="btnAdd"><i class="fas fa-plus"></i> Add</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">' +
+          '<strong>Subtotal itens: <span id="subtotalPreview">R$ ' + precoTotal().toFixed(2) + '</span></strong>' +
+        '</div>' +
+        '<div class="modal-actions" style="margin-top:16px;">' +
+          '<button class="btn btn-modal-cancel" id="modalACancel">Cancelar</button>' +
+          '<button class="btn btn-pronto" id="modalASave"><i class="fas fa-check"></i> Salvar Itens</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    function rebind() {
+      var container = overlay.querySelector('#listaItens');
+      container.innerHTML = renderLista();
+      container.querySelectorAll('button[data-remove]').forEach(function(btn) {
+        btn.onclick = function() {
+          var idx = Number(btn.dataset.remove);
+          itens.splice(idx, 1);
+          rebind();
+          atualizaPreview();
+        };
+      });
+      container.querySelectorAll('input[data-qtd]').forEach(function(inp) {
+        inp.onchange = function() {
+          var idx = Number(inp.dataset.qtd);
+          var nova = Math.max(1, parseInt(inp.value, 10) || 1);
+          itens[idx].quantidade = nova;
+          atualizaPreview();
+        };
+      });
+      atualizaPreview();
+    }
+
+    overlay.querySelector('#btnAdd').onclick = function() {
+      var prodId = Number(overlay.querySelector('#addProduto').value);
+      var qtd = Math.max(1, parseInt(overlay.querySelector('#addQtd').value, 10) || 1);
+      if (!prodId) { toast('Selecione um produto', 'warning'); return; }
+      var prod = produtos.find(function(pr) { return pr.id === prodId; });
+      if (!prod) { toast('Produto não encontrado', 'danger'); return; }
+      var existente = itens.find(function(i) { return Number(i.produtoId) === prodId; });
+      if (existente) {
+        existente.quantidade += qtd;
+      } else {
+        itens.push({ produtoId: prodId, nome: prod.name, quantidade: qtd, precoUnitario: Number(prod.price), sabores: null });
+      }
+      rebind();
+      overlay.querySelector('#addProduto').value = '';
+      overlay.querySelector('#addQtd').value = '1';
+    };
+
+    overlay.querySelector('#modalASave').onclick = function() {
+      if (!itens.length) { toast('Adicione ao menos 1 item', 'warning'); return; }
+      overlay.remove();
+      resolve({ itens: itens });
+    };
+    overlay.querySelector('#modalACancel').onclick = function() { overlay.remove(); resolve(null); };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
 // --- Web Audio API beep system ---
 let audioCtx = null;
 let beepLoopId = null;
