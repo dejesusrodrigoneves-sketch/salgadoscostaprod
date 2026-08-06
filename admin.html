@@ -286,10 +286,9 @@ function renderCard(p, docId) {
         ` : `
           <button class="btn btn-producao" data-action="producao"><i class="fas fa-box"></i> Produção</button>
           <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
-          <button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>
+          ${deveMostrarEmRota(p.tipoEntrega) ? `<button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>` : ''}
           <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
-          ${p.status === 'finalizado' ? `<button class="btn btn-edit" data-action="editar"><i class="fas fa-edit"></i> Editar</button>` : ''}
-          ${p.tipoEntrega !== 'balcao' ? `<button class="btn btn-rota" data-action="rota"><i class="fas fa-truck"></i> Em Rota</button>` : ''}
+          ${p.status === 'producao' ? `<button class="btn btn-edit" data-action="editar"><i class="fas fa-edit"></i> Editar</button>` : ''}
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
           <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
         `}
@@ -324,6 +323,7 @@ function renderCard(p, docId) {
 
   card.querySelector('[data-action="pronto"]').onclick = notificarComLoading('pronto', 'pronto', null, '✅ Pedido pronto e notificação enviada!');
 
+  if (deveMostrarEmRota(p.tipoEntrega)) {
   card.querySelector('[data-action="rota"]').onclick = async function() {
     const driverId = await selecionarEntregadorModal(nome);
     if (!driverId) return;
@@ -340,6 +340,7 @@ function renderCard(p, docId) {
       toast('❌ Erro: ' + e.message, 'danger');
     }
   };
+  }
 
   card.querySelector('[data-action="finalizar"]').onclick = async function() {
     const ok = await confirmModal('Deseja finalizar o pedido de ' + nome + '?');
@@ -369,7 +370,7 @@ function renderCard(p, docId) {
     toast('Pedido excluído', 'danger');
   };
 
-  if (p.status === 'finalizado') {
+  if (p.status === 'producao') {
     card.querySelector('[data-action="editar"]').onclick = () => abrirFluxoEdicao(p);
   }
 
@@ -469,6 +470,11 @@ function recalcularTotais(estado) {
     taxaCartao: Number(taxaCartao.toFixed(2)),
     total: Number(total.toFixed(2)),
   };
+}
+
+// Retorna true apenas para entrega delivery. Retirada = qualquer valor != 'delivery'.
+function deveMostrarEmRota(tipoEntrega) {
+  return String(tipoEntrega || '').toLowerCase() === 'delivery';
 }
 
 // --- Modal A: Editar Itens ---
