@@ -676,9 +676,9 @@ async function getLatLon(enderecoCompleto) {
       return { lat: data.results[0].lat, lon: data.results[0].lon };
     }
     return { lat: null, lon: null };
-  } catch (err) {
+    } catch (err) {
     console.error("Erro ao buscar coordenadas:", err);
-    showToast('Erro ao obter localização. O pedido será processado sem coordenadas.', 'warning');
+    toast('Erro ao obter localização. O pedido será processado sem coordenadas.', 'warning');
     return { lat: null, lon: null };
   }
 }
