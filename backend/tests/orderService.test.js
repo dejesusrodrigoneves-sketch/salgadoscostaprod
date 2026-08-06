@@ -178,8 +178,8 @@ describe('processarEdicaoPedido', () => {
     });
   });
 
-  it('preserva endereco existente quando campo ausente no data', async () => {
-    const pedidoBairro = { ...pedido, clienteBairro: 'Centro', clienteEndereco: 'Rua Velha' };
+  it('limpa endereco/bairro/cep/ref ao mudar para retirada', async () => {
+    const pedidoBairro = { ...pedido, clienteBairro: 'Centro', clienteEndereco: 'Rua Velha', clienteNumero: '10', clienteCep: '123', clienteReferencia: 'Praça' };
     const data = {
       formaPagamento: 'pix',
       tipoEntrega: 'retirada',
@@ -192,7 +192,31 @@ describe('processarEdicaoPedido', () => {
       itensRemovidos: [],
     };
     const result = await processarEdicaoPedido(pedidoBairro, data);
-    // sem bairro/endereco no data -> NAO aparece no updates (preserva banco)
+    // trocou para retirada -> campos de endereco zerados
+    expect(result.updates).toMatchObject({
+      clienteBairro: null,
+      clienteEndereco: null,
+      clienteNumero: null,
+      clienteCep: null,
+      clienteReferencia: null,
+    });
+  });
+
+  it('preserva endereco quando entrega continua delivery e campo ausente', async () => {
+    const pedidoBairro = { ...pedido, clienteBairro: 'Centro', clienteEndereco: 'Rua Velha' };
+    const data = {
+      formaPagamento: 'pix',
+      tipoEntrega: 'delivery',
+      taxasEntrega: 0,
+      taxasCartao: 0,
+      desconto: 0,
+      total: '30.00',
+      troco: null,
+      itens: pedido.itens,
+      itensRemovidos: [],
+    };
+    const result = await processarEdicaoPedido(pedidoBairro, data);
+    // delivery sem bairro/endereco no data -> NAO aparece no updates (preserva banco)
     expect('clienteBairro' in result.updates).toBe(false);
     expect('clienteEndereco' in result.updates).toBe(false);
   });
