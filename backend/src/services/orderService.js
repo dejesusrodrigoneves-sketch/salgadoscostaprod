@@ -135,11 +135,31 @@ async function atualizarStatus(id, status, ctx = {}) {
 }
 
 // Helper puro e testável: calcula as mudanças de edição sem tocar no DB.
-// Retorna { updates, itensRemovidos, itensNovos, movimentosEstoque }.
+// Retorna { updates, itensRemovidos, itensNovos, movimentosEstoque, itensFinal }.
 // buscarProdutoFn é injetável (default null => não calcula movimentos de estoque).
+
+// Agrupa itens por produtoId, somando quantidades (remove duplicatas).
+function agruparItens(lista) {
+  const mapa = {};
+  (lista || []).forEach(function(i) {
+    const pid = Number(i.produtoId);
+    if (mapa[pid] === undefined) {
+      mapa[pid] = {
+        produtoId: pid,
+        quantidade: Number(i.quantidade),
+        precoUnitario: String(i.precoUnitario ?? '0'),
+        sabores: i.sabores ?? null,
+      };
+    } else {
+      mapa[pid].quantidade += Number(i.quantidade);
+    }
+  });
+  return Object.values(mapa);
+}
+
 async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
   const itensAntigos = pedido.itens || [];
-  const itensNovosLista = data.itens || [];
+  const itensNovosLista = agruparItens(data.itens || []);
 
   const itensRemovidos = [];
   const itensNovos = [];
@@ -223,7 +243,7 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
     }
   }
 
-  return { updates, itensRemovidos, itensNovos, movimentosEstoque };
+  return { updates, itensRemovidos, itensNovos, movimentosEstoque, itensFinal: itensNovosLista };
 }
 
 // Thin wrapper: valida existência, aplica updates + substitui itens + movimenta estoque.
@@ -238,9 +258,9 @@ async function editarPedido(id, data, ctx = {}) {
 
   // Substitui os itens do pedido pelos novos (delete + re-create).
   await prisma.itensPedido.deleteMany({ where: { pedidoId: id } });
-  if (data.itens && data.itens.length > 0) {
+  if (result.itensFinal && result.itensFinal.length > 0) {
     await prisma.itensPedido.createMany({
-      data: data.itens.map(i => ({
+      data: result.itensFinal.map(i => ({
         pedidoId: id,
         produtoId: Number(i.produtoId),
         quantidade: Number(i.quantidade),

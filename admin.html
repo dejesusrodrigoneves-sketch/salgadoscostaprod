@@ -94,11 +94,26 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 </script>
 <script>
+function agruparItensAdmin(itens) {
+  if (!Array.isArray(itens)) return [];
+  var mapa = {};
+  itens.forEach(function(i) {
+    if (typeof i === 'string') return;
+    var pid = Number(i.produtoId);
+    if (mapa[pid] === undefined) {
+      mapa[pid] = { produtoId: pid, quantidade: Number(i.quantidade), precoUnitario: i.precoUnitario, sabores: i.sabores || null };
+    } else {
+      mapa[pid].quantidade += Number(i.quantidade);
+    }
+  });
+  return Object.values(mapa);
+}
+
 function fmtItens(itens) {
   if (!Array.isArray(itens)) return '<p style="font-size:12px;color:var(--stone)">Sem itens</p>';
   var prods = window.products || [];
   var groups = {};
-  itens.forEach(function(i) {
+  agruparItensAdmin(itens).forEach(function(i) {
     if (typeof i === 'string') {
       if (!groups['Outros']) groups['Outros'] = [];
       groups['Outros'].push(i);
@@ -169,7 +184,7 @@ function gerarHTMLImpressao(p) {
     html += '<h3>Itens:</h3>';
     var prods = window.products || [];
     var groups = {};
-    p.itens.forEach(function(i) {
+    agruparItensAdmin(p.itens).forEach(function(i) {
       if (typeof i === 'string') {
         if (!groups['Outros']) groups['Outros'] = [];
         groups['Outros'].push(i);
@@ -517,8 +532,8 @@ function modalEditarItens(p) {
       } catch(e) { console.error('Falha ao carregar produtos', e); }
     }
 
-    // clone itens atuais (deep copy rasa)
-    var itens = (p.itens || []).map(function(i) {
+    // clone itens atuais (deep copy rasa), agrupado por produtoId
+    var itens = agruparItensAdmin(p.itens || []).map(function(i) {
       return {
         produtoId: Number(i.produtoId),
         nome: i.produto ? i.produto.name : (produtos.find(function(pr){ return pr.id === Number(i.produtoId); }) || {}).name || 'Produto #' + i.produtoId,
@@ -802,7 +817,7 @@ async function modalCampo(p, nomeCampo) {
   } catch(e) { console.warn('settings-admin falhou', e); }
 
   var est = {
-    itens: (p.itens || []).map(function(i) {
+    itens: agruparItensAdmin(p.itens || []).map(function(i) {
       return { produtoId: Number(i.produtoId), quantidade: Number(i.quantidade), precoUnitario: Number(i.precoUnitario), sabores: i.sabores || null };
     }),
     formaPagamento: p.formaPagamento || 'dinheiro',
