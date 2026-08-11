@@ -9,6 +9,15 @@ function authenticate(req, res, next) {
   try {
     const token = authHeader.split(' ')[1];
     const decoded = tokenService.verificarToken(token);
+    if (!decoded.role || !['superadmin', 'admin', 'user'].includes(decoded.role)) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    if (!decoded.empresaId || decoded.empresaId < 1) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    if (!decoded.id) {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
     req.user = decoded;
     next();
   } catch (err) {

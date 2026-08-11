@@ -149,12 +149,48 @@ tr:hover td { background: #f8fafc; }
   border: 1px solid #e2e8f0;
 }
 .dia-relatorio h3 { font-size: 14px; color: #f97316; margin-bottom: 8px; }
-.pedido-card {
-  padding: 8px 0;
-  border-bottom: 1px solid #f1f5f9;
-  font-size: 13px;
+
+/* Accordion - entregadores */
+.summary-row { cursor: pointer; transition: background 0.15s; }
+.summary-row:hover td { background: #f8fafc; }
+.arrow { color: #f97316; text-align: center; font-size: 11px; width: 20px; }
+.valor-entrega { color: #16a34a; font-weight: 600; }
+.hidden { display: none; }
+
+.pedidos-wrap {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 4px 0 8px;
 }
-.pedido-card:last-child { border-bottom: none; }
+.pedido-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.pedido-card:last-child { margin-bottom: 0; border-bottom: none; }
+.pedido-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.pedido-id { color: #f97316; font-weight: 700; font-size: 14px; }
+.pedido-data { font-size: 11px; color: #64748b; }
+.pedido-info { font-size: 12px; color: #1e293b; margin-bottom: 4px; }
+.pedido-meta { font-size: 12px; color: #64748b; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+.pedido-meta i { width: 14px; color: #94a3b8; font-size: 11px; }
+.pedido-itens { border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 6px; }
+.pedido-itens-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; font-weight: 600; }
+.pedido-item { font-size: 12px; color: #475569; }
+.pedido-totals { border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 6px; }
+.pedido-total-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
+.pedido-total-row:last-child { margin-bottom: 0; }
+.pedido-total-row strong { font-size: 13px; }
+.pedido-total-row .label { color: #64748b; }
+.pedido-total-row .valor-entrega { color: #16a34a; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.badge-pagamento { background: #eff6ff; color: #3b82f6; }
+.badge-entrega { background: #f0fdf4; color: #16a34a; }
+.badge i { margin-right: 3px; }
+tfoot td { background: #f1f5f9; font-weight: 700; }
 
 @media (max-width: 768px) {
   body { padding: 16px; }

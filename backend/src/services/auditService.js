@@ -55,6 +55,8 @@ function buildEntry(input) {
 }
 
 function audit(input) {
+  // Clientes (index.html) não geram audit log — economia de espaço
+  if (input.actorType === 'cliente') return Promise.resolve();
   const entry = buildEntry(input);
   if (entry.severity === 'critical') {
     return auditQueueFlushSync([entry]);

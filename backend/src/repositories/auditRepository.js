@@ -1,16 +1,16 @@
-const prisma = require('../config/prisma');
+const defaultPrisma = require('../config/prisma');
 
-async function createManyAudit(entries) {
-  if (!entries || entries.length === 0) return 0;
+function createManyAudit(entries, prisma = defaultPrisma) {
+  if (!entries || entries.length === 0) return Promise.resolve(0);
   return prisma.auditLog.createMany({ data: entries });
 }
 
-async function createManyAppLog(entries) {
-  if (!entries || entries.length === 0) return 0;
+function createManyAppLog(entries, prisma = defaultPrisma) {
+  if (!entries || entries.length === 0) return Promise.resolve(0);
   return prisma.appLog.createMany({ data: entries });
 }
 
-async function listAudit({ actorId, module, action, severity, dataInicio, dataFim, page = 1, limit = 50, empresaId = 1 }) {
+async function listAudit({ actorId, module, action, severity, dataInicio, dataFim, page = 1, limit = 50, empresaId = 1 } = {}, prisma = defaultPrisma) {
   const where = { empresaId };
   if (actorId !== undefined && actorId !== '') where.actorId = actorId === null ? null : Number(actorId);
   if (module) where.module = module;
@@ -34,7 +34,7 @@ async function listAudit({ actorId, module, action, severity, dataInicio, dataFi
   return { items: serialized, total, page: Math.max(Number(page) || 1, 1), limit: take, totalPages: Math.ceil(total / take) };
 }
 
-async function listActors(empresaId = 1) {
+async function listActors(empresaId = 1, prisma = defaultPrisma) {
   const rows = await prisma.auditLog.groupBy({
     by: ['actorId', 'actorUsername', 'actorRole', 'actorType'],
     where: { empresaId },
@@ -52,4 +52,20 @@ async function listActors(empresaId = 1) {
   }));
 }
 
-module.exports = { createManyAudit, createManyAppLog, listAudit, listActors };
+async function deleteClienteLogs(prisma = defaultPrisma) {
+  const result = await prisma.auditLog.deleteMany({
+    where: { actorType: 'cliente' }
+  });
+  return result.count;
+}
+
+async function deleteOldLogs(days = 90, prisma = defaultPrisma) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const result = await prisma.auditLog.deleteMany({
+    where: { createdAt: { lt: cutoff } }
+  });
+  return result.count;
+}
+
+module.exports = { createManyAudit, createManyAppLog, listAudit, listActors, deleteClienteLogs, deleteOldLogs };

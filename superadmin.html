@@ -19,6 +19,7 @@
   <button class="tab active" onclick="switchTab('usuarios',this)"><i class="fas fa-users"></i> Usuários</button>
   <button class="tab" onclick="switchTab('senhas',this)"><i class="fas fa-key"></i> Gerenciar Senhas</button>
   <button class="tab" onclick="switchTab('registros',this)"><i class="fas fa-scroll"></i> Registros</button>
+  <button class="tab" onclick="switchTab('clientes',this)"><i class="fas fa-user-tie"></i> Clientes</button>
 </div>
 
 <!-- Users tab -->
@@ -59,6 +60,50 @@
       <button class="btn btn-primary" onclick="alterarSenha()"><i class="fas fa-save"></i> Salvar</button>
     </div>
     <div class="toast" id="passMsg" style="display:none;margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Clientes tab -->
+<div class="tab-content" id="tabClientes">
+  <div class="card">
+    <h2><i class="fas fa-user-tie"></i> Clientes Cadastrados</h2>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>Bairro</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody id="clientesTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Modal Editar Cliente -->
+  <div class="modal-overlay" id="modalEditarCliente" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-user-edit"></i> Editar Cliente</h3>
+      <label>Nome <input type="text" id="editNome"></label>
+      <label>Telefone <input type="text" id="editTelefone"></label>
+      <label>Endereço <input type="text" id="editEndereco"></label>
+      <label>Número <input type="text" id="editNumero"></label>
+      <label>Bairro <input type="text" id="editBairro"></label>
+      <label>CEP <input type="text" id="editCep"></label>
+      <label>Ponto de Referência <input type="text" id="editPontoReferencia"></label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="fecharModal('modalEditarCliente')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarEdicaoCliente()"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Trocar Senha -->
+  <div class="modal-overlay" id="modalSenhaCliente" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-key"></i> Trocar Senha</h3>
+      <label>Nova senha <input type="password" id="novaSenhaCliente" aria-label="Nova senha" placeholder="Nova senha"></label>
+      <label>Confirmar senha <input type="password" id="confirmarSenhaCliente" aria-label="Confirmar senha" placeholder="Confirmar senha"></label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="fecharModal('modalSenhaCliente')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarSenhaCliente()"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -135,9 +180,10 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros' };
+  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes' };
   document.getElementById(map[tab]).classList.add('active');
   if (tab === 'registros') superadminAudit.carregarAudit(1);
+  if (tab === 'clientes') carregarClientes();
 }
 
 // Load users via API
@@ -210,7 +256,123 @@ async function alterarSenha() {
   }
 }
 
+let clienteEditandoId = null;
+let clienteSenhaId = null;
+
+async function carregarClientes() {
+  const tbody = document.getElementById('clientesTableBody');
+  try {
+    const clientes = await api('/admin/clientes');
+    if (!clientes || clientes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;">Nenhum cliente cadastrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    clientes.forEach(function(c) {
+      tbody.innerHTML += '<tr>'
+        + '<td><strong>' + (c.nome || '-') + '</strong></td>'
+        + '<td>' + (c.telefone || '-') + '</td>'
+        + '<td>' + (c.bairro || '-') + '</td>'
+        + '<td>' + (c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '-') + '</td>'
+        + '<td style="white-space:nowrap;">'
+        + '<button class="btn btn-primary btn-sm" aria-label="Editar cliente" onclick="abrirModalEditar(' + c.id + ')"><i class="fas fa-pen"></i></button> '
+        + '<button class="btn btn-secondary btn-sm" aria-label="Trocar senha" onclick="abrirModalSenha(' + c.id + ')"><i class="fas fa-key"></i></button> '
+        + '<button class="btn btn-danger btn-sm" aria-label="Excluir cliente" onclick="excluirCliente(' + c.id + ')"><i class="fas fa-trash"></i></button>'
+        + '</td></tr>';
+    });
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#dc2626;text-align:center;">Erro ao carregar clientes: ' + e.message + '</td></tr>';
+  }
+}
+
+function abrirModalEditar(id) {
+  clienteEditandoId = id;
+  api('/admin/clientes').then(function(list) {
+    const c = list.find(function(x) { return x.id === id; });
+    if (!c) return;
+    document.getElementById('editNome').value = c.nome || '';
+    document.getElementById('editTelefone').value = c.telefone || '';
+    document.getElementById('editEndereco').value = c.endereco || '';
+    document.getElementById('editNumero').value = c.numero || '';
+    document.getElementById('editBairro').value = c.bairro || '';
+    document.getElementById('editCep').value = c.cep || '';
+    document.getElementById('editPontoReferencia').value = c.pontoReferencia || '';
+    document.getElementById('modalEditarCliente').style.display = 'flex';
+  }).catch(function(e) { toast(e.message || 'Erro ao carregar cliente', 'danger'); });
+}
+
+async function salvarEdicaoCliente() {
+  const body = {
+    nome: document.getElementById('editNome').value.trim(),
+    telefone: document.getElementById('editTelefone').value.trim(),
+    endereco: document.getElementById('editEndereco').value.trim(),
+    numero: document.getElementById('editNumero').value.trim(),
+    bairro: document.getElementById('editBairro').value.trim(),
+    cep: document.getElementById('editCep').value.trim(),
+    pontoReferencia: document.getElementById('editPontoReferencia').value.trim(),
+  };
+  if (!body.nome) { toast('Nome é obrigatório', 'danger'); return; }
+  try {
+    await api('/admin/clientes/' + clienteEditandoId, { method: 'PUT', body: JSON.stringify(body) });
+    fecharModal('modalEditarCliente');
+    toast('Cliente atualizado!');
+    carregarClientes();
+  } catch(e) {
+    toast(e.message || 'Erro ao salvar', 'danger');
+  }
+}
+
+function abrirModalSenha(id) {
+  clienteSenhaId = id;
+  document.getElementById('novaSenhaCliente').value = '';
+  document.getElementById('confirmarSenhaCliente').value = '';
+  document.getElementById('modalSenhaCliente').style.display = 'flex';
+}
+
+async function salvarSenhaCliente() {
+  const senha = document.getElementById('novaSenhaCliente').value.trim();
+  const senha2 = document.getElementById('confirmarSenhaCliente').value.trim();
+  if (!senha || senha.length < 6) { toast('Senha deve ter 6+ caracteres', 'danger'); return; }
+  if (senha !== senha2) { toast('Senhas não conferem', 'danger'); return; }
+  try {
+    await api('/admin/clientes/' + clienteSenhaId + '/password', { method: 'PUT', body: JSON.stringify({ password: senha }) });
+    fecharModal('modalSenhaCliente');
+    toast('Senha alterada com sucesso!');
+  } catch(e) {
+    toast(e.message || 'Erro ao alterar senha', 'danger');
+  }
+}
+
+async function excluirCliente(id) {
+  const ok = await confirmModal('Excluir a conta deste cliente? Dados pessoais serão removidos (pedidos retidos por obrigação fiscal).');
+  if (!ok) return;
+  try {
+    await api('/admin/clientes/' + id, { method: 'DELETE' });
+    toast('Conta de cliente excluída', 'danger');
+    carregarClientes();
+  } catch(e) {
+    toast(e.message || 'Erro ao excluir', 'danger');
+  }
+}
+
+function fecharModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+function activarTabPorQuery() {
+  const p = new URLSearchParams(window.location.search);
+  const tab = p.get('tab');
+  if (tab && ['usuarios', 'senhas', 'clientes', 'registros'].includes(tab)) {
+    const btn = Array.from(document.querySelectorAll('.tab')).find(function(b) {
+      return b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1;
+    });
+    if (btn) switchTab(tab, btn);
+  }
+}
+
 carregarUsuarios();
+carregarClientes();
+activarTabPorQuery();
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>

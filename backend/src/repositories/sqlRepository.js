@@ -38,20 +38,33 @@ const sql = {
   },
   async listarPedidosFiltrados(filtros) {
     const where = { empresaId: EMPRESA_ID };
-    if (filtros.status) {
-      var statusList = filtros.status.split(',');
+    
+    if (filtros?.status?.trim()) {
+      const statusList = filtros.status.split(',').map(s => s.trim()).filter(Boolean);
       if (statusList.length === 1) where.status = statusList[0];
-      else where.status = { in: statusList };
+      else if (statusList.length > 1) where.status = { in: statusList };
     }
-    if (filtros.createdAtFrom || filtros.createdAtTo) {
+    
+    const hasValidFrom = filtros?.createdAtFrom && !isNaN(Date.parse(filtros.createdAtFrom));
+    const hasValidTo = filtros?.createdAtTo && !isNaN(Date.parse(filtros.createdAtTo));
+    
+    if (hasValidFrom || hasValidTo) {
       where.createdAt = {};
-      if (filtros.createdAtFrom) where.createdAt.gte = new Date(filtros.createdAtFrom);
-      if (filtros.createdAtTo) where.createdAt.lte = new Date(filtros.createdAtTo);
+      if (hasValidFrom) where.createdAt.gte = new Date(filtros.createdAtFrom);
+      if (hasValidTo) where.createdAt.lte = new Date(filtros.createdAtTo);
     }
-    return prisma.pedido.findMany({ where, orderBy: { createdAt: filtros.order === 'asc' ? 'asc' : 'desc' }, include: { itens: true } });
+    
+    const order = (filtros?.order === 'asc') ? 'asc' : 'desc';
+    return prisma.pedido.findMany({ where, orderBy: { createdAt: order }, include: { itens: true } });
   },
   async buscarPedido(id) {
     return prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
+  },
+  async buscarPedidoComItens(id) {
+    return prisma.pedido.findUnique({
+      where: { id },
+      include: { itens: { include: { produto: { select: { name: true } } } } }
+    });
   },
   async criarPedido(data) {
     const payload = { ...data };
@@ -83,6 +96,9 @@ const sql = {
   // ---- Entregadores ----
   async listarEntregadores() {
     return prisma.entregador.findMany({ where: { empresaId: EMPRESA_ID } });
+  },
+  async buscarEntregador(id) {
+    return prisma.entregador.findUnique({ where: { id: Number(id) } });
   },
   async criarEntregador(data) {
     return prisma.entregador.create({ data });

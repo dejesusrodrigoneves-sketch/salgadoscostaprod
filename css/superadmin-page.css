@@ -150,3 +150,38 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
   .timeline { padding-left:20px; }
   .audit-card::before { left:-17px; }
 }
+
+/* ===== Modais (clientes + confirmModal) ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
+}
+.modal-box, .modal-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 420px;
+  width: 90%;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+.modal-card h3 { font-size: 15px; margin-bottom: 14px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+.modal-card h3 i { color: #f97316; }
+.modal-card label { display: flex; flex-direction: column; font-size: 12px; font-weight: 600; color: #64748b; gap: 4px; margin-bottom: 10px; }
+.modal-card input {
+  padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 13px; font-family: inherit; outline: none;
+}
+.modal-card input:focus { border-color: #f97316; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.btn-modal-cancel, .btn-modal-confirm {
+  padding: 8px 16px; border: none; border-radius: 8px;
+  font-weight: 600; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+.btn-modal-cancel { background: #e2e8f0; color: #475569; }
+.btn-modal-confirm { background: #f97316; color: white; }
+.btn-secondary { background: #e2e8f0; color: #475569; }
+.btn-secondary:hover { background: #cbd5e1; }

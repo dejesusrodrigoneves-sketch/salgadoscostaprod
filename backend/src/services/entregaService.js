@@ -77,7 +77,7 @@ function agruparPorEntregador(entregas) {
   for (const e of entregas) {
     const id = e.entregadorId;
     if (!map[id]) {
-      map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0 };
+      map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0, totalPedidos: 0 };
     }
     map[id].entregas += 1;
     map[id].valorTotal += Number(e.valor || 0);
@@ -101,6 +101,7 @@ async function resumoDiario(data) {
     data: dataInicio.toISOString().slice(0, 10),
     totalEntregas: entregas.length,
     totalValor: entregas.reduce((acc, e) => acc + Number(e.valor || 0), 0),
+    totalPedidos: entregadores.reduce((a, d) => a + d.totalPedidos, 0),
     entregadores,
   };
 }
@@ -112,20 +113,30 @@ async function montarResumoPeriodo(entregas, buscarPedidoFn) {
   for (const e of entregas) {
     const id = e.entregadorId;
     if (!map[id]) {
-      map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0, pedidos: [] };
+      map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0, totalPedidos: 0, pedidos: [] };
     }
     map[id].entregas += 1;
     map[id].valorTotal += Number(e.valor || 0);
 
     const pedido = await buscarPedidoFn(e.pedidoId).catch(() => null);
+    map[id].totalPedidos += Number(pedido ? pedido.total : 0);
     map[id].pedidos.push({
       pedidoId: e.pedidoId,
       valor: Number(e.valor || 0),
       cliente: pedido ? pedido.clienteNome : '-',
       itens: pedido && Array.isArray(pedido.itens) ? pedido.itens.map(function (i) {
-        return { produtoId: i.produtoId, quantidade: i.quantidade, precoUnitario: i.precoUnitario };
+        return {
+          produtoId: i.produtoId,
+          nome: i.produto ? i.produto.name : 'Produto #' + i.produtoId,
+          quantidade: i.quantidade,
+          precoUnitario: i.precoUnitario
+        };
       }) : [],
       totalPedido: pedido ? Number(pedido.total || 0) : 0,
+      formaPagamento: pedido ? pedido.formaPagamento : '-',
+      tipoEntrega: pedido ? pedido.tipoEntrega : '-',
+      bairro: pedido ? pedido.clienteBairro : '-',
+      data: pedido ? pedido.createdAt : null,
     });
   }
 
@@ -133,6 +144,7 @@ async function montarResumoPeriodo(entregas, buscarPedidoFn) {
   return {
     totalEntregas: entregas.length,
     totalValor: entregas.reduce((acc, e) => acc + Number(e.valor || 0), 0),
+    totalPedidos: entregadores.reduce((a, d) => a + d.totalPedidos, 0),
     entregadores,
   };
 }
@@ -149,7 +161,7 @@ async function resumoPorPeriodo(inicio, fim, entregadorId, ctx = {}) {
     orderBy: { createdAt: 'asc' },
   });
 
-  const resultado = await montarResumoPeriodo(entregas, (id) => sql.buscarPedido(id));
+  const resultado = await montarResumoPeriodo(entregas, (id) => sql.buscarPedidoComItens(id));
   return { inicio, fim, ...resultado };
 }
 

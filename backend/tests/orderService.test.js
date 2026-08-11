@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { processarEdicaoPedido } from '../src/services/orderService.js';
+import { processarEdicaoPedido, agruparItens } from '../src/services/orderService.js';
 
 describe('processarEdicaoPedido', () => {
   const pedido = {
@@ -261,5 +261,42 @@ describe('processarEdicaoPedido', () => {
     const result = await processarEdicaoPedido(pedido, data, async () => null);
     // Sem funcao retorna null => sem movimentos de estoque
     expect(result.movimentosEstoque).toEqual([]);
+  });
+});
+
+describe('agruparItens', () => {
+  it('agrupa itens sem sabores pelo produtoId', () => {
+    const r = agruparItens([
+      { produtoId: 1, quantidade: 2, precoUnitario: '10.00', sabores: null },
+      { produtoId: 1, quantidade: 3, precoUnitario: '10.00', sabores: null },
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].quantidade).toBe(5);
+  });
+
+  it('mantém combos com sabores como linhas separadas', () => {
+    const r = agruparItens([
+      { produtoId: 7, quantidade: 1, precoUnitario: '25.00', sabores: '{"3":2,"4":1}' },
+      { produtoId: 7, quantidade: 1, precoUnitario: '25.00', sabores: '{"5":3}' },
+    ]);
+    expect(r).toHaveLength(2);
+    expect(r[0].sabores).toBe('{"3":2,"4":1}');
+    expect(r[1].sabores).toBe('{"5":3}');
+  });
+
+  it('combos com sabores idênticos continuam separados (regra do usuário)', () => {
+    const r = agruparItens([
+      { produtoId: 7, quantidade: 1, precoUnitario: '25.00', sabores: '{"3":2}' },
+      { produtoId: 7, quantidade: 1, precoUnitario: '25.00', sabores: '{"3":2}' },
+    ]);
+    expect(r).toHaveLength(2); // mesmo sabores ainda separado (regra do usuário)
+  });
+
+  it('aceita sabores como objeto', () => {
+    const r = agruparItens([
+      { produtoId: 7, quantidade: 1, precoUnitario: '25.00', sabores: { 3: 2 } },
+    ]);
+    expect(r).toHaveLength(1);
+    expect(r[0].sabores).toEqual({ 3: 2 });
   });
 });
