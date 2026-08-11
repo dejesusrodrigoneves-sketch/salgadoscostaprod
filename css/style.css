@@ -830,6 +830,15 @@ img { max-width: 100%; height: auto; display: block; }
   font-family: var(--font);
 }
 
+.footerBottom .content a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.footerBottom .content a:hover {
+  color: var(--primary-hover);
+}
+
 /* ─── ORDER BAR ─── */
 
 #orderBar {
@@ -1118,6 +1127,39 @@ img { max-width: 100%; height: auto; display: block; }
 
 .registerBox input:focus {
   border-color: var(--primary);
+}
+
+.consent-box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-10);
+  margin-bottom: var(--s-12);
+  padding: var(--s-12);
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.consent-box input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0 0;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.consent-box span {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.consent-box a {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 #btnRegister {
@@ -1440,6 +1482,10 @@ img { max-width: 100%; height: auto; display: block; }
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.35s ease;
+}
+
+.order-card.expanded .order-card-body {
+  max-height: 800px;
 }
 
 .order-card-body-inner {

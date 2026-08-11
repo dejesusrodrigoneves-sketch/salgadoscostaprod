@@ -6,10 +6,11 @@ const { getCtx } = require('../middleware/context');
 const auditService = require('../services/auditService');
 const tokenService = require('../services/tokenService');
 const productService = require('../services/productService');
+const consentimentoService = require('../services/consentimentoService');
 
 const SALT_ROUNDS = 10;
 
-function authenticatePublic(req, res, next) {
+async function authenticatePublic(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token não fornecido' });
@@ -17,6 +18,14 @@ function authenticatePublic(req, res, next) {
   try {
     const token = authHeader.split(' ')[1];
     const decoded = tokenService.verificarToken(token);
+    // S3/LGPD: invalida acesso de cliente excluído ou com consentimento revogado
+    const cliente = await sql.buscarClientePorId(decoded.id);
+    if (!cliente) {
+      return res.status(401).json({ error: 'Conta não encontrada ou removida' });
+    }
+    if (cliente.consentimentoRevogadoAt) {
+      return res.status(401).json({ error: 'Consentimento revogado. Reautorize os dados para continuar' });
+    }
     req.cliente = decoded;
     next();
   } catch (err) {
@@ -51,6 +60,10 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
   if (!nome || !telefone) {
     return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
   }
+  const consent = consentimentoService.validarConsentimento(req.body);
+  if (!consent.ok) {
+    return res.status(400).json({ error: consent.erro });
+  }
   const existing = await sql.buscarCliente(telefone);
   if (existing) {
     auditService.audit({
@@ -70,6 +83,8 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
   const cliente = await sql.criarCliente({
     empresaId: 1,
     nome, telefone, endereco, numero, bairro, cep, pontoReferencia, passwordHash,
+    consentimentoAt: new Date(),
+    politicaVersao: consent.versao,
   });
   const token = tokenService.gerarToken({ id: cliente.id, empresaId: 1, telefone: cliente.telefone, nome: cliente.nome });
 
@@ -82,12 +97,56 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
     actorUsername: cliente.telefone,
     targetType: 'cliente',
     targetId: cliente.id,
-    after: { nome: cliente.nome, telefone: cliente.telefone },
-    changedFields: ['nome', 'telefone', 'passwordHash'],
+    after: { nome: cliente.nome, telefone: cliente.telefone, politicaVersao: consent.versao },
+    changedFields: ['nome', 'telefone', 'passwordHash', 'consentimentoAt', 'politicaVersao'],
   });
 
   res.status(201).json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone } });
 });
+
+// LGPD Art. 8 §5: revogação de consentimento — gratuita, facilitada, a qualquer momento.
+exports.revogarConsentimento = [authenticatePublic, asyncHandler(async (req, res) => {
+  const agora = new Date();
+  const cliente = await sql.buscarClientePorId(req.cliente.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+  await sql.atualizarCliente(req.cliente.id, { consentimentoRevogadoAt: agora });
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'cliente.revogar_consentimento',
+    module: 'clientes',
+    actorType: 'cliente',
+    actorId: req.cliente.id,
+    targetType: 'cliente',
+    targetId: req.cliente.id,
+    after: { consentimentoRevogadoAt: agora.toISOString() },
+    changedFields: ['consentimentoRevogadoAt'],
+  });
+
+  res.json({ ok: true, revogadoEm: agora.toISOString() });
+})];
+
+// LGPD Art. 18 VI: eliminação de dados pessoais do titular.
+// Pedidos (dados fiscais) são retidos por obrigação legal — Art. 16 I.
+exports.excluirConta = [authenticatePublic, asyncHandler(async (req, res) => {
+  const cliente = await sql.buscarClientePorId(req.cliente.id);
+  if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
+  await sql.deletarCliente(req.cliente.id);
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'cliente.eliminar',
+    module: 'clientes',
+    actorType: 'cliente',
+    actorId: req.cliente.id,
+    targetType: 'cliente',
+    targetId: req.cliente.id,
+    before: { nome: cliente.nome, telefone: cliente.telefone },
+    changedFields: ['*'],
+  });
+
+  res.json({ ok: true, mensagem: 'Conta e dados pessoais removidos. Histórico fiscal de pedidos retido por 5 anos (Art. 16 I).' });
+})];
 
 exports.loginCliente = asyncHandler(async (req, res) => {
   const { telefone, password } = req.body;

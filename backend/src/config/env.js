@@ -2,7 +2,7 @@ require('dotenv').config();
 
 module.exports = {
   port: process.env.PORT || 3000,
-  jwtSecret: process.env.JWT_SECRET || 'fallback-dev-secret-do-not-use-in-prod',
+  jwtSecret: process.env.JWT_SECRET,
   evolutionUrl: process.env.EVOLUTION_URL,
   evolutionApiKey: process.env.EVOLUTION_API_KEY,
   evolutionInstance: process.env.EVOLUTION_INSTANCE,

@@ -63,7 +63,8 @@ function fmtItens(itens) {
   return itens.map(function(i) {
     var q = Number(i.quantidade) || 1;
     var p = Number(i.precoUnitario || 0);
-    return '<div>' + q + 'x Produto #' + i.produtoId + ' — ' + fmtMoeda(p) + '</div>';
+    var nome = i.nome || 'Produto #' + i.produtoId;
+    return '<div class="pedido-item">' + q + 'x ' + nome + ' — ' + fmtMoeda(p) + '</div>';
   }).join('');
 }
 
@@ -111,37 +112,71 @@ function renderRelatorio(data) {
     return;
   }
 
-  let html = '';
+  var html = '';
   html += '<div class="card">';
   html += '<div style="overflow-x:auto"><table>';
-  html += '<thead><tr><th>Entregador</th><th>Nº Entregas</th><th>Valor Total</th><th>Pedidos</th></tr></thead>';
+  html += '<thead><tr><th>Entregador</th><th>Nº Entregas</th><th>Total Pedidos</th><th>Valor Entregas</th><th></th></tr></thead>';
   html += '<tbody>';
-  data.entregadores.forEach(function(d) {
-    const pedidosHTML = d.pedidos.map(function(p) {
-      return '<div class="pedido-card" style="margin-bottom:8px;padding:8px;background:#f8fafc;border-radius:6px;font-size:12px;">'
-        + '<strong>#' + p.pedidoId + '</strong> — ' + p.cliente + '<br>'
-        + '<strong>Total pedido:</strong> ' + fmtMoeda(p.totalPedido) + '<br>'
-        + '<strong>Valor entrega:</strong> ' + fmtMoeda(p.valor) + '<br>'
-        + '<strong>Itens:</strong><br>' + fmtItens(p.itens)
-        + '</div>';
-    }).join('');
-    html += '<tr>';
-    html += '<td><strong>' + d.nome + '</strong></td>';
+
+  data.entregadores.forEach(function(d, idx) {
+    var rowId = 'pedidos-' + idx;
+    var arrowId = 'arrow-' + idx;
+    var pedidosHTML = '<div class="pedidos-wrap">';
+    d.pedidos.forEach(function(p) {
+      var dataStr = p.data ? new Date(p.data).toLocaleDateString('pt-BR') : '-';
+      pedidosHTML += '<div class="pedido-card">';
+      pedidosHTML += '<div class="pedido-header"><span class="pedido-id">#' + p.pedidoId + '</span><span class="pedido-data">' + dataStr + '</span></div>';
+      pedidosHTML += '<div class="pedido-info"><i class="fas fa-user" style="width:14px;color:#94a3b8;font-size:11px;"></i> <strong>' + (p.cliente || '-') + '</strong></div>';
+      pedidosHTML += '<div class="pedido-meta"><i class="fas fa-map-marker-alt"></i> ' + (p.bairro || '-') + '</div>';
+      pedidosHTML += '<div class="pedido-meta">';
+      pedidosHTML += '<span class="badge badge-pagamento"><i class="fas fa-credit-card"></i> ' + (p.formaPagamento || '-') + '</span> ';
+      pedidosHTML += '<span class="badge badge-entrega"><i class="fas fa-truck"></i> ' + (p.tipoEntrega || '-') + '</span>';
+      pedidosHTML += '</div>';
+      pedidosHTML += '<div class="pedido-itens">';
+      pedidosHTML += '<div class="pedido-itens-label">Itens do pedido</div>';
+      pedidosHTML += fmtItens(p.itens);
+      pedidosHTML += '</div>';
+      pedidosHTML += '<div class="pedido-totals">';
+      pedidosHTML += '<div class="pedido-total-row"><span class="label">Total Pedido:</span> <strong>' + fmtMoeda(p.totalPedido) + '</strong></div>';
+      pedidosHTML += '<div class="pedido-total-row"><span class="label">Valor Entrega:</span> <strong class="valor-entrega">' + fmtMoeda(p.valor) + '</strong></div>';
+      pedidosHTML += '</div>';
+      pedidosHTML += '</div>';
+    });
+    pedidosHTML += '</div>';
+
+    html += '<tr class="summary-row" onclick="togglePedidos(' + idx + ')">';
+    html += '<td>' + d.nome + '</td>';
     html += '<td>' + d.entregas + '</td>';
-    html += '<td>' + fmtMoeda(d.valorTotal) + '</td>';
-    html += '<td>' + pedidosHTML + '</td>';
+    html += '<td>' + fmtMoeda(d.totalPedidos) + '</td>';
+    html += '<td class="valor-entrega">' + fmtMoeda(d.valorTotal) + '</td>';
+    html += '<td class="arrow" id="' + arrowId + '">&#9654;</td>';
     html += '</tr>';
+    html += '<tr id="' + rowId + '" class="hidden"><td colspan="5" style="padding:0;">' + pedidosHTML + '</td></tr>';
   });
+
   html += '</tbody>';
-  html += '<tfoot><tr style="background:#f1f5f9;font-weight:700;">';
+  html += '<tfoot><tr>';
   html += '<td>TOTAL GERAL</td>';
   html += '<td>' + data.totalEntregas + '</td>';
-  html += '<td>' + fmtMoeda(data.totalValor) + '</td>';
-  html += '<td>—</td>';
+  html += '<td>' + fmtMoeda(data.totalPedidos) + '</td>';
+  html += '<td class="valor-entrega">' + fmtMoeda(data.totalValor) + '</td>';
+  html += '<td></td>';
   html += '</tr></tfoot>';
   html += '</table></div></div>';
 
   container.innerHTML = html;
+}
+
+function togglePedidos(idx) {
+  var row = document.getElementById('pedidos-' + idx);
+  var arrow = document.getElementById('arrow-' + idx);
+  if (row.classList.contains('hidden')) {
+    row.classList.remove('hidden');
+    arrow.innerHTML = '&#9660;';
+  } else {
+    row.classList.add('hidden');
+    arrow.innerHTML = '&#9654;';
+  }
 }
 
 (function init() {

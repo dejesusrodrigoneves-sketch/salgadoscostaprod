@@ -54,6 +54,12 @@ var PUBLIC_API = (function () {
     updateMe: function (data) {
       return request('PUT', '/clientes/me', data);
     },
+    deleteMe: function () {
+      return request('DELETE', '/clientes/me');
+    },
+    revogarConsentimento: function () {
+      return request('POST', '/clientes/consent/revogar', {});
+    },
 
     // ---- Pedidos ----
     meusPedidos: function () {

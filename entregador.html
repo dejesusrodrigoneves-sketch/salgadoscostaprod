@@ -53,13 +53,6 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
       <h3>Entregadores Ativos</h3>
       <div class="driver-list" id="driverList"></div>
     </div>
-
-    <div>
-      <h3>Resumo do Dia</h3>
-      <div class="report-box" id="dailyReport">
-        <p style="font-size:12px;color:#64748b;">Nenhuma entrega hoje</p>
-      </div>
-    </div>
   </aside>
 
 </div>
@@ -184,31 +177,9 @@ async function carregarEntregadores() {
   }).join('');
 }
 
-// ========== Resumo do Dia ==========
-
-async function carregarResumoDia() {
-  const hoje = new Date().toISOString().split('T')[0];
-  const box = document.getElementById('dailyReport');
-  try {
-    const resumo = await apiRequest('/entregas/resumo?data=' + hoje);
-    if (!resumo.entregadores || resumo.entregadores.length === 0) {
-      box.innerHTML = '<p style="font-size:12px;color:#64748b;">Nenhuma entrega hoje</p>';
-      return;
-    }
-    const html = resumo.entregadores.map(function(e) {
-      return '<div class="row"><span class="name">' + (e.entregadorNome || e.entregadorId) + '</span><span class="value">' + e.totalEntregas + ' entregas \u2014 R$ ' + (e.totalValor || 0).toFixed(2) + '</span></div>';
-    }).join('');
-    box.innerHTML = html;
-  } catch(e) {
-    box.innerHTML = '<p style="font-size:12px;color:#64748b;">Erro ao carregar resumo</p>';
-  }
-}
-
-// Poll drivers and resumo
+// Poll drivers
 setInterval(carregarEntregadores, 15000);
-setInterval(carregarResumoDia, 30000);
 carregarEntregadores();
-carregarResumoDia();
 </script>
 <script src="js/theme.js" defer></script>
 </body>

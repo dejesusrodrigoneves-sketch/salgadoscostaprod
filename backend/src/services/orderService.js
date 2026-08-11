@@ -139,22 +139,41 @@ async function atualizarStatus(id, status, ctx = {}) {
 // buscarProdutoFn é injetável (default null => não calcula movimentos de estoque).
 
 // Agrupa itens por produtoId, somando quantidades (remove duplicatas).
+function temSabores(i) {
+  if (!i.sabores) return false;
+  if (typeof i.sabores === 'string') return i.sabores.trim().length > 0 && i.sabores !== '{}' && i.sabores !== 'null';
+  if (typeof i.sabores === 'object') return Object.keys(i.sabores).length > 0;
+  return false;
+}
+
 function agruparItens(lista) {
-  const mapa = {};
+  const resultado = [];
   (lista || []).forEach(function(i) {
     const pid = Number(i.produtoId);
-    if (mapa[pid] === undefined) {
-      mapa[pid] = {
+    const has = temSabores(i);
+    if (has) {
+      // Combo/avulso: cada linha permanece separada (regra do usuário)
+      resultado.push({
         produtoId: pid,
         quantidade: Number(i.quantidade),
         precoUnitario: String(i.precoUnitario ?? '0'),
         sabores: i.sabores ?? null,
-      };
+      });
+      return;
+    }
+    const existente = resultado.find((m) => Number(m.produtoId) === pid && !temSabores(m));
+    if (existente) {
+      existente.quantidade += Number(i.quantidade);
     } else {
-      mapa[pid].quantidade += Number(i.quantidade);
+      resultado.push({
+        produtoId: pid,
+        quantidade: Number(i.quantidade),
+        precoUnitario: String(i.precoUnitario ?? '0'),
+        sabores: i.sabores ?? null,
+      });
     }
   });
-  return Object.values(mapa);
+  return resultado;
 }
 
 async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
@@ -306,4 +325,4 @@ async function editarPedido(id, data, ctx = {}) {
   return sql.buscarPedido(id);
 }
 
-module.exports = { listar, buscar, criar, atualizarStatus, deletarPedido, finalizarPedido, listarFiltrado, darBaixaEstoque, processarEdicaoPedido, editarPedido };
+module.exports = { listar, buscar, criar, atualizarStatus, deletarPedido, finalizarPedido, listarFiltrado, darBaixaEstoque, processarEdicaoPedido, editarPedido, agruparItens };

@@ -25,7 +25,7 @@ async function login(username, password, ip, userAgent, ctx = {}) {
       severity: 'warning',
       reason: 'usuario_nao_encontrado',
     });
-    throw Object.assign(new Error('Usuário não encontrado'), { status: 401 });
+    throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
   const match = await bcrypt.compare(password, user.passwordHash);
@@ -41,7 +41,7 @@ async function login(username, password, ip, userAgent, ctx = {}) {
       severity: 'warning',
       reason: 'senha_incorreta',
     });
-    throw Object.assign(new Error('Senha incorreta'), { status: 401 });
+    throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
   const payload = { id: user.id, username: user.username, role: user.role, empresaId: 1, lojaNome: user.lojaNome };

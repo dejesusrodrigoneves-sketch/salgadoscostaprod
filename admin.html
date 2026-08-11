@@ -11,6 +11,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/admin-page.css">
+<!-- Bootstrap 5 (overlay adicionar itens) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<style>
+/* ═══ Bootstrap Overrides ═══ */
+body { background: var(--secondary) !important; color: var(--text) !important; }
+.btn { background: var(--surface) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.btn-producao { color: var(--warning) !important; }
+.btn-pronto { color: var(--primary) !important; }
+.btn-rota { color: var(--primary) !important; }
+.btn-finalizar { color: var(--success) !important; }
+.btn-print { color: var(--text-muted) !important; }
+.btn-delete { color: var(--danger) !important; }
+.btn-add-item { color: var(--primary) !important; }
+.btn-aceitar { background: var(--success) !important; color: #fff !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+<!-- Tailwind (overlay adicionar itens) -->
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
 :root {
   --primary:         #F26D3D;
@@ -60,8 +78,37 @@
 @media (max-width: 319px) {
   .item-row { font-size: 12px; }
 }
+
+.empty-state, .error-state {
+  padding: var(--s-32);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.error-state button {
+  margin-top: var(--s-12);
+  padding: var(--s-8) var(--s-16);
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.error-state button:hover {
+  background: var(--primary-hover);
+}
 </style>
 <script src="js/utils.js"></script>
+<script>
+// Auth guard — MUST be first, before any HTML renders
+if (typeof authGuard === 'function' && !authGuard()) {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h2>Acesso negado</h2><p>Redirecionando para login...</p></div>';
+  });
+  setTimeout(function(){ window.location.href = 'login.html'; }, 500);
+  throw new Error('Redirecting to login');
+}
+</script>
 <script>
 function api(path, opts) {
   var headers = { 'Content-Type': 'application/json' };
@@ -104,9 +151,13 @@ function api(path, opts) {
 
 <script src="js/utils.js"></script>
 <script>
-if (!authGuard()) throw new Error('Redirect');
-</script>
-<script>
+// Auth guard — stops execution if not authenticated
+if (typeof authGuard === 'function' && !authGuard()) {
+  document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h2>Acesso negado</h2><p>Redirecionando para login...</p></div>';
+  setTimeout(function(){ window.location.href = 'login.html'; }, 500);
+  throw new Error('Redirecting to login');
+}
+
 const containers = {
   pendente: document.getElementById('pendente'),
   producao: document.getElementById('producao'),
@@ -138,6 +189,30 @@ function agruparItensAdmin(itens) {
     }
   });
   return Object.values(mapa);
+}
+
+function agruparItensComNovos(existentes, novos) {
+  var temSabor = function(i) {
+    if (!i || !i.sabores) return false;
+    if (typeof i.sabores === 'string') return i.sabores.length > 0 && i.sabores !== '{}' && i.sabores !== 'null';
+    return Object.keys(i.sabores).length > 0;
+  };
+  var resultado = (existentes || []).map(function(i) { return Object.assign({}, i); });
+  (novos || []).forEach(function(n) {
+    if (temSabor(n)) {
+      resultado.push(Object.assign({}, n));
+      return;
+    }
+    var existente = resultado.find(function(i) {
+      return Number(i.produtoId) === Number(n.produtoId) && !temSabor(i);
+    });
+    if (existente) {
+      existente.quantidade += Number(n.quantidade);
+    } else {
+      resultado.push(Object.assign({}, n));
+    }
+  });
+  return resultado;
 }
 
 function fmtItens(itens) {
@@ -308,6 +383,8 @@ function renderCard(p, docId) {
     ? ' <button type="button" class="field-edit" data-campo="' + campo + '" title="' + titulo + '" style="border:none;background:none;color:var(--primary);cursor:pointer;padding:0;font-size:14px;"><i class="bi ' + icone + '"></i></button>'
     : '';
 
+  const podeAdicionarItem = (p.status === 'producao');
+
   card.innerHTML = `
     <div class="order-header${isPendente ? ' no-toggle' : ''}" ${isPendente ? '' : 'onclick="this.closest(\'.order-card\').classList.toggle(\'open\')"'}>
       <div class="order-header-left">
@@ -323,12 +400,12 @@ function renderCard(p, docId) {
     </div>
     <div class="order-body">
       <div class="order-info-grid">
-        <div class="info-item"><strong>Whatsapp</strong>${p.cliente?.whatsapp || '-'}</div>
-        <div class="info-item"><strong>Endereço</strong>${p.cliente?.endereco || '-'}, ${p.cliente?.numero || '-'}${iconeCampo('bi-geo-alt', 'Editar endereço', 'endereco')}</div>
-        <div class="info-item"><strong>Bairro</strong>${p.cliente?.bairro || '-'}${iconeCampo('bi-signpost', 'Editar bairro', 'bairro')}</div>
-        <div class="info-item"><strong>CEP</strong>${p.cep || '-'}${iconeCampo('bi-mailbox', 'Editar CEP', 'cep')}</div>
-        <div class="info-item"><strong>Ref</strong>${p.cliente?.pontoReferencia || '-'}${iconeCampo('bi-pin-map', 'Editar referência', 'referencia')}</div>
-        <div class="info-item"><strong>Pagamento</strong>${p.formaPagamento || '-'}${iconeCampo('bi-credit-card', 'Editar pagamento', 'pagamento')}</div>
+        <div class="info-item"><strong>Whatsapp</strong>${escapeHtml(p.cliente?.whatsapp || '-')}</div>
+        <div class="info-item"><strong>Endereço</strong>${escapeHtml(p.cliente?.endereco || '-')}, ${escapeHtml(p.cliente?.numero || '-')}${iconeCampo('bi-geo-alt', 'Editar endereço', 'endereco')}</div>
+        <div class="info-item"><strong>Bairro</strong>${escapeHtml(p.cliente?.bairro || '-')}${iconeCampo('bi-signpost', 'Editar bairro', 'bairro')}</div>
+        <div class="info-item"><strong>CEP</strong>${escapeHtml(p.cep || '-')}${iconeCampo('bi-mailbox', 'Editar CEP', 'cep')}</div>
+        <div class="info-item"><strong>Ref</strong>${escapeHtml(p.cliente?.pontoReferencia || '-')}${iconeCampo('bi-pin-map', 'Editar referência', 'referencia')}</div>
+        <div class="info-item"><strong>Pagamento</strong>${escapeHtml(p.formaPagamento || '-')}${iconeCampo('bi-credit-card', 'Editar pagamento', 'pagamento')}</div>
         <div class="info-item"><strong>Troco</strong>${p.troco ? fmtMoeda(p.troco) : '-'}${iconeCampo('bi-cash-coin', 'Editar troco', 'troco')}</div>
         <div class="info-item"><strong>Desconto</strong>${fmtMoeda(p.valores?.desconto)}${iconeCampo('bi-percent', 'Editar desconto', 'desconto')}</div>
         <div class="info-item"><strong>Entrega</strong>${p.tipoEntrega || '-'}${iconeCampo('bi-truck', 'Editar tipo de entrega', 'entrega')}</div>
@@ -348,6 +425,7 @@ function renderCard(p, docId) {
           <button class="btn btn-finalizar" data-action="finalizar"><i class="fas fa-check"></i> Finalizar</button>
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
           <button class="btn btn-delete" data-action="delete"><i class="fas fa-trash"></i> Excluir</button>
+          ${podeAdicionarItem ? '<button class="btn btn-add-item" data-action="add-item"><i class="fas fa-plus"></i> Adicionar Item</button>' : ''}
         `}
       </div>
     </div>
@@ -388,7 +466,7 @@ function renderCard(p, docId) {
     await new Promise(function(r) { setTimeout(r, 3000); });
     try {
       await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'em_rota', entregadorId: driverId }) });
-      await api('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(driverId), pedidoId: docId, valor: Number(p.total) || 0 }) });
+      await api('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(driverId), pedidoId: docId, valor: Number(p.valores?.entrega) || 0 }) });
       if (loadEl.parentNode) loadEl.remove();
       toast('✅ Pedido em rota e notificação enviada!', 'success');
       carregarPedidos();
@@ -438,6 +516,11 @@ function renderCard(p, docId) {
         });
       };
     });
+  }
+
+  const btnAddItem = card.querySelector('[data-action="add-item"]');
+  if (btnAddItem) {
+    btnAddItem.onclick = function() { abrirOverlayAdicionar(p, docId); };
   }
 
   return card;
@@ -681,6 +764,179 @@ function modalEditarItens(p) {
     overlay.querySelector('#modalACancel').onclick = function() { overlay.remove(); resolve(null); };
     overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); resolve(null); } });
   });
+}
+
+// --- Overlay Adicionar Itens (iframe balcao embedded) ---
+function abrirOverlayAdicionar(p, docId) {
+  // Remove modal anterior se existir
+  var existing = document.getElementById('modalAdicionarItens');
+  if (existing) existing.remove();
+
+  var modalHtml = `
+    <div class="modal fade" id="modalAdicionarItens" tabindex="-1">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Adicionar Itens — Pedido #${String(docId).slice(-6)}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-0">
+            <iframe src="balcao.html?embedded=1" id="iframeBalcao"
+                    style="width:100%;height:calc(100vh - 140px);border:none;"></iframe>
+          </div>
+          <div class="modal-footer flex-column align-items-stretch p-0" style="max-height:40vh;overflow-y:auto;">
+            <div id="footerItens" class="list-group list-group-flush" style="max-height:200px;overflow-y:auto;">
+              <div class="list-group-item text-muted text-center py-3">Nenhum item selecionado</div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between p-3 border-top">
+              <span class="text-muted" id="contadorNovosItens">0 itens selecionados</span>
+              <div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnSalvarItens" disabled>Salvar Alterações</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  var modalEl = document.getElementById('modalAdicionarItens');
+  var iframe = document.getElementById('iframeBalcao');
+  if (typeof bootstrap === 'undefined') { toast('Bootstrap não carregou', 'danger'); return; }
+  var modal = new bootstrap.Modal(modalEl);
+
+  var btnSalvar = document.getElementById('btnSalvarItens');
+  var contador = document.getElementById('contadorNovosItens');
+  var novosItens = [];
+
+  function renderFooterItens() {
+    var footer = document.getElementById('footerItens');
+    if (!footer) return;
+    if (!novosItens.length) {
+      footer.innerHTML = '<div class="list-group-item text-muted text-center py-3">Nenhum item selecionado</div>';
+      return;
+    }
+    var total = 0;
+    var html = '';
+    novosItens.forEach(function(n) {
+      var sub = Number(n.precoUnitario) * Number(n.quantidade);
+      total += sub;
+      var nome = n.nome || n.produtoId;
+      var qtd = Number(n.quantidade);
+      var preco = Number(n.precoUnitario);
+      html += '<div class="list-group-item d-flex justify-content-between align-items-center">' +
+        '<div><strong>' + nome + '</strong> <span class="text-muted">x' + qtd + '</span></div>' +
+        '<span class="fw-bold">R$ ' + sub.toFixed(2) + '</span>' +
+        '</div>';
+    });
+    html += '<div class="list-group-item d-flex justify-content-between align-items-center bg-light">' +
+      '<strong>Total</strong><strong>R$ ' + total.toFixed(2) + '</strong></div>';
+    footer.innerHTML = html;
+  }
+
+  function onMessage(e) {
+    if (e.origin !== window.location.origin) return;
+    if (e.data && e.data.type === 'ITENS' && Array.isArray(e.data.itens)) {
+      novosItens = e.data.itens;
+      novosItens.forEach(function(n) {
+        if (n.precoUnitario == null || n.precoUnitario === 0) {
+          var prod = (window.products || []).find(function(pr) { return pr.id === Number(n.produtoId); });
+          n.precoUnitario = prod ? Number(prod.price) : 0;
+        }
+        if (!n.nome) {
+          var prod2 = (window.products || []).find(function(pr) { return pr.id === Number(n.produtoId); });
+          n.nome = prod2 ? prod2.name : ('Item #' + n.produtoId);
+        }
+      });
+      btnSalvar.disabled = novosItens.length === 0;
+      contador.textContent = novosItens.length + (novosItens.length === 1 ? ' item selecionado' : ' itens selecionados');
+      renderFooterItens();
+    }
+  }
+  window.addEventListener('message', onMessage);
+
+  var pollTimer = setInterval(function() {
+    if (iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'SOLICITAR_ITENS' }, window.location.origin);
+    }
+  }, 800);
+
+  btnSalvar.onclick = async function() {
+    if (!novosItens.length) return;
+    var itensAtuais = (p.itens || []).map(function(i) {
+      return {
+        produtoId: Number(i.produtoId),
+        quantidade: Number(i.quantidade),
+        precoUnitario: Number(i.precoUnitario),
+        sabores: i.sabores || null,
+      };
+    });
+    var consolidados = agruparItensComNovos(itensAtuais, novosItens);
+    // Check stock for products that control stock
+    var prods = window.products || [];
+    for (var idx = 0; idx < novosItens.length; idx++) {
+      var n = novosItens[idx];
+      var produto = prods.find(function(pr) { return pr.id === Number(n.produtoId); });
+      if (produto && produto.controlaEstoque) {
+        if (Number(produto.estoqueAtual) < Number(n.quantidade)) {
+          toast('Estoque insuficiente: ' + (n.nome || produto.name || 'Produto') + ' (estoque: ' + Number(produto.estoqueAtual) + ')', 'danger');
+          return;
+        }
+      }
+    }
+    var bairrosAtendidos = [];
+    try {
+      var config = await api('/loja/settings-admin');
+      if (config && Array.isArray(config.bairrosAtendidos)) {
+        bairrosAtendidos = config.bairrosAtendidos;
+      }
+    } catch(e) { console.error('Falha ao buscar settings-admin', e); }
+    var estado = {
+      itens: consolidados,
+      formaPagamento: p.formaPagamento || 'dinheiro',
+      tipoEntrega: p.tipoEntrega || 'retirada',
+      bairro: p.bairro || (p.cliente && p.cliente.bairro) || '',
+      desconto: Number(((p.valores && p.valores.desconto) != null ? p.valores.desconto : p.desconto) || 0),
+      troco: Number(p.troco || 0),
+      bairrosAtendidos: bairrosAtendidos,
+    };
+    var totais = recalcularTotais(estado);
+    var payload = {
+      formaPagamento: estado.formaPagamento,
+      tipoEntrega: estado.tipoEntrega,
+      bairro: estado.bairro,
+      taxasEntrega: totais.taxaEntrega,
+      taxasCartao: totais.taxaCartao,
+      desconto: Number(estado.desconto || 0),
+      total: String(totais.total),
+      troco: Number(estado.troco || 0),
+      itens: consolidados.map(function(i) {
+        return {
+          produtoId: Number(i.produtoId),
+          quantidade: Number(i.quantidade),
+          precoUnitario: String(i.precoUnitario),
+          sabores: i.sabores || null,
+        };
+      }),
+    };
+    try {
+      await api('/pedidos/' + docId + '/editar', { method: 'PATCH', body: JSON.stringify(payload) });
+      modal.hide();
+      toast('Itens adicionados!', 'success');
+      carregarPedidos();
+    } catch (e) {
+      toast('Erro: ' + e.message, 'danger');
+    }
+  };
+
+  modalEl.addEventListener('hidden.bs.modal', function() {
+    clearInterval(pollTimer);
+    window.removeEventListener('message', onMessage);
+    modalEl.remove();
+  });
+
+  modal.show();
 }
 
 // --- Modal B: Editar Valores + orquestração ---
@@ -1149,14 +1405,25 @@ async function carregarPedidos() {
       if (c.dataset.id) openIds.push(c.dataset.id);
     });
     var pedidos = await api('/pedidos');
+
+    // Clear containers
     Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
-    pedidos.forEach(function(p) {
-      if (!p.status) return;
-      var container = containers[p.status];
-      if (!container) return;
-      var card = renderCard(p, p.id);
-      container.appendChild(card);
-    });
+
+    if (!pedidos || pedidos.length === 0) {
+      // Show empty state instead of blank containers
+      Object.keys(containers).forEach(function(key) {
+        containers[key].innerHTML = '<div class="empty-state">Nenhum pedido encontrado</div>';
+      });
+    } else {
+      pedidos.forEach(function(p) {
+        if (!p.status) return;
+        var container = containers[p.status];
+        if (!container) return;
+        var card = renderCard(p, p.id);
+        container.appendChild(card);
+      });
+    }
+
     updateStats();
     atualizarBadgeEsteira();
 
@@ -1186,6 +1453,10 @@ async function carregarPedidos() {
     primeiraCarga = false;
   } catch(e) {
     console.error('Erro ao carregar pedidos:', e);
+    // Show error state in containers instead of leaving them blank
+    Object.values(containers).forEach(function(c) {
+      c.innerHTML = '<div class="error-state">Erro ao carregar pedidos. <button onclick="carregarPedidos()">Tentar novamente</button></div>';
+    });
     toast('Erro ao carregar pedidos. Tentando novamente...', 'danger');
   }
 }

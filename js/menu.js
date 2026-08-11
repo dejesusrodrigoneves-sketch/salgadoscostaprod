@@ -489,6 +489,8 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("btnShowRegister").addEventListener("click", () => {
+  var consentBox = document.querySelector('#registerOverlay .consent-box');
+  if (consentBox) consentBox.style.display = 'flex';
   registerOverlay.classList.remove("hidden");
 });
 
@@ -566,12 +568,19 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
         return;
     }
 
+    var consentCheck = document.getElementById("regConsent");
+    if (!consentCheck || !consentCheck.checked) {
+        toast("Você precisa aceitar a Política de Privacidade para continuar", 'warning');
+        return;
+    }
+
     phone = adicionarPrefixoTelefone(phone);
 
     try {
         var result = await PUBLIC_API.register({
             nome: nome, telefone: phone, password: password,
             endereco: endereco, numero: numero, bairro: bairro, cep: cep, pontoReferencia: ponto,
+            aceitePoliticas: true, consentVersion: 'v1.0',
         });
         localStorage.setItem('clientToken', result.token);
         localStorage.setItem("userLogged", JSON.stringify(result.cliente));
@@ -673,7 +682,8 @@ function renderOrderItems(pedido) {
     infos.push(end);
   }
   if (pedido.formaPagamento) {
-    var pag = '💳 ' + pedido.formaPagamento.charAt(0).toUpperCase() + pedido.formaPagamento.slice(1);
+    var nomePag = { credito: 'Crédito', debito: 'Débito', cartao: 'Cartão', cartao_credito: 'Cartão de Crédito', cartao_debito: 'Cartão de Débito', dinheiro: 'Dinheiro', pix: 'PIX' };
+    var pag = '💳 ' + (nomePag[pedido.formaPagamento] || pedido.formaPagamento);
     if (pedido.troco) pag += ' · Troco p/ R$ ' + Number(pedido.troco).toFixed(2);
     infos.push(pag);
   }
@@ -687,16 +697,20 @@ function toggleOrderExpand(headerEl) {
 }
 
 function renderOrders(pedidos) {
+  var loadingEl = document.getElementById('ordersLoading');
   var activeSection = document.getElementById('ordersActiveSection');
   var activeContainer = document.getElementById('ordersActiveContainer');
+  var historySection = document.getElementById('ordersHistorySection');
   var historyContainer = document.getElementById('ordersHistoryContainer');
   var countEl = document.getElementById('ordersCount');
   var historyTitle = document.getElementById('ordersHistoryTitle');
-  activeContainer.innerHTML = '';
-  historyContainer.innerHTML = '';
+  if (loadingEl) loadingEl.style.display = 'none';
+  if (activeContainer) activeContainer.innerHTML = '';
+  if (historyContainer) historyContainer.innerHTML = '';
 
   if (!pedidos || pedidos.length === 0) {
     activeSection.style.display = 'none';
+    if (historySection) historySection.style.display = 'block';
     historyContainer.innerHTML = '<div class="orders-empty"><span class="icon">📋</span><p>Nenhum pedido encontrado.</p><p style="font-size:13px;">Faça seu primeiro pedido pelo cardápio!</p></div>';
     if (countEl) countEl.textContent = '(0)';
     return;
@@ -720,6 +734,7 @@ function renderOrders(pedidos) {
   }
 
   if (historico.length > 0) {
+    if (historySection) historySection.style.display = 'block';
     if (historyTitle) historyTitle.textContent = 'Histórico';
     historico.forEach(function(p) {
       var statusClass = p.status || '';
@@ -731,6 +746,7 @@ function renderOrders(pedidos) {
       historyContainer.appendChild(card);
     });
   } else {
+    if (historySection) historySection.style.display = 'block';
     historyContainer.innerHTML = '<div class="orders-empty"><span class="icon">📋</span><p>Nenhum pedido anterior.</p></div>';
   }
 }
@@ -741,7 +757,12 @@ async function abrirOverlayPedidos(user) {
   overlay.classList.remove('hidden');
 
   var body = document.getElementById('ordersBody');
-  body.innerHTML = '<div class="orders-empty"><span class="icon">⏳</span><p>Carregando pedidos...</p></div>';
+  var loadingEl = document.getElementById('ordersLoading');
+  var activeSection = document.getElementById('ordersActiveSection');
+  var historySection = document.getElementById('ordersHistorySection');
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (activeSection) activeSection.style.display = 'none';
+  if (historySection) historySection.style.display = 'none';
 
   try {
     var pedidos = await PUBLIC_API.meusPedidos();
@@ -750,7 +771,27 @@ async function abrirOverlayPedidos(user) {
     (pedidos || []).forEach(function(p) { _ultimosStatus[p.id] = p.status; });
     iniciarPolling();
   } catch (e) {
-    body.innerHTML = '<div class="orders-empty"><span class="icon">⚠️</span><p>Erro ao carregar pedidos.</p><p style="font-size:13px;">Verifique sua conexão e tente novamente.</p></div>';
+    var msg = e.message || 'Erro desconhecido';
+    var icon = '⚠️';
+    if (msg.includes('Token') || msg.includes('401') || msg.includes('invál') || msg.includes('não fornecido')) {
+      msg = 'Sessão expirada. Faça login novamente.';
+      icon = '🔒';
+      localStorage.removeItem('clientToken');
+      localStorage.removeItem('userLogged');
+    } else if (msg.includes('não encontrada') || msg.includes('removida')) {
+      msg = 'Conta não encontrada. Crie uma nova conta.';
+      icon = '👤';
+      localStorage.removeItem('clientToken');
+      localStorage.removeItem('userLogged');
+    } else if (!navigator.onLine || msg.includes('fetch') || msg.includes('Network')) {
+      msg = 'Sem conexão com a internet.';
+      icon = '📡';
+    } else if (msg.includes('500') || msg.includes('servidor')) {
+      msg = 'Servidor temporariamente indisponível.';
+      icon = '🛠️';
+    }
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (body) body.innerHTML = '<div class="orders-empty"><span class="icon">' + icon + '</span><p>' + msg + '</p></div>';
   }
 }
 
@@ -809,6 +850,7 @@ function atualizarUserMenu(user) {
   var btns = [
     { id: 'btnEditProfile', text: 'Editar perfil' },
     { id: 'btnMyOrders', html: 'Meus pedidos <span id="orderCount"></span>' },
+    { id: 'btnDeleteAccount', text: 'Excluir conta' },
     { id: 'btnLogout', text: 'Sair' }
   ];
   btns.forEach(function(b) {
@@ -821,6 +863,8 @@ function atualizarUserMenu(user) {
 
   document.getElementById("btnEditProfile").addEventListener("click", function() {
     registerOverlay.classList.remove("hidden");
+    var consentBox = document.querySelector('#registerOverlay .consent-box');
+    if (consentBox) consentBox.style.display = 'none';
     document.getElementById("regNome").value = user.nome;
     document.getElementById("regPhone").value = (user.telefone || user.phone || '').replace('+55','');
     document.getElementById("regEndereco").value = user.endereco || '';
@@ -837,7 +881,22 @@ function atualizarUserMenu(user) {
 
   document.getElementById("btnLogout").addEventListener("click", function() {
     localStorage.removeItem("userLogged");
+    localStorage.removeItem("clientToken");
     location.reload();
+  });
+
+  // LGPD Art. 18 VI — eliminação de dados pessoais
+  document.getElementById("btnDeleteAccount").addEventListener("click", async function() {
+    if (!confirm("Excluir sua conta remove seus dados pessoais. O histórico fiscal de pedidos é mantido por 5 anos (Art. 16 I). Confirma?")) return;
+    try {
+      await PUBLIC_API.deleteMe();
+      localStorage.removeItem("userLogged");
+      localStorage.removeItem("clientToken");
+      toast("Conta excluída. Dados pessoais removidos.", 'success');
+      location.reload();
+    } catch(e) {
+      toast(e.message || "Erro ao excluir conta", 'danger');
+    }
   });
 }
 

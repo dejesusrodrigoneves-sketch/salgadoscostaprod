@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
+const { authenticate } = require('./middleware/auth');
 const contextMiddleware = require('./middleware/context');
 
 const authRoutes = require('./routes/authRoutes');
@@ -26,7 +27,7 @@ const auditRoutes = require('./routes/auditRoutes');
 const app = express();
 
 app.use(contextMiddleware);
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://cdn.tailwindcss.com"], scriptSrcAttr: ["'unsafe-inline'"], styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"], fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"], imgSrc: ["'self'", "data:", "https:"] } } }));
 var corsOrigin = process.env.CORS_ORIGIN || '*';
 if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
   corsOrigin = corsOrigin.split(',').map(function(s) { return s.trim(); });
@@ -58,7 +59,7 @@ app.use('/api/audit', auditRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));
-app.get('/api/config', (req, res) => res.json({
+app.get('/api/config', authenticate, (req, res) => res.json({
   mapboxToken: process.env.MAPBOX_TOKEN || '',
   graphhopperKey: process.env.GRAPHHOPPER_KEY || '',
 }));

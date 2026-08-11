@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const multer = require('multer');
 const path = require('path');
+const { authenticate } = require('../middleware/auth');
 
 let supabase;
 function getSupabase() {
@@ -28,7 +29,7 @@ const upload = multer({
 
 const router = Router();
 
-router.post('/', upload.single('file'), async (req, res, next) => {
+router.post('/', authenticate, upload.single('file'), async (req, res, next) => {
   if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
 
   try {

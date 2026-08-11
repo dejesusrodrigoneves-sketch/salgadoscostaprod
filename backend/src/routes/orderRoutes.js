@@ -4,17 +4,18 @@ const whatsapp = require('../services/whatsappService');
 const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireOwnership } = require('../middleware/ownership');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const router = Router();
 
 router.get('/', authenticate, controller.listar);
-router.get('/:id', authenticate, controller.buscar);
-router.post('/', controller.criar);
-router.patch('/:id/status', authenticate, controller.atualizarStatus);
-router.delete('/:id', authenticate, controller.deletar);
-router.post('/:id/finalizar', authenticate, controller.finalizar);
-router.patch('/:id/editar', authenticate, authorize('superadmin', 'admin', 'user'), controller.editarPedido);
+router.get('/:id', authenticate, requireOwnership('pedido'), controller.buscar);
+router.post('/', authenticate, controller.criar);
+router.patch('/:id/status', authenticate, requireOwnership('pedido'), controller.atualizarStatus);
+router.delete('/:id', authenticate, requireOwnership('pedido'), controller.deletar);
+router.post('/:id/finalizar', authenticate, requireOwnership('pedido'), controller.finalizar);
+router.patch('/:id/editar', authenticate, requireOwnership('pedido'), authorize('superadmin', 'admin', 'user'), controller.editarPedido);
 
 function legacyCtx(req, rota) {
   const ctx = getCtx(req);

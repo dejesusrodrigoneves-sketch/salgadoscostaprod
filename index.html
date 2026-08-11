@@ -106,7 +106,7 @@
 </div>
 <div class="footerBottom">
   <div class="content">
-    <p id="footerCopyright">Fabrica de Salgados - 2024 &copy; Todos os direitos reservados.</p>
+    <p id="footerCopyright">Fabrica de Salgados - 2024 &copy; Todos os direitos reservados. | <a href="politicas.html" rel="noopener">Política de Privacidade</a></p>
   </div>
 </div>
 
@@ -166,6 +166,10 @@
     <input type="text" id="regNumero" aria-label="Número" placeholder="Número" />
     <input type="text" id="regBairro" aria-label="Bairro" placeholder="Bairro" />
     <input type="text" id="regPonto" aria-label="Ponto de referência" placeholder="Ponto de referência" />
+    <label class="consent-box" style="display:none">
+      <input type="checkbox" id="regConsent" />
+      <span>Ao criar minha conta, autorizo o tratamento dos meus dados pessoais (nome, telefone, endereço, CEP, bairro) para: (1) processar e entregar pedidos; (2) comunicação de status via WhatsApp; (3) melhoria do cadastro de entrega. Li a <a href="politicas.html" target="_blank" rel="noopener">Política de Privacidade v1.0</a> e declaro ser maior de 18 anos (ou, se menor de 16, portar consentimento do responsável legal).</span>
+    </label>
     <button id="btnRegister">Cadastrar</button>
     <button id="btnCloseRegister">Cancelar</button>
   </div>
@@ -174,7 +178,7 @@
 <script src="js/utils.js"></script>
 <script src="js/apiHelper.js"></script>
 <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
-<script src="js/menu.js?=8"></script>
+<script src="js/menu.js?=9"></script>
 <script src="js/navbar.js"></script>
 
 <!-- Overlay de Pedidos -->
@@ -186,6 +190,7 @@
     </div>
 
     <div class="orders-body" id="ordersBody">
+      <div id="ordersLoading" class="orders-empty" style="display:none"><span class="icon">⏳</span><p>Carregando pedidos...</p></div>
       <div id="ordersActiveSection" class="orders-section" style="display:none">
         <span class="orders-section-title">Acompanhar</span>
         <div id="ordersActiveContainer"></div>
