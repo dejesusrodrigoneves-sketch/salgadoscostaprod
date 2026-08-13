@@ -90,6 +90,7 @@ model Produto {
   hideWhenOutOfStock Boolean       @default(true) @map("hide_when_out_of_stock")
   lastPrice          Decimal?      @map("last_price") @db.Decimal(10, 2)
   categoryId         Int?          @map("category_id")
+  config             Json?         @map("config")
   itens              ItensPedido[]
   category           Categoria?    @relation(fields: [categoryId], references: [id])
   empresa            Empresa       @relation(fields: [empresaId], references: [id])
