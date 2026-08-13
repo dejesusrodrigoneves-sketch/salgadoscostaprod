@@ -141,6 +141,44 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
           </div>
         </div>
 
+        <div class="form-section">
+          <h4><i class="fas fa-layer-group"></i> Tipo de Produto</h4>
+          <div class="row">
+            <div class="lbl">Tipo</div>
+            <select id="prodTipo">
+              <option value="">Simples</option>
+              <option value="combo_salgado">Combo Salgado</option>
+              <option value="combo_acai">Combo Açaí</option>
+            </select>
+          </div>
+          <div id="camposComboSalgado" style="display:none;">
+            <div class="row">
+              <div class="lbl">Total de unidades</div>
+              <input type="number" id="comboUnidades" min="1" placeholder="Ex.: 50" />
+            </div>
+            <div class="row">
+              <div class="lbl">Sabores</div>
+              <div id="listaSabores" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:80px;"></div>
+              <button class="btn ghost" type="button" onclick="adicionarLinhaSabor()" style="align-self:flex-start;"><i class="fas fa-plus"></i> Adicionar sabor</button>
+            </div>
+          </div>
+          <div id="camposComboAcai" style="display:none;">
+            <div class="row">
+              <div class="lbl">Acréscimos grátis</div>
+              <input type="number" id="comboGratis" min="0" placeholder="Ex.: 3" />
+            </div>
+            <div class="row">
+              <div class="lbl">Máximo de acréscimos</div>
+              <input type="number" id="comboMax" min="0" placeholder="Ex.: 5" />
+            </div>
+            <div class="row">
+              <div class="lbl">Acréscimos (nome + preço)</div>
+              <div id="listaAcrescimos" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:80px;"></div>
+              <button class="btn ghost" type="button" onclick="adicionarLinhaAcrescimo()" style="align-self:flex-start;"><i class="fas fa-plus"></i> Adicionar acréscimo</button>
+            </div>
+          </div>
+        </div>
+
         <details style="margin-bottom:12px;background:#0a1224;border:1px solid #1f2a4d;border-radius:12px;padding:12px;cursor:pointer;">
           <summary style="font-size:12px;color:var(--brand-2);text-transform:uppercase;letter-spacing:0.5px;font-weight:700;">
             <i class="fas fa-cog"></i> Avançado (opcional)
@@ -378,6 +416,7 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 </div>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="js/comboConfig.js"></script>
 <script src="js/painel.js?=2"></script>
 <script src="js/theme.js" defer></script>
 </body>

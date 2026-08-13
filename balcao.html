@@ -93,6 +93,7 @@
 </div>
 
 <script src="js/utils.js"></script>
+<script src="js/comboConfig.js"></script>
 <script>
 if(!authGuard()) throw new Error('Redirect');
 </script>
@@ -101,14 +102,7 @@ if(!authGuard()) throw new Error('Redirect');
 
 //-----Nomes Front - End-------//
 
-const nomesTipos = {
-  1: "Salgados 45g",
-  2: "Massas",
-  3: "Combos",
-  4: "Bebidas",
-  5: "Doces",
-  6: "Congelados"
-};
+
 
 
 let total = 0;
@@ -134,11 +128,11 @@ async function carregarProdutos() {
 
 // 🎈 Criar botões de filtro
 function criarFiltros() {
-
   const filtrosDiv = document.getElementById("filtros");
   filtrosDiv.innerHTML = "";
 
-  const types = [...new Set(todosProdutos.map(p => p.type))];
+  // Extract unique category names from products
+  const categorias = [...new Set(todosProdutos.map(p => p.category?.nome || 'Sem categoria'))];
 
   // Botão Todos
   const btnTodos = document.createElement("button");
@@ -151,20 +145,19 @@ function criarFiltros() {
   };
   filtrosDiv.appendChild(btnTodos);
 
-  // Botões por type
-  types.forEach(type => {
+  // Botões por categoria
+  categorias.forEach(categoria => {
     const btn = document.createElement("button");
-    btn.innerText = nomesTipos[type] || "Tipo " + type;
+    btn.innerText = categoria;
     btn.className = "filtro-btn";
     btn.onclick = () => {
-      typeAtual = type;
+      typeAtual = categoria;
       atualizarBotoes();
       renderizarProdutos();
     };
-    btn.dataset.type = type;
+    btn.dataset.category = categoria;
     filtrosDiv.appendChild(btn);
   });
-
 }
 
 // Atualizar estilo do botão ativo
@@ -174,7 +167,7 @@ function atualizarBotoes() {
 
     if (
       (btn.innerText === "Todos" && typeAtual === null) ||
-      btn.dataset.type == typeAtual
+      btn.dataset.category === typeAtual
     ) {
       btn.classList.add("ativo");
     }
@@ -183,16 +176,14 @@ function atualizarBotoes() {
 
 // 🧾 Renderizar produtos
 function renderizarProdutos() {
-
   const grid = document.querySelector(".grid-produtos");
   grid.innerHTML = "";
 
   const produtosFiltrados = typeAtual
-    ? todosProdutos.filter(p => p.type == typeAtual)
+    ? todosProdutos.filter(p => (p.category?.nome || 'Sem categoria') === typeAtual)
     : todosProdutos;
 
   produtosFiltrados.forEach(produto => {
-
     const div = document.createElement("div");
     div.className = "produto";
 
@@ -202,14 +193,12 @@ function renderizarProdutos() {
       <span>R$ ${Number(produto.price).toFixed(2)}</span>
     `;
 
-div.addEventListener("click", () => {
-  adicionarAoCarrinho(produto);
-});
+    div.addEventListener("click", () => {
+      adicionarAoCarrinho(produto);
+    });
 
     grid.appendChild(div);
-
   });
-
 }
 
 window.addEventListener("DOMContentLoaded", carregarProdutos);
@@ -395,6 +384,111 @@ function atualizarContador() {
 }
 
 
+function abrirSeletorComboSalgado(produto) {
+  const cfg = produto.config;
+  const existente = carrinho.find(p => p.id === produto.id);
+
+  let saboresSelecionados = existente && existente.sabores ? [...existente.sabores] : [];
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-sabores';
+  modal.innerHTML = `
+    <div class="box-sabores">
+      <h3>${escapeHtml(produto.name)} — escolha ${cfg.unidades} unidades</h3>
+      <div class="lista-sabores"></div>
+      <p id="contadorTotal" style="margin:10px 0;font-weight:600;text-align:right;">Selecionados: ${saboresSelecionados.reduce((a,s)=>a+s.qtd,0)}/${cfg.unidades}</p>
+      <button id="finalizarSabores" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;">Finalizar</button>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const lista = modal.querySelector('.lista-sabores');
+  const contador = modal.querySelector('#contadorTotal');
+
+  cfg.sabores.forEach(nome => {
+    let qtd = (saboresSelecionados.find(s => s.nome === nome) || {}).qtd || 0;
+    const div = document.createElement('div');
+    div.className = 'sabor-item';
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;';
+    div.innerHTML = `<span>${escapeHtml(nome)}</span><input type="number" min="0" value="${qtd}" style="width:50px;text-align:center;">`;
+    const input = div.querySelector('input');
+    input.addEventListener('input', () => {
+      let valor = parseInt(input.value) || 0;
+      const usados = saboresSelecionados.reduce((a, s) => a + s.qtd, 0) - qtd;
+      if (usados + valor > cfg.unidades) { valor = cfg.unidades - usados; input.value = valor; }
+      qtd = valor;
+      const ex = saboresSelecionados.find(s => s.nome === nome);
+      if (ex) { ex.qtd = qtd; if (qtd === 0) saboresSelecionados = saboresSelecionados.filter(s => s.nome !== nome); }
+      else if (qtd > 0) saboresSelecionados.push({ nome: nome, qtd: qtd });
+      const total = saboresSelecionados.reduce((a, s) => a + s.qtd, 0);
+      contador.textContent = `Selecionados: ${total}/${cfg.unidades}`;
+    });
+    lista.appendChild(div);
+  });
+
+  modal.querySelector('#finalizarSabores').addEventListener('click', () => {
+    const total = saboresSelecionados.reduce((a, s) => a + s.qtd, 0);
+    if (total !== cfg.unidades) { toast(`Distribua exatamente ${cfg.unidades} unidades.`, 'warning'); return; }
+    if (!existente) carrinho.push({ id: produto.id, nome: produto.name, preco: Number(produto.price), qtd: 1, type: 3, sabores: saboresSelecionados });
+    else existente.sabores = saboresSelecionados;
+    modal.remove();
+    renderizarCarrinho();
+    renderMiniCart();
+  });
+}
+
+function abrirSeletorComboAcai(produto) {
+  const cfg = produto.config;
+  const existente = carrinho.find(p => p.id === produto.id);
+  let escolhidos = existente && existente.sabores ? existente.sabores.map(s => s.nome) : [];
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-sabores';
+  modal.innerHTML = `
+    <div class="box-sabores">
+      <h3>${escapeHtml(produto.name)} — acréscimos</h3>
+      <p style="font-size:12px;color:#64748b;margin-bottom:8px;">${cfg.acrescimosGratis} grátis · máx ${cfg.maxAcrescimos}</p>
+      <div class="lista-sabores"></div>
+      <p id="contadorAcai" style="margin:10px 0;font-weight:600;text-align:right;">Escolhidos: ${escolhidos.length}</p>
+      <button id="finalizarSabores" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;">Finalizar</button>
+    </div>`;
+  document.body.appendChild(modal);
+
+  const lista = modal.querySelector('.lista-sabores');
+  const contador = modal.querySelector('#contadorAcai');
+
+  cfg.acrescimos.forEach(op => {
+    const div = document.createElement('div');
+    div.className = 'sabor-item';
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;cursor:pointer;';
+    div.innerHTML = `<span>${escapeHtml(op.nome)}</span><span style="color:${op.preco > 0 ? '#dc2626' : '#16a34a'}">${op.preco > 0 ? '+ R$ ' + Number(op.preco).toFixed(2) : 'grátis'}</span>`;
+    if (escolhidos.indexOf(op.nome) !== -1) div.style.borderColor = '#16a34a';
+    div.addEventListener('click', () => {
+      const idx = escolhidos.indexOf(op.nome);
+      if (idx !== -1) { escolhidos.splice(idx, 1); div.style.borderColor = '#e2e8f0'; }
+      else {
+        if (escolhidos.length >= cfg.maxAcrescimos) { toast(`Máximo de ${cfg.maxAcrescimos} acréscimos.`, 'warning'); return; }
+        escolhidos.push(op.nome); div.style.borderColor = '#16a34a';
+      }
+      contador.textContent = `Escolhidos: ${escolhidos.length}`;
+    });
+    lista.appendChild(div);
+  });
+
+  modal.querySelector('#finalizarSabores').addEventListener('click', () => {
+    const r = ComboConfig.calcularPrecoAcai(cfg, escolhidos);
+    const sabores = escolhidos.map(nome => ({ nome: nome, qtd: 1 }));
+    if (!existente) {
+      carrinho.push({ id: produto.id, nome: produto.name, preco: Number(produto.price), qtd: 1, type: 3, sabores: sabores, extra: r.extra });
+    } else {
+      existente.sabores = sabores; existente.extra = r.extra;
+    }
+    modal.remove();
+    renderizarCarrinho();
+    renderMiniCart();
+  });
+}
+
+
 // ===== CHECKOUT =====
 
 function renderizarCarrinho() {
@@ -413,7 +507,8 @@ function renderizarCarrinho() {
   let total = 0;
 
   carrinho.forEach((item, index) => {
-    total += item.preco * item.qtd;
+    const extraItem = Number(item.extra) || 0;
+    total += item.preco * item.qtd + extraItem;
 
     const div = document.createElement("div");
     div.classList.add("item-carrinho");
@@ -430,6 +525,7 @@ function renderizarCarrinho() {
           ).join(", ") +
         "</div>"
       : ""}
+    ${Number(item.extra) > 0 ? "<div style='font-size:12px;color:#dc2626;margin-top:4px;'>+ R$ " + Number(item.extra).toFixed(2) + " (acréscimos)</div>" : ""}
   </div>
 
   <div class="controle-qtd">
@@ -461,7 +557,7 @@ function renderizarCarrinho() {
   </div>
 
   <div class="subtotal">
-    R$ ${(item.preco * item.qtd).toFixed(2)}
+    R$ ${(item.preco * item.qtd + (Number(item.extra) || 0)).toFixed(2)}
   </div>
 `;
 
@@ -478,6 +574,10 @@ function removerItem(index) {
 }
 
 function editarSabores(index) {
+  const item = carrinho[index];
+  const cfgTipo = ComboConfig.tipoDe(item.config || {});
+  if (cfgTipo === 'combo_salgado') { abrirSeletorComboSalgado(item); return; }
+  if (cfgTipo === 'combo_acai') { abrirSeletorComboAcai(item); return; }
   abrirSeletorSabores(index);
 }
 
@@ -532,7 +632,7 @@ function renderMiniCart() {
   let totalItens = 0;
 
   carrinho.forEach((item, index) => {
-    total += item.preco * item.qtd;
+    total += item.preco * item.qtd + (Number(item.extra) || 0);
     totalItens += item.qtd;
 
     const div = document.createElement('div');
@@ -695,6 +795,11 @@ function adicionarAoCarrinho(produto) {
     abrirSeletorAvulso(produto);
     return;
   }
+
+  // Novos combos configuráveis
+  const cfgTipo = ComboConfig.tipoDe(produto.config);
+  if (cfgTipo === 'combo_salgado') { abrirSeletorComboSalgado(produto); return; }
+  if (cfgTipo === 'combo_acai') { abrirSeletorComboAcai(produto); return; }
 
   const existente = carrinho.find(p => p.id === produto.id);
   if (existente) {

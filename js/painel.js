@@ -278,6 +278,57 @@ const fStatus = document.getElementById('prodStatus');
 const fCategoryId = document.getElementById('prodCategoryId');
 const fHideWhenOutOfStock = document.getElementById('prodHideWhenOutOfStock');
 
+const fTipo = document.getElementById('prodTipo');
+const camposSalgado = document.getElementById('camposComboSalgado');
+const camposAcai = document.getElementById('camposComboAcai');
+const listaSabores = document.getElementById('listaSabores');
+const listaAcrescimos = document.getElementById('listaAcrescimos');
+
+function toggleCamposCombo() {
+  const t = fTipo.value;
+  camposSalgado.style.display = t === 'combo_salgado' ? '' : 'none';
+  camposAcai.style.display = t === 'combo_acai' ? '' : 'none';
+  if (t === 'combo_salgado' && listaSabores.children.length === 0) adicionarLinhaSabor();
+  if (t === 'combo_acai' && listaAcrescimos.children.length === 0) adicionarLinhaAcrescimo();
+}
+fTipo?.addEventListener('change', toggleCamposCombo);
+
+const PAUSA_BTN = 'width:auto;flex:0 0 auto;padding:8px 10px;border-radius:8px;border:1px solid #22315b;background:#0a1224;color:var(--text);cursor:pointer;font-size:13px;';
+const PAUSA_BTN_OFF = PAUSA_BTN;
+const PAUSA_BTN_ON = 'width:auto;flex:0 0 auto;padding:8px 10px;border-radius:8px;border:1px solid #ef4444;background:#3b11117a;color:#ef4444;cursor:pointer;font-size:13px;';
+const DELETE_BTN = 'width:auto;flex:0 0 auto;padding:8px 10px;border-radius:8px;border:1px solid #22315b;background:#0a1224;color:var(--text);cursor:pointer;font-size:13px;';
+const ROW_NORMAL = 'display:flex;gap:6px;align-items:center;padding:6px 8px;border-radius:10px;border:1px solid transparent;transition:all .2s;';
+const ROW_PAUSADO = 'display:flex;gap:6px;align-items:center;padding:6px 8px;border-radius:10px;border:1px solid #ef444480;background:#ef44440d;opacity:0.55;transition:all .2s;';
+
+function togglePausa(btn) {
+  const row = btn.closest('div');
+  const isPausado = row.classList.toggle('pausado');
+  row.style.cssText = isPausado ? ROW_PAUSADO : ROW_NORMAL;
+  btn.style.cssText = isPausado ? PAUSA_BTN_ON : PAUSA_BTN_OFF;
+  btn.innerHTML = isPausado ? '<i class="fas fa-play"></i>' : '<i class="fas fa-pause"></i>';
+  btn.title = isPausado ? 'Reativar' : 'Pausar';
+}
+
+function adicionarLinhaSabor(nome, pausado) {
+  const d = document.createElement('div');
+  d.className = 'sabor-row' + (pausado ? ' pausado' : '');
+  d.style.cssText = pausado ? ROW_PAUSADO : ROW_NORMAL;
+  d.innerHTML = '<button type="button" class="sabor-pausa-btn" style="' + (pausado ? PAUSA_BTN_ON : PAUSA_BTN_OFF) + '" title="' + (pausado ? 'Reativar' : 'Pausar') + '" onclick="togglePausa(this)"><i class="fas fa-' + (pausado ? 'play' : 'pause') + '"></i></button>' +
+    '<input type="text" class="sabor-nome" placeholder="Ex.: Coxinha" value="' + (nome ? escapeHtml(nome) : '') + '" style="flex:1;padding:10px 12px;border-radius:12px;border:1px solid #22315b;background:#0a1224;color:var(--text);font-weight:600;outline:none;">' +
+    '<button type="button" class="btn ghost btn-sm" style="' + DELETE_BTN + '" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+  listaSabores.appendChild(d);
+}
+function adicionarLinhaAcrescimo(nome, preco, pausado) {
+  const d = document.createElement('div');
+  d.className = 'acres-row' + (pausado ? ' pausado' : '');
+  d.style.cssText = pausado ? ROW_PAUSADO : ROW_NORMAL;
+  d.innerHTML = '<button type="button" class="acres-pausa-btn" style="' + (pausado ? PAUSA_BTN_ON : PAUSA_BTN_OFF) + '" title="' + (pausado ? 'Reativar' : 'Pausar') + '" onclick="togglePausa(this)"><i class="fas fa-' + (pausado ? 'play' : 'pause') + '"></i></button>' +
+    '<input type="text" class="acres-nome" placeholder="Ex.: Oreo" value="' + (nome ? escapeHtml(nome) : '') + '" style="flex:2;padding:10px 12px;border-radius:12px;border:1px solid #22315b;background:#0a1224;color:var(--text);font-weight:600;outline:none;">' +
+    '<input type="number" step="0.01" min="0" class="acres-preco" placeholder="R$" value="' + (preco != null ? preco : '') + '" style="flex:1;padding:10px 12px;border-radius:12px;border:1px solid #22315b;background:#0a1224;color:var(--text);font-weight:600;outline:none;">' +
+    '<button type="button" class="btn ghost btn-sm" style="' + DELETE_BTN + '" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>';
+  listaAcrescimos.appendChild(d);
+}
+
 // File upload handler
 fImgFile?.addEventListener('change', async function() {
   const file = this.files[0];
@@ -381,6 +432,9 @@ function renderProdutos(){
         <td>
           <img class="prodThumb" src="${p.img||''}" alt="${escapeHtml(p.name||'')}">
           ${escapeHtml(p.name||'')}
+          ${p.config && p.config.tipo
+            ? '<span class="pill pill-active" style="font-size:10px;">' + (p.config.tipo === 'combo_acai' ? 'Açaí' : 'Combo') + '</span>'
+            : ''}
         </td>
         <td>R$ ${(Number(p.price)||0).toFixed(2).replace('.',',')}</td>
         <td><span class="pill ${st.cls}">${st.text}</span></td>
@@ -420,6 +474,10 @@ function limparFormProduto() {
   document.getElementById("btnSalvarProduto").textContent = "Salvar";
   document.getElementById("formTitle").textContent = "Novo Produto";
   toggleEstoqueFields();
+  if (fTipo) fTipo.value = '';
+  if (listaSabores) listaSabores.innerHTML = '';
+  if (listaAcrescimos) listaAcrescimos.innerHTML = '';
+  toggleCamposCombo();
 }
 
 function carregarNoForm(id) {
@@ -442,6 +500,25 @@ function carregarNoForm(id) {
 
   if (fCategoryId) {
     fCategoryId.value = p.categoryId || '';
+  }
+
+  const cfg = p.config || null;
+  if (fTipo) {
+    fTipo.value = cfg && cfg.tipo ? cfg.tipo : '';
+    if (listaSabores) listaSabores.innerHTML = '';
+    if (listaAcrescimos) listaAcrescimos.innerHTML = '';
+    if (cfg && cfg.tipo === 'combo_salgado') {
+      document.getElementById('comboUnidades').value = cfg.unidades || '';
+      (cfg.sabores || []).forEach(s => {
+        if (typeof s === 'string') adicionarLinhaSabor(s, false);
+        else adicionarLinhaSabor(s.nome, s.pausado);
+      });
+    } else if (cfg && cfg.tipo === 'combo_acai') {
+      document.getElementById('comboGratis').value = cfg.acrescimosGratis || 0;
+      document.getElementById('comboMax').value = cfg.maxAcrescimos || 0;
+      (cfg.acrescimos || []).forEach(a => adicionarLinhaAcrescimo(a.nome, a.preco, a.pausado));
+    }
+    toggleCamposCombo();
   }
 
   toggleEstoqueFields();
@@ -499,6 +576,37 @@ formProduto.addEventListener('submit', async e => {
 
   if (fCategoryId && fCategoryId.value) {
     payload.categoryId = Number(fCategoryId.value);
+  }
+
+  if (fTipo && fTipo.value) {
+    let cfg = null;
+    if (fTipo.value === 'combo_salgado') {
+      const sabores = Array.from(document.querySelectorAll('#listaSabores .sabor-row'))
+        .map(row => ({
+          nome: row.querySelector('.sabor-nome').value.trim(),
+          pausado: row.classList.contains('pausado')
+        }))
+        .filter(s => s.nome);
+      cfg = { tipo: 'combo_salgado', unidades: Number(document.getElementById('comboUnidades').value) || 0, sabores: sabores };
+    } else if (fTipo.value === 'combo_acai') {
+      const acrescimos = Array.from(document.querySelectorAll('#listaAcrescimos .acres-row'))
+        .map(row => ({
+          nome: row.querySelector('.acres-nome').value.trim(),
+          preco: Number(row.querySelector('.acres-preco').value) || 0,
+          pausado: row.classList.contains('pausado')
+        }))
+        .filter(a => a.nome);
+      cfg = {
+        tipo: 'combo_acai',
+        acrescimosGratis: Number(document.getElementById('comboGratis').value) || 0,
+        maxAcrescimos: Number(document.getElementById('comboMax').value) || 0,
+        acrescimos: acrescimos,
+      };
+    }
+    const v = ComboConfig.validarConfig(fTipo.value, cfg);
+    if (!v.ok) { toast(v.erro, 'warning'); return; }
+    payload.type = 3;
+    payload.config = cfg;
   }
 
   if (payload.controlaEstoque && payload.estoqueAtual <= 0) {

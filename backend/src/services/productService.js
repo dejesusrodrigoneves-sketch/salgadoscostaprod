@@ -6,6 +6,36 @@ function sanitize(v) {
   return v.trim().replace(/<[^>]*>/g, '');
 }
 
+function sanitizeConfig(config) {
+  if (!config || typeof config !== 'object') return null;
+  const out = {};
+  if (config.tipo === 'combo_salgado') {
+    out.tipo = 'combo_salgado';
+    out.unidades = Number(config.unidades) || 0;
+    out.sabores = (Array.isArray(config.sabores) ? config.sabores : [])
+      .map(s => {
+        if (typeof s === 'string') return { nome: s.trim().replace(/<[^>]*>/g, ''), pausado: false };
+        if (s && typeof s === 'object') return { nome: String(s.nome || '').trim().replace(/<[^>]*>/g, ''), pausado: !!s.pausado };
+        return null;
+      })
+      .filter(s => s && s.nome);
+  } else if (config.tipo === 'combo_acai') {
+    out.tipo = 'combo_acai';
+    out.acrescimosGratis = Number(config.acrescimosGratis) || 0;
+    out.maxAcrescimos = Number(config.maxAcrescimos) || 0;
+    out.acrescimos = (Array.isArray(config.acrescimos) ? config.acrescimos : [])
+      .map(a => ({
+        nome: String(a.nome || '').trim().replace(/<[^>]*>/g, ''),
+        preco: Number(a.preco) || 0,
+        pausado: !!a.pausado,
+      }))
+      .filter(a => a.nome);
+  } else {
+    return null;
+  }
+  return out;
+}
+
 function formatImageUrl(img) {
   if (!img) return null;
   if (img.startsWith('http')) return img;
@@ -35,6 +65,7 @@ async function criar(data, ctx = {}) {
   if (sanitized.name) sanitized.name = sanitize(sanitized.name);
   if (sanitized.description) sanitized.description = sanitize(sanitized.description);
   if (sanitized.img) sanitized.img = sanitize(sanitized.img);
+  if (sanitized.config) sanitized.config = sanitizeConfig(sanitized.config);
   const produto = await sql.criarProduto(sanitized);
 
   auditService.audit({
@@ -57,6 +88,7 @@ async function atualizar(id, data, ctx = {}) {
   if (sanitized.name) sanitized.name = sanitize(sanitized.name);
   if (sanitized.description) sanitized.description = sanitize(sanitized.description);
   if (sanitized.img) sanitized.img = sanitize(sanitized.img);
+  if (sanitized.config !== undefined) sanitized.config = sanitizeConfig(sanitized.config);
   const atualizado = await sql.atualizarProduto(id, sanitized);
 
   const changedFields = Object.keys(sanitized);
