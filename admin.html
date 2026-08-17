@@ -139,6 +139,9 @@ function api(path, opts) {
   <div class="tab" data-tab="pronto"><i class="fas fa-check-circle"></i> Pronto <span class="tab-count" id="tabCountPronto">0</span></div>
   <div class="tab" data-tab="emRota"><i class="fas fa-truck"></i> Em Rota <span class="tab-count" id="tabCountRota">0</span></div>
    <div class="tab" data-tab="finalizado"><i class="fas fa-check-double"></i> Finalizados <span class="tab-count" id="tabCountFinalizado">0</span></div>
+   <div class="tab" data-tab="aguardandoPagamento"><i class="fas fa-hourglass-half"></i> Aguardando Pagamento</div>
+   <div class="tab" data-tab="reembolsos"><i class="fas fa-undo"></i> Reembolsos</div>
+   <div class="tab" data-tab="naoConcluidos"><i class="fas fa-ban"></i> Não Concluídos <span class="tab-count" id="tabCountNaoConcluidos">0</span></div>
 </div>
 
 <div id="pendente" class="tab-content active"></div>
@@ -146,6 +149,9 @@ function api(path, opts) {
 <div id="pronto" class="tab-content"></div>
 <div id="emRota" class="tab-content"></div>
 <div id="finalizado" class="tab-content"></div>
+<div id="aguardandoPagamento" class="tab-content" style="padding:8px;"></div>
+<div id="reembolsos" class="tab-content" style="padding:8px;"></div>
+<div id="naoConcluidos" class="tab-content" style="padding:8px;"></div>
 
 <div class="toast-container" id="toastContainer"></div>
 
@@ -172,6 +178,9 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById(tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'aguardandoPagamento') carregarAguardandoPagamento();
+    if (tab.dataset.tab === 'reembolsos') carregarReembolsos();
+    if (tab.dataset.tab === 'naoConcluidos') carregarNaoConcluidos();
   });
 });
 </script>
@@ -1460,6 +1469,261 @@ async function carregarPedidos() {
     toast('Erro ao carregar pedidos. Tentando novamente...', 'danger');
   }
 }
+async function carregarAguardandoPagamento() {
+  var el = document.getElementById('aguardandoPagamento');
+  el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  try {
+    var pedidos = await api('/pedidos?paymentStatus=aguardando_pagamento');
+    if (!pedidos || !pedidos.length) { el.innerHTML = '<div class="empty-state">Nenhum pedido aguardando pagamento</div>'; return; }
+    el.innerHTML = '';
+    pedidos.forEach(function(p) {
+      var card = document.createElement('div');
+      card.className = 'order-card status-' + (p.status || 'pendente');
+      card.dataset.status = p.status;
+      var nome = p.cliente?.nome || 'Cliente';
+      var total = fmtMoeda(p.valores?.total);
+      var created = p.createdAt ? new Date(p.createdAt).toLocaleString('pt-BR') : '-';
+      card.innerHTML =
+        '<div class="order-header no-toggle">' +
+          '<div class="order-header-left">' +
+            '<span class="order-name">' + escapeHtml(nome) + '</span>' +
+            '<span class="order-code">#' + String(p.id).slice(-6) + '</span>' +
+            '<span class="order-status status-' + (p.status || 'pendente') + '" style="font-size:11px;background:var(--warning);color:#fff;padding:2px 8px;border-radius:4px;">Aguardando Pagamento</span>' +
+          '</div>' +
+          '<div class="order-header-right">' +
+            '<span class="order-total">' + total + '</span>' +
+            '<i class="fas fa-chevron-down order-toggle" onclick="this.closest(\'.order-card\').classList.toggle(\'open\')"></i>' +
+          '</div>' +
+        '</div>' +
+        '<div class="order-body">' +
+          '<div class="order-info-grid">' +
+            '<div class="info-item"><strong>Whatsapp</strong>' + escapeHtml(p.cliente?.whatsapp || '-') + '</div>' +
+            '<div class="info-item"><strong>Pagamento</strong>' + escapeHtml(p.formaPagamento || '-') + '</div>' +
+            '<div class="info-item"><strong>Entrega</strong>' + escapeHtml(p.tipoEntrega || '-') + '</div>' +
+            '<div class="info-item"><strong>Criado em</strong>' + created + '</div>' +
+          '</div>' +
+          (p.itens ? fmtItens(p.itens) : '') +
+        '</div>';
+      el.appendChild(card);
+    });
+  } catch(e) {
+    el.innerHTML = '<div class="error-state">Erro ao carregar pedidos aguardando pagamento. <button onclick="carregarAguardandoPagamento()">Tentar novamente</button></div>';
+    toast('Erro ao carregar pedidos aguardando pagamento', 'danger');
+  }
+}
+
+async function carregarReembolsos() {
+  var el = document.getElementById('reembolsos');
+  el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  try {
+    var rejeitados = await api('/payment/rejeitados');
+    if (!rejeitados || !rejeitados.length) { el.innerHTML = '<div class="empty-state">Nenhum pagamento rejeitado para reembolso</div>'; return; }
+    var html = '<div style="overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+      '<thead><tr style="border-bottom:2px solid var(--border);text-align:left;">' +
+        '<th style="padding:8px;">Cliente</th>' +
+        '<th style="padding:8px;">WhatsApp</th>' +
+        '<th style="padding:8px;">Pedido</th>' +
+        '<th style="padding:8px;">Criado</th>' +
+        '<th style="padding:8px;">Rejeitado</th>' +
+        '<th style="padding:8px;">Valor</th>' +
+        '<th style="padding:8px;">Motivo</th>' +
+        '<th style="padding:8px;">Ação</th>' +
+      '</tr></thead><tbody>';
+    rejeitados.forEach(function(r) {
+      var criado = r.criadoEm ? new Date(r.criadoEm).toLocaleString('pt-BR') : '-';
+      var rejeitado = r.rejeitadoEm ? new Date(r.rejeitadoEm).toLocaleString('pt-BR') : '-';
+      var valor = r.valor != null ? fmtMoeda(r.valor) : '-';
+      var motivos = {
+        'NOT_ACCEPTED': 'Cartão não aceito',
+        'INTERNAL_ERROR': 'Erro interno',
+        'BY_PAYER': 'Cancelado pelo pagador',
+        'RETURNED': 'Devolvido',
+        'EXPIRED': 'Expirado'
+      };
+      var motivoTexto = motivos[r.motivo] || r.motivo || '-';
+      var jaReembolsado = r.refundId;
+      html += '<tr style="border-bottom:1px solid var(--border);">' +
+        '<td style="padding:8px;">' + escapeHtml(r.clienteNome || '-') + '</td>' +
+        '<td style="padding:8px;">' + escapeHtml(r.clienteWhatsapp || '-') + '</td>' +
+        '<td style="padding:8px;">#' + String(r.pedidoId || '').slice(-6) + '</td>' +
+        '<td style="padding:8px;">' + criado + '</td>' +
+        '<td style="padding:8px;">' + rejeitado + '</td>' +
+        '<td style="padding:8px;">' + valor + '</td>' +
+        '<td style="padding:8px;">' + escapeHtml(motivoTexto) + '</td>' +
+        '<td style="padding:8px;">' +
+          (jaReembolsado
+            ? '<span style="color:var(--success);font-weight:600;">Reembolsado</span>'
+            : '<button class="btn btn-reembolsar" data-refund-id="' + r.id + '" style="padding:4px 12px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;"><i class="fas fa-undo"></i> Reembolsar</button>') +
+        '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+    el.querySelectorAll('.btn-reembolsar').forEach(function(btn) {
+      btn.onclick = async function() {
+        var pagamentoId = btn.dataset.refundId;
+        var ok = await confirmModal('Confirmar reembolso deste pagamento?');
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = 'Processando...';
+        try {
+          await api('/payment/' + pagamentoId + '/refund', { method: 'POST' });
+          toast('✅ Reembolso solicitado com sucesso!', 'success');
+          carregarReembolsos();
+        } catch(e) {
+          toast('❌ Erro ao reembolsar: ' + e.message, 'danger');
+          btn.disabled = false;
+          btn.textContent = ' Reembolsar';
+        }
+      };
+    });
+  } catch(e) {
+    el.innerHTML = '<div class="error-state">Erro ao carregar reembolsos. <button onclick="carregarReembolsos()">Tentar novamente</button></div>';
+    toast('Erro ao carregar reembolsos', 'danger');
+  }
+}
+
+// --- Helper: formatar tempo decorrido (mesma lógica do backend) ---
+function formatarTempoDecorrido(dataISO) {
+  const diffMs = Date.now() - new Date(dataISO).getTime();
+  const minutos = Math.floor(diffMs / 60000);
+  if (minutos < 60) return minutos + 'min';
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return horas + 'h';
+  const dias = Math.floor(horas / 24);
+  const horasRest = horas % 24;
+  return dias + 'd ' + horasRest + 'h';
+}
+
+// --- Modal de limpeza de pedidos não concluídos ---
+function abrirModalLimpezaNaoConcluidos() {
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML =
+    '<div class="modal-box" style="max-width:700px;">' +
+      '<h3><i class="fas fa-broom"></i> Limpeza de Pedidos Não Concluídos</h3>' +
+      '<p style="margin:8px 0 16px;font-size:13px;color:var(--text-muted);">Pré-visualização dos pedidos que serão removidos (expirados ou rejeitados há mais de 30 dias).</p>' +
+      '<div id="limpezaPreview" style="max-height:300px;overflow-y:auto;"></div>' +
+      '<div class="modal-actions" style="margin-top:16px;">' +
+        '<button class="btn btn-modal-cancel" id="limpezaCancel">Cancelar</button>' +
+        '<button class="btn btn-delete" id="limpezaConfirm"><i class="fas fa-trash"></i> Confirmar Limpeza (30 dias)</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+
+  async function carregarPreview() {
+    var previewEl = overlay.querySelector('#limpezaPreview');
+    previewEl.innerHTML = '<div class="empty-state">Carregando...</div>';
+    try {
+      var data = await api('/admin/pedidos/preview-limpeza?dias=30');
+      if (!data || !data.pedidos || data.pedidos.length === 0) {
+        previewEl.innerHTML = '<div class="empty-state">Nenhum pedido para limpar (mais de 30 dias).</div>';
+        overlay.querySelector('#limpezaConfirm').disabled = true;
+        return;
+      }
+      var html = '<div style="font-size:13px;margin-bottom:12px;"><strong>Total: </strong>' + data.count + ' pedidos &nbsp;|&nbsp; <strong>Valor total: </strong>' + fmtMoeda(data.totalValor) + '</div>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">' +
+        '<thead><tr style="border-bottom:2px solid var(--border);text-align:left;">' +
+        '<th style="padding:6px;">ID</th>' +
+        '<th style="padding:6px;">Cliente</th>' +
+        '<th style="padding:6px;">Total</th>' +
+        '<th style="padding:6px;">Motivo</th>' +
+        '<th style="padding:6px;">Data</th>' +
+        '</tr></thead><tbody>';
+      data.pedidos.forEach(function(p) {
+        var motivoBadge = '';
+        if (p.motivo === 'expirado') {
+          motivoBadge = '<span style="background:var(--warning);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🟠 Expirado há ' + formatarTempoDecorrido(p.data) + '</span>';
+        } else if (p.motivo === 'rejeitado') {
+          motivoBadge = '<span style="background:var(--danger);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🔴 Rejeitado: ' + escapeHtml(p.detalhe || '-') + '</span>';
+        }
+        html += '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:6px;">' + escapeHtml(String(p.id).slice(-6)) + '</td>' +
+          '<td style="padding:6px;">' + escapeHtml(p.cliente || '-') + '</td>' +
+          '<td style="padding:6px;">' + fmtMoeda(p.total) + '</td>' +
+          '<td style="padding:6px;">' + motivoBadge + '</td>' +
+          '<td style="padding:6px;">' + (p.data ? new Date(p.data).toLocaleString('pt-BR') : '-') + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table>';
+      previewEl.innerHTML = html;
+    } catch(e) {
+      previewEl.innerHTML = '<div class="error-state">Erro ao carregar prévia: ' + e.message + '</div>';
+      overlay.querySelector('#limpezaConfirm').disabled = true;
+    }
+  }
+
+  carregarPreview();
+
+  overlay.querySelector('#limpezaConfirm').onclick = async function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Limpando...';
+    try {
+      var res = await api('/admin/pedidos/limpar-expirados', { method: 'POST', body: JSON.stringify({ dias: 30 }) });
+      toast('✅ ' + res.removidos + ' pedidos removidos (R$ ' + fmtMoeda(res.valorTotal) + ')', 'success');
+      overlay.remove();
+      carregarNaoConcluidos();
+    } catch(e) {
+      toast('❌ Erro: ' + e.message, 'danger');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Limpeza (30 dias)';
+    }
+  };
+
+  overlay.querySelector('#limpezaCancel').onclick = function() { overlay.remove(); };
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) { overlay.remove(); } });
+}
+
+// --- Carregar pedidos não concluídos ---
+async function carregarNaoConcluidos() {
+  var el = document.getElementById('naoConcluidos');
+  el.innerHTML = '<div class="empty-state">Carregando...</div>';
+  try {
+    var pedidos = await api('/pedidos/nao-concluidos');
+    if (!pedidos || !pedidos.length) {
+      el.innerHTML = '<div class="empty-state">Nenhum pedido não concluído encontrado</div>';
+      document.getElementById('tabCountNaoConcluidos').textContent = 0;
+      return;
+    }
+    document.getElementById('tabCountNaoConcluidos').textContent = pedidos.length;
+
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
+      '<h3 style="margin:0;">Não Concluídos (' + pedidos.length + ')</h3>' +
+      '<button class="btn btn-delete" onclick="abrirModalLimpezaNaoConcluidos()" style="padding:6px 12px;font-size:12px;"><i class="fas fa-broom"></i> Limpar (>30 dias)</button>' +
+      '</div>';
+    html += '<div style="overflow-x:auto;">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+      '<thead><tr style="border-bottom:2px solid var(--border);text-align:left;">' +
+      '<th style="padding:8px;">ID</th>' +
+      '<th style="padding:8px;">Cliente</th>' +
+      '<th style="padding:8px;">Total</th>' +
+      '<th style="padding:8px;">Motivo</th>' +
+      '<th style="padding:8px;">Data</th>' +
+      '</tr></thead><tbody>';
+    pedidos.forEach(function(p) {
+      var motivoBadge = '';
+      if (p.motivo === 'expirado') {
+        motivoBadge = '<span style="background:var(--warning);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🟠 Expirado há ' + formatarTempoDecorrido(p.data) + '</span>';
+      } else if (p.motivo === 'rejeitado') {
+        motivoBadge = '<span style="background:var(--danger);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🔴 Rejeitado: ' + escapeHtml(p.detalhe || '-') + '</span>';
+      }
+      html += '<tr style="border-bottom:1px solid var(--border);">' +
+        '<td style="padding:8px;">' + escapeHtml(String(p.id).slice(-6)) + '</td>' +
+        '<td style="padding:8px;">' + escapeHtml(p.cliente || '-') + '</td>' +
+        '<td style="padding:8px;">' + fmtMoeda(p.total) + '</td>' +
+        '<td style="padding:8px;">' + motivoBadge + '</td>' +
+        '<td style="padding:8px;">' + (p.data ? new Date(p.data).toLocaleString('pt-BR') : '-') + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="error-state">Erro ao carregar não concluídos. <button onclick="carregarNaoConcluidos()">Tentar novamente</button></div>';
+    toast('Erro ao carregar não concluídos', 'danger');
+  }
+}
+
 async function initAdmin() {
   try { var r = await fetch('/api/public/produtos'); window.products = await r.json() || []; } catch(e) { window.products = []; }
   carregarPedidos();

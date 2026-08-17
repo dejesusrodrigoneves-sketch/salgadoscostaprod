@@ -23,6 +23,8 @@ const publicRoutes = require('./routes/publicRoutes');
 const userRoutes = require('./routes/userRoutes');
 const entregaRoutes = require('./routes/entregaRoutes');
 const auditRoutes = require('./routes/auditRoutes');
+const { paymentRouter } = require('./routes/paymentRoutes');
+const { webhookRouter } = require('./routes/webhookRoutes');
 
 const app = express();
 
@@ -56,6 +58,8 @@ app.use('/api/public', publicRoutes);
 app.use('/api/usuarios', userRoutes);
 app.use('/api/entregas', entregaRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/payment', paymentRouter);
+app.use('/webhooks', webhookRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));

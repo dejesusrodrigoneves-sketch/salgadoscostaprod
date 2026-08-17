@@ -60,6 +60,10 @@
             <option value="pix">PIX</option>
           </select>
         </div>
+        <div id="campoCPF" style="display:none;">
+          <label for="cpfCliente">CPF (para PIX):</label>
+          <input type="text" id="cpfCliente" placeholder="000.000.000-00" maxlength="14" />
+        </div>
         <div id="campoTroco"><label for="trocoPara">Troco para quanto?</label><input type="number" id="trocoPara" min="0" step="0.01" /></div>
 
         <div class="division">
@@ -75,6 +79,9 @@
           <div class="item"><p>Valor do pedido:</p><span id="showAllItemsValue">Carregando...</span></div>
           <div class="item"><p>Taxa de entrega:</p><span id="showDelivery">Carregando...</span></div>
           <div class="item" id="taxaCartaoBox" style="display:none;"><p>Taxa de cartão: <span id="showTaxaCartao">Carregando...</span></div></p>
+          <div class="item" id="taxaPixBox" style="display:none;">
+            <p>Taxa de serviço PIX: <span id="showTaxaPix">Carregando...</span></p>
+          </div>
           <div class="item"><p>Desconto (cupom):</p><span id="showDiscount">Carregando...</span></div>
         </div>
 
@@ -102,6 +109,19 @@
       <p class="overlay-id">Pedido #<span id="overlayOrderId"></span></p>
       <div class="overlay-details" id="overlayDetails"></div>
       <button class="overlay-btn" onclick="fecharOverlay()">Ok</button>
+    </div>
+  </div>
+
+  <div id="pixOverlay" class="overlay hidden">
+    <div class="overlay-content">
+      <h2>Pagamento via PIX</h2>
+      <p>Pedido #<span id="pixOrderId"></span></p>
+      <img id="pixQrImg" alt="QR Code PIX" style="width:200px;height:200px;margin:12px 0;" />
+      <p>Código Copia e Cola</p>
+      <code id="pixCodeText" style="word-break:break-all;display:block;font-size:12px;margin:8px 0;"></code>
+      <button class="overlay-btn" onclick="copiarPix()">COPIAR CÓDIGO PIX</button>
+      <p id="pixStatusMsg" style="margin-top:12px;">Aguardando pagamento... O pedido será liberado após a confirmação do pagamento.</p>
+      <button class="overlay-btn" onclick="fecharPix()">Fechar</button>
     </div>
   </div>
 

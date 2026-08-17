@@ -5,6 +5,16 @@ const logger = require('./src/config/logger');
 app.listen(config.port, async () => {
   logger.info(`Servidor iniciado na porta ${config.port}`);
 
+  // Ensure PIX/Asaas columns + tables (idempotent)
+  try {
+    const prisma = require('./src/config/prisma');
+    const ensureColumns = require('./prisma/ensureColumns');
+    await ensureColumns(prisma);
+    logger.info('Schema ensure: colunas/tabelas PIX garantidas');
+  } catch (err) {
+    logger.error('Schema ensure falhou:', err.message);
+  }
+
   // Audit cleanup: purge client logs + enforce 90-day retention
   try {
     const { deleteClienteLogs, deleteOldLogs } = require('./src/repositories/auditRepository');

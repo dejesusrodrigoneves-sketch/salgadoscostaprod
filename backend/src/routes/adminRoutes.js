@@ -4,8 +4,12 @@ const authService = require('../services/authService');
 const { authenticate, authorize } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const clientAdminController = require('../controllers/clientAdminController');
+const orderController = require('../controllers/orderController');
 
 const router = Router();
+
+router.get('/pedidos/preview-limpeza', authenticate, authorize('superadmin', 'admin'), orderController.previewLimpeza);
+router.post('/pedidos/limpar-expirados', authenticate, authorize('superadmin', 'admin'), orderController.executarLimpeza);
 
 router.use(authenticate, authorize('superadmin'));
 

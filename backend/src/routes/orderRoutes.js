@@ -10,6 +10,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const router = Router();
 
 router.get('/', authenticate, controller.listar);
+router.get('/nao-concluidos', authenticate, controller.listarNaoConcluidos);
 router.get('/:id', authenticate, requireOwnership('pedido'), controller.buscar);
 router.post('/', authenticate, controller.criar);
 router.patch('/:id/status', authenticate, requireOwnership('pedido'), controller.atualizarStatus);

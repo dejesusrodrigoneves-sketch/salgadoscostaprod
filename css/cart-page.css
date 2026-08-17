@@ -4,7 +4,7 @@
    ═══════════════════════════════════════════════════════ */
 
 /* Manter todos os estilos já existentes */
-#campoNome, #campoWhatsapp, #campoCEP,#campoEndereco, #campoBairro, #campoPonto, #campoPagamento, #campoTroco, #campoNumero {
+#campoNome, #campoWhatsapp, #campoCEP,#campoEndereco, #campoBairro, #campoPonto, #campoPagamento, #campoTroco, #campoNumero, #campoCPF {
   margin: 15px 0;
   display: none;
 }
@@ -16,7 +16,8 @@
 #campoCEP label,
 #campoPonto label,
 #campoPagamento label,
-#campoTroco label {
+#campoTroco label,
+#campoCPF label {
   font-weight: 600;
   display: block;
   margin-bottom: 6px;
@@ -31,7 +32,8 @@
 #campoCEP input,
 #campoPonto input,
 #campoTroco input,
-#campoPagamento select {
+#campoPagamento select,
+#campoCPF input {
   width: 100%;
   padding: 8px 10px;
   font-size: 1rem;
@@ -47,7 +49,8 @@
 #campoEndereco input:focus,
 #campoPonto input:focus,
 #campoTroco input:focus,
-#campoPagamento select:focus {
+#campoPagamento select:focus,
+#campoCPF input:focus {
   outline: none;
   border-color: #ff5722;
   box-shadow: 0 0 6px rgba(255, 87, 34, 0.5);

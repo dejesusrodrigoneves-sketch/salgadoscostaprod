@@ -4,6 +4,7 @@ let modaisState = {};
 let deliveryValue = 0;
 let discountPercent = 0;
 let taxaCartao = 0;
+let taxaPix = 0;
 let pacoteSelecionado = null;
 
 const pacotesFixos = [201,202,203,204,205,206,207,401,402];
@@ -165,9 +166,16 @@ if(formaPagamento.value === "debito"){
 
   totalComDesconto += taxaCartao;
 
+} else if (formaPagamento.value === "pix") {
+  document.getElementById("taxaPixBox").style.display = "block";
+  document.getElementById("showTaxaPix").textContent =
+    "+ R$ " + taxaPix.toFixed(2).replace(".", ",");
+  totalComDesconto += taxaPix;
 } else {
   taxaCartao = 0;
+  taxaPix = 0;
   document.getElementById("taxaCartaoBox").style.display = "none";
+  document.getElementById("taxaPixBox").style.display = "none";
 }
 
 
@@ -649,6 +657,8 @@ function atualizarCamposEntrega(tipo){
     campoPagamento.style.display="block";
     campoTroco.style.display=formaPagamento.value==="dinheiro"?"block":"none";
   }
+  const campoCPF = document.getElementById("campoCPF");
+  if (campoCPF) campoCPF.style.display = (formaPagamento.value === "pix") ? "block" : "none";
   updateValores();
 }
 
@@ -779,6 +789,14 @@ async function generateOrder() {
   const desconto = (discountPercent > 0) ? ((valorItens + deliveryValueLocal) * discountPercent / 100) : 0;
   const totalFinal = valorItens + deliveryValueLocal + taxaCartaoLocal - desconto;
 
+  const cpfCliente = document.getElementById("cpfCliente")?.value.replace(/\D/g, "") || "";
+  if (formaPagamentoValue === "pix" && cpfCliente.length !== 11) {
+    toast("Informe um CPF válido para pagamento via PIX.", 'warning');
+    btnGenerateOrder.disabled = false;
+    btnGenerateOrder.textContent = "Gerar Pedido";
+    return;
+  }
+
   const payload = {
     clienteNome: nome,
     clienteWhatsapp: whatsapp,
@@ -797,13 +815,28 @@ async function generateOrder() {
     taxasCartao: taxaCartaoLocal,
     desconto: desconto,
     total: totalFinal,
+    cpf: cpfCliente,
   };
 
   try {
     var result = await PUBLIC_API.criarPedido(payload);
+
+  // Atualiza taxa PIX se veio do backend
+  if (result.pagamento && result.pagamento.taxaServico !== undefined) {
+    taxaPix = Number(result.pagamento.taxaServico);
+    document.getElementById("showTaxaPix").textContent =
+      "+ R$ " + taxaPix.toFixed(2).replace(".", ",");
+    document.getElementById("taxaPixBox").style.display = "block";
+    updateValores(); // recalcula total com taxa real
+  }
+
     localStorage.removeItem("cart");
     renderizaItens();
-    mostrarConfirmacaoPedido(result.id, itensFormatados, totalFinal);
+    if (result.pagamento && result.pagamento.pixCode) {
+      mostrarPagamentoPix(result.id, result.pagamento, itensFormatados, totalFinal);
+    } else {
+      mostrarConfirmacaoPedido(result.id, itensFormatados, totalFinal);
+    }
   } catch (error) {
     console.error("Erro ao salvar pedido:", error);
     toast(error.message || "Erro ao salvar pedido.", 'danger');
@@ -813,6 +846,48 @@ async function generateOrder() {
   }
 }
 
+
+// ---------------- OVERLAY PIX ---------------- //
+function mostrarPagamentoPix(orderId, pagamento, itens, total) {
+  const el = document.getElementById("pixOverlay");
+  if (!el) return;
+  document.getElementById("pixQrImg").src = "data:image/png;base64," + pagamento.pixQrCode;
+  document.getElementById("pixCodeText").textContent = pagamento.pixCode;
+  document.getElementById("pixOrderId").textContent = orderId;
+  document.getElementById("pixStatusMsg").textContent = "Aguardando pagamento... O pedido será liberado após a confirmação do pagamento.";
+  el.classList.remove("hidden");
+
+  // SSE
+  try {
+    var es = new EventSource("/api/payment/status/" + encodeURIComponent(orderId));
+    es.onmessage = function (ev) {
+      var data = JSON.parse(ev.data);
+      if (data.status === "pago") {
+        document.getElementById("pixStatusMsg").textContent = "Pagamento confirmado! Pedido recebido com sucesso.";
+        es.close();
+      } else if (data.status === "expirado") {
+        document.getElementById("pixStatusMsg").textContent = "Pagamento expirado. Gere um novo pedido.";
+        es.close();
+      }
+    };
+  } catch (e) {
+    // fallback polling
+  }
+}
+
+function copiarPix() {
+  var code = document.getElementById("pixCodeText").textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(code).then(function(){ toast("Código copiado!"); });
+  } else {
+    toast("Código copiado!");
+  }
+}
+
+function fecharPix() {
+  var el = document.getElementById("pixOverlay");
+  if (el) el.classList.add("hidden");
+}
 
 // ---------------- OVERLAY CONFIRMAÇÃO ---------------- //
 function mostrarConfirmacaoPedido(orderId, itens, total) {

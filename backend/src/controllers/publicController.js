@@ -242,9 +242,13 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
 })];
 
 exports.criarPedido = asyncHandler(async (req, res) => {
-  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, total } = req.body;
+  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, total, cpf } = req.body;
   if (!clienteNome || !itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ error: 'Dados do pedido incompletos' });
+  }
+  const ehPix = String(formaPagamento || '').toLowerCase() === 'pix';
+  if (ehPix && (!cpf || !/^\d{11}$/.test(String(cpf).replace(/\D/g, '')))) {
+    return res.status(400).json({ error: 'CPF obrigatório para pagamento via PIX' });
   }
   const pedidoId = await sql.nextPedidoId();
 
@@ -272,7 +276,9 @@ exports.criarPedido = asyncHandler(async (req, res) => {
       tipoEntrega: tipoEntrega || 'delivery',
       formaPagamento: formaPagamento || null,
       troco: troco ? Number(troco) : null,
-      status: 'pendente',
+      status: ehPix ? 'aguardando_pagamento' : 'pendente',
+      paymentStatus: ehPix ? 'aguardando_pagamento' : null,
+      paymentMethod: ehPix ? 'pix' : null,
       valoresItens,
       taxasEntrega: taxasEntrega !== undefined ? Number(taxasEntrega) : 0,
       taxasCartao: taxasCartao !== undefined ? Number(taxasCartao) : 0,
@@ -300,6 +306,31 @@ exports.criarPedido = asyncHandler(async (req, res) => {
     changedFields: ['clienteNome', 'clienteWhatsapp', 'total', 'status', 'tipoEntrega', 'formaPagamento'],
     metadata: { itensCount: itensPedido.length, url: req.context?.path },
   });
+
+  if (ehPix) {
+    const paymentService = (await import('../services/paymentService.js')).default;
+    const pagamento = await paymentService.criarPixPedido(pedido.id, {
+      cliente: {
+        id: req.cliente?.id || null,
+        nome: clienteNome,
+        cpf: String(cpf).replace(/\D/g, ''),
+        telefone: clienteWhatsapp,
+        asaasCustomerId: null,
+      },
+      valor: Number(pedido.total),
+    });
+    return res.status(201).json({
+      id: pedido.id,
+      status: pedido.status,
+      pagamento: {
+        id: pagamento.id,
+        pixCode: pagamento.pixCode,
+        pixQrCode: pagamento.pixQrCode,
+        expiresAt: pagamento.expiresAt,
+        taxaServico: pagamento.taxaServico,
+      },
+    });
+  }
 
   res.status(201).json({ id: pedido.id, status: pedido.status });
 });
