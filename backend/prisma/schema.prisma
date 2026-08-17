@@ -43,6 +43,7 @@ model Empresa {
   pedidos           Pedido[]
   produtos          Produto[]
   usuarios          Usuario[]
+  pagamentos        Pagamento[]
   whatsappInstances WhatsAppInstance[]
 
   @@map("empresas")
@@ -122,9 +123,16 @@ model Pedido {
   lon               Decimal?      @db.Decimal(10, 7)
   createdAt         DateTime      @default(now()) @map("criado_em")
   finalizadoEm      DateTime?     @map("finalizado_em")
+  paymentStatus     String?       @map("payment_status")
+  paymentMethod     String?       @map("payment_method")
+  paymentId         Int?          @map("payment_id")
+  deletedAt         DateTime?     @map("deleted_em")
+  pagamentos        Pagamento[]
   itens             ItensPedido[]
   empresa           Empresa       @relation(fields: [empresaId], references: [id])
 
+  @@index([paymentStatus])
+  @@index([deletedAt])
   @@map("pedidos")
 }
 
@@ -135,10 +143,44 @@ model ItensPedido {
   quantidade    Int
   precoUnitario Decimal? @map("preco_unitario") @db.Decimal(10, 2)
   sabores       String?
-  pedido        Pedido   @relation(fields: [pedidoId], references: [id])
+  pedido        Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   produto       Produto  @relation(fields: [produtoId], references: [id])
 
   @@map("itens_pedido")
+}
+
+model Pagamento {
+  id               Int       @id @default(autoincrement())
+  pedidoId         String    @map("pedido_id")
+  empresaId        Int       @map("empresa_id")
+  asaasPaymentId   String    @unique @map("asaas_payment_id")
+  asaasCustomerId  String?   @map("asaas_customer_id")
+  metodo           String    @default("pix")
+  valor            Decimal   @db.Decimal(10, 2)
+  pixCode          String?   @map("pix_code")
+  pixQrCode        String?   @map("pix_qr_code")
+  status           String    @default("aguardando_pagamento")
+  expiresAt        DateTime? @map("expira_em")
+  paidAt           DateTime? @map("pago_em")
+  rejeitadoEm      DateTime? @map("rejeitado_em")
+  refundId         String?   @map("refund_id")
+  refundStatus     String?   @map("refund_status")
+  refundReason     String?   @map("refund_reason")
+  refundedAt       DateTime? @map("refundado_em")
+  createdAt        DateTime  @default(now()) @map("criado_em")
+  pedido           Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  empresa          Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([pedidoId])
+  @@index([empresaId, status])
+  @@map("pagamentos")
+}
+
+model ProcessedWebhook {
+  eventId   String   @id
+  createdAt DateTime @default(now()) @map("criado_em")
+
+  @@map("processed_webhooks")
 }
 
 model Entregador {
@@ -222,6 +264,7 @@ model Cliente {
   cep             String?
   pontoReferencia String?  @map("ponto_referencia")
   passwordHash    String?  @map("password_hash")
+  asaasCustomerId String?  @map("asaas_customer_id")
   createdAt       DateTime @default(now()) @map("criado_em")
   consentimentoAt DateTime? @map("consentimento_em")
   consentimentoRevogadoAt DateTime? @map("consentimento_revogado_em")

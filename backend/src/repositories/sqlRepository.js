@@ -33,16 +33,22 @@ const sql = {
 
   // ---- Pedidos ----
   async listarPedidos(filtros = {}) {
-    const where = { empresaId: EMPRESA_ID, ...filtros };
+    const where = { empresaId: EMPRESA_ID, deletedAt: null, ...filtros };
     return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true } });
   },
   async listarPedidosFiltrados(filtros) {
-    const where = { empresaId: EMPRESA_ID };
+    const where = { empresaId: EMPRESA_ID, deletedAt: null };
     
     if (filtros?.status?.trim()) {
       const statusList = filtros.status.split(',').map(s => s.trim()).filter(Boolean);
       if (statusList.length === 1) where.status = statusList[0];
       else if (statusList.length > 1) where.status = { in: statusList };
+    }
+    
+    if (filtros?.paymentStatus?.trim()) {
+      const psList = filtros.paymentStatus.split(',').map(s => s.trim()).filter(Boolean);
+      if (psList.length === 1) where.paymentStatus = psList[0];
+      else if (psList.length > 1) where.paymentStatus = { in: psList };
     }
     
     const hasValidFrom = filtros?.createdAtFrom && !isNaN(Date.parse(filtros.createdAtFrom));
@@ -58,11 +64,11 @@ const sql = {
     return prisma.pedido.findMany({ where, orderBy: { createdAt: order }, include: { itens: true } });
   },
   async buscarPedido(id) {
-    return prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
+    return prisma.pedido.findUnique({ where: { id, deletedAt: null }, include: { itens: true } });
   },
   async buscarPedidoComItens(id) {
     return prisma.pedido.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       include: { itens: { include: { produto: { select: { name: true } } } } }
     });
   },
@@ -91,6 +97,21 @@ const sql = {
   },
   async atualizarPedido(id, data) {
     return prisma.pedido.update({ where: { id }, data });
+  },
+
+  // ---- Webhooks / Pagamentos ----
+  async buscarEventoWebhook(eventId) {
+    return prisma.processedWebhook.findUnique({ where: { eventId } });
+  },
+  async criarEventoWebhook(eventId) {
+    return prisma.processedWebhook.create({ data: { eventId } });
+  },
+  async listarPagamentosRejeitados() {
+    return prisma.pagamento.findMany({
+      where: { empresaId: EMPRESA_ID, status: 'rejeitado', refundId: null },
+      include: { pedido: true },
+      orderBy: { rejeitadoEm: 'desc' },
+    });
   },
 
   // ---- Entregadores ----
@@ -255,6 +276,23 @@ const sql = {
   },
   async criarEmpresa(data) {
     return prisma.empresa.create({ data });
+  },
+
+  // ---- Pedidos (soft-delete helpers) ----
+  async listarNaoConcluidos(filtros = {}) {
+    const where = { empresaId: EMPRESA_ID, paymentStatus: { in: ['expirado', 'rejeitado'] }, deletedAt: null, ...filtros };
+    return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true, pagamentos: true } });
+  },
+  async hardDeletePedidos(ids) {
+    return prisma.$transaction(ids.map(id => prisma.pedido.delete({ where: { id } })));
+  },
+  async listarParaLimpeza(dias = 30) {
+    const cutoff = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+    return prisma.pedido.findMany({
+      where: { deletedAt: { lt: cutoff } },
+      select: { id: true, paymentStatus: true, deletedAt: true, total: true, clienteNome: true },
+      orderBy: { deletedAt: 'asc' }
+    });
   },
 };
 

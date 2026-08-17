@@ -325,4 +325,27 @@ async function editarPedido(id, data, ctx = {}) {
   return sql.buscarPedido(id);
 }
 
-module.exports = { listar, buscar, criar, atualizarStatus, deletarPedido, finalizarPedido, listarFiltrado, darBaixaEstoque, processarEdicaoPedido, editarPedido, agruparItens };
+async function listarNaoConcluidos(filtros) {
+  return sql.listarNaoConcluidos(filtros);
+}
+
+async function limparPedidosAntigos(dias = 30) {
+  const pedidos = await sql.listarParaLimpeza(dias);
+  if (!pedidos || pedidos.length === 0) return { deletados: 0, ids: [] };
+
+  const ids = pedidos.map(p => p.id);
+  await sql.hardDeletePedidos(ids);
+
+  for (const p of pedidos) {
+    auditService.appLog({
+      level: 'info',
+      message: 'PEDIDO_LIMPO',
+      module: 'pedidos',
+      meta: { pedidoId: p.id, motivo: 'limpeza_automatica', diasRetencao: dias },
+    });
+  }
+
+  return { deletados: ids.length, ids };
+}
+
+module.exports = { listar, buscar, criar, atualizarStatus, deletarPedido, finalizarPedido, listarFiltrado, darBaixaEstoque, processarEdicaoPedido, editarPedido, agruparItens, listarNaoConcluidos, limparPedidosAntigos };
