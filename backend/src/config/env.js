@@ -19,6 +19,7 @@ module.exports = {
   asaasEnv: process.env.ASAAS_ENV || 'production',
   asaasPixExpiryMin: Number(process.env.ASAAS_PIX_EXPIRY_MIN) || 5,
   asaasPixFeePercent: Number(process.env.ASAAS_PIX_FEE_PERCENT) || 2,
+  pixSyncCron: process.env.PIX_SYNC_CRON || '*/2 * * * *',
   pedidoRetencaoDias: Number(process.env.PEDIDO_RETENCAO_DIAS) || 30,
   pixEnabled: process.env.PIX_ENABLED === 'true',
 };

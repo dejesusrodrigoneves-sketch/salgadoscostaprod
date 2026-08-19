@@ -78,10 +78,8 @@
           <h3>Informações</h3>
           <div class="item"><p>Valor do pedido:</p><span id="showAllItemsValue">Carregando...</span></div>
           <div class="item"><p>Taxa de entrega:</p><span id="showDelivery">Carregando...</span></div>
-          <div class="item" id="taxaCartaoBox" style="display:none;"><p>Taxa de cartão: <span id="showTaxaCartao">Carregando...</span></div></p>
-          <div class="item" id="taxaPixBox" style="display:none;">
-            <p>Taxa de serviço PIX: <span id="showTaxaPix">Carregando...</span></p>
-          </div>
+          <div class="item" id="taxaCartaoBox" style="display:none;"><p>Taxa de cartão:</p><span id="showTaxaCartao">Carregando...</span></div>
+          <div class="item" id="taxaPixBox" style="display:none;"><p>Taxa de serviço PIX:</p><span id="showTaxaPix">Carregando...</span></div>
           <div class="item"><p>Desconto (cupom):</p><span id="showDiscount">Carregando...</span></div>
         </div>
 
@@ -107,7 +105,7 @@
       <span class="overlay-icon">&#10003;</span>
       <h2>Pedido Confirmado!</h2>
       <p class="overlay-id">Pedido #<span id="overlayOrderId"></span></p>
-      <div class="overlay-details" id="overlayDetails"></div>
+      <p class="overlay-id">Acompanhe Seu Pedido Pelo Whatsapp</p>
       <button class="overlay-btn" onclick="fecharOverlay()">Ok</button>
     </div>
   </div>
@@ -116,6 +114,7 @@
     <div class="overlay-content">
       <h2>Pagamento via PIX</h2>
       <p>Pedido #<span id="pixOrderId"></span></p>
+      <div class="overlay-details" id="pixOrderDetails"></div>
       <img id="pixQrImg" alt="QR Code PIX" style="width:200px;height:200px;margin:12px 0;" />
       <p>Código Copia e Cola</p>
       <code id="pixCodeText" style="word-break:break-all;display:block;font-size:12px;margin:8px 0;"></code>
@@ -129,6 +128,8 @@
   <script src="../js/utils.js"></script>
   <script src="../js/apiHelper.js"></script>
 </body>
-<script src="../js/cart.js?=17"></script>
+  <script src="../js/comboConfig.js"></script>
+  <script src="../js/comboLimite.js"></script>
+  <script src="../js/cart.js?=17"></script>
 <script src="../js/theme.js" defer></script>
 </html>

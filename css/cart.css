@@ -773,3 +773,35 @@ img {
     padding: 30px 20px;
   }
 }
+
+.combo-sabores {
+  background: #f7f7f7;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+.combo-sabores .sabor-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #333;
+  padding: 3px 0;
+}
+.combo-sabores .btn-editar-combo {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #1FA58D;
+  border-radius: 8px;
+  background: #fff;
+  color: #1FA58D;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.combo-sabores .btn-editar-combo:hover {
+  background: #1FA58D;
+  color: #fff;
+}

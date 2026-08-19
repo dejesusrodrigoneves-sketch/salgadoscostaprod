@@ -97,6 +97,50 @@ body { background: var(--secondary) !important; color: var(--text) !important; }
 .error-state button:hover {
   background: var(--primary-hover);
 }
+
+/* Mini-cart bar (overlay admin) */
+.admin-mini-cart{background:var(--surface);display:flex;flex-direction:column;width:100%;max-height:52px;overflow:hidden;box-shadow:0 -2px 8px rgba(0,0,0,0.08);transition:max-height 0.3s ease,box-shadow 0.3s ease;}
+.admin-mini-cart:hover{box-shadow:0 -2px 12px rgba(242,109,61,0.15);}
+.admin-mini-cart.aberto{max-height:50vh;overflow-y:auto;box-shadow:0 -4px 20px rgba(242,109,61,0.12);}
+.admin-mini-cart .mini-cart-lista,.admin-mini-cart .mini-cart-footer{display:none;}
+.admin-mini-cart.aberto .mini-cart-lista,.admin-mini-cart.aberto .mini-cart-footer{display:flex;}
+.admin-mini-cart-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--secondary);cursor:pointer;border-bottom:1px solid var(--border);border-radius:10px 10px 0 0;transition:background 0.2s;user-select:none;}
+.admin-mini-cart-header h4{margin:0;font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;}
+.admin-mini-cart-header .chevron{transition:transform 0.25s ease;font-size:12px;color:var(--text-muted);}
+.admin-mini-cart.aberto .admin-mini-cart-header .chevron{transform:rotate(180deg);}
+.admin-mini-cart-header .badge{background:var(--primary);color:#fff;border-radius:50%;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.admin-mini-cart-header .fechar-btn{background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer;padding:0 4px;transition:color 0.15s;}
+.admin-mini-cart-header .fechar-btn:hover{color:var(--text);}
+.admin-mini-cart-lista{flex:1;overflow-y:auto;padding:8px 12px;width:100%;}
+.admin-mini-cart-item{display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 12px;margin:4px 0;border-left:3px solid var(--primary);border-radius:0 8px 8px 0;background:var(--secondary);transition:background 0.15s;}
+.admin-mini-cart-item:last-child{border-bottom:none;}
+.admin-mini-cart-item .nome{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text);line-height:1.3;}
+.admin-mini-cart-item .nome small{display:block;font-weight:400;color:var(--text-muted);font-size:11px;margin-top:2px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.admin-mini-cart-item .preco{font-size:12px;font-weight:600;color:var(--primary);white-space:nowrap;margin-top:1px;flex-shrink:0;}
+.admin-mini-cart-item .qtd-display{font-size:13px;font-weight:700;min-width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-bg);color:var(--primary);border-radius:6px;margin-top:1px;flex-shrink:0;}
+.admin-mini-cart-footer{padding:12px 16px;border-top:2px solid var(--border);background:var(--secondary);display:flex;align-items:center;justify-content:space-between;width:100%;}
+.admin-mini-cart-footer .total-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+.admin-mini-cart-footer .total-mini{font-size:18px;font-weight:800;color:var(--success);}
+@media(max-width:480px){
+  .admin-mini-cart-header{padding:10px 12px;}
+  .admin-mini-cart-header h4{font-size:13px;}
+  .admin-mini-cart-item{padding:8px 10px;gap:8px;}
+  .admin-mini-cart-item .nome{font-size:12px;}
+  .admin-mini-cart-item .nome small{font-size:10px;}
+  .admin-mini-cart-item .preco{font-size:11px;}
+  .admin-mini-cart-item .qtd-display{font-size:12px;min-width:22px;height:22px;}
+  .admin-mini-cart-footer{padding:10px 12px;}
+  .admin-mini-cart-footer .total-mini{font-size:16px;}
+  .admin-mini-cart-lista{padding:6px 8px;}
+}
+@media(min-width:769px){
+  .admin-mini-cart-item{padding:12px 16px;gap:12px;}
+  .admin-mini-cart-item .nome{font-size:14px;}
+  .admin-mini-cart-item .nome small{font-size:12px;}
+  .admin-mini-cart-item .preco{font-size:13px;}
+  .admin-mini-cart-item .qtd-display{font-size:14px;min-width:28px;height:28px;}
+  .admin-mini-cart-footer .total-mini{font-size:20px;}
+}
 </style>
 <script src="js/utils.js"></script>
 <script>
@@ -654,7 +698,7 @@ function modalEditarItens(p) {
     if (!produtos.length) {
       try {
         var r = await fetch('/api/public/produtos');
-        produtos = await r.json() || [];
+        var d = await r.json(); produtos = Array.isArray(d) ? d : [];
         window.products = produtos;
       } catch(e) { console.error('Falha ao carregar produtos', e); }
     }
@@ -793,16 +837,22 @@ function abrirOverlayAdicionar(p, docId) {
             <iframe src="balcao.html?embedded=1" id="iframeBalcao"
                     style="width:100%;height:calc(100vh - 140px);border:none;"></iframe>
           </div>
-          <div class="modal-footer flex-column align-items-stretch p-0" style="max-height:40vh;overflow-y:auto;">
-            <div id="footerItens" class="list-group list-group-flush" style="max-height:200px;overflow-y:auto;">
-              <div class="list-group-item text-muted text-center py-3">Nenhum item selecionado</div>
-            </div>
-            <div class="d-flex align-items-center justify-content-between p-3 border-top">
-              <span class="text-muted" id="contadorNovosItens">0 itens selecionados</span>
-              <div>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btnSalvarItens" disabled>Salvar Alterações</button>
+          <div class="modal-footer d-flex flex-column p-0">
+            <!-- Mini-cart bar (admin) -->
+            <div class="admin-mini-cart" id="adminMiniCart" style="display:none;">
+              <div class="admin-mini-cart-header" onclick="toggleAdminMiniCart()">
+                <div><h4><i class="fas fa-chevron-down chevron"></i> Carrinho <span class="badge" id="adminMiniCartBadge">0</span></h4></div>
+                <button class="fechar-btn" onclick="event.stopPropagation();fecharAdminMiniCart()">✕</button>
               </div>
+              <div class="admin-mini-cart-lista" id="adminMiniCartLista"></div>
+              <div class="admin-mini-cart-footer">
+                <span class="total-label">Total</span>
+                <span class="total-mini" id="adminMiniCartTotal">R$ 0,00</span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-end p-3">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="btnSalvarItens" disabled>Salvar Alterações</button>
             </div>
           </div>
         </div>
@@ -816,33 +866,7 @@ function abrirOverlayAdicionar(p, docId) {
   var modal = new bootstrap.Modal(modalEl);
 
   var btnSalvar = document.getElementById('btnSalvarItens');
-  var contador = document.getElementById('contadorNovosItens');
   var novosItens = [];
-
-  function renderFooterItens() {
-    var footer = document.getElementById('footerItens');
-    if (!footer) return;
-    if (!novosItens.length) {
-      footer.innerHTML = '<div class="list-group-item text-muted text-center py-3">Nenhum item selecionado</div>';
-      return;
-    }
-    var total = 0;
-    var html = '';
-    novosItens.forEach(function(n) {
-      var sub = Number(n.precoUnitario) * Number(n.quantidade);
-      total += sub;
-      var nome = n.nome || n.produtoId;
-      var qtd = Number(n.quantidade);
-      var preco = Number(n.precoUnitario);
-      html += '<div class="list-group-item d-flex justify-content-between align-items-center">' +
-        '<div><strong>' + nome + '</strong> <span class="text-muted">x' + qtd + '</span></div>' +
-        '<span class="fw-bold">R$ ' + sub.toFixed(2) + '</span>' +
-        '</div>';
-    });
-    html += '<div class="list-group-item d-flex justify-content-between align-items-center bg-light">' +
-      '<strong>Total</strong><strong>R$ ' + total.toFixed(2) + '</strong></div>';
-    footer.innerHTML = html;
-  }
 
   function onMessage(e) {
     if (e.origin !== window.location.origin) return;
@@ -859,11 +883,70 @@ function abrirOverlayAdicionar(p, docId) {
         }
       });
       btnSalvar.disabled = novosItens.length === 0;
-      contador.textContent = novosItens.length + (novosItens.length === 1 ? ' item selecionado' : ' itens selecionados');
-      renderFooterItens();
+    }
+    // Mini-cart update from iframe
+    if (e.data && e.data.type === 'CARRINHO_UPDATE' && Array.isArray(e.data.itens)) {
+      updateAdminMiniCart(e.data.itens, e.data.total, e.data.totalItens);
     }
   }
   window.addEventListener('message', onMessage);
+
+  // Mini-cart functions
+  var adminMiniCart = document.getElementById('adminMiniCart');
+  var adminMiniCartBadge = document.getElementById('adminMiniCartBadge');
+  var adminMiniCartLista = document.getElementById('adminMiniCartLista');
+  var adminMiniCartTotal = document.getElementById('adminMiniCartTotal');
+
+  function updateAdminMiniCart(itens, total, totalItens) {
+    if (!adminMiniCart || !adminMiniCartBadge || !adminMiniCartLista || !adminMiniCartTotal) return;
+    if (!itens || !itens.length) {
+      adminMiniCart.style.display = 'none';
+      adminMiniCart.classList.remove('aberto');
+      adminMiniCartBadge.textContent = '0';
+      adminMiniCartLista.innerHTML = '';
+      adminMiniCartTotal.textContent = 'R$ 0,00';
+      return;
+    }
+    adminMiniCart.style.display = 'flex';
+    adminMiniCartBadge.textContent = totalItens;
+    adminMiniCartTotal.textContent = 'R$ ' + total.toFixed(2);
+    
+    var html = '';
+    itens.forEach(function(item) {
+      var saboresText = '';
+      if (item.sabores) {
+        try {
+          var s = JSON.parse(item.sabores);
+          saboresText = Object.entries(s).map(function(kv) { return kv[0] + ' (' + kv[1] + ')'; }).join(', ');
+        } catch (e) { saboresText = item.sabores; }
+      }
+      var tipo = item.produto ? item.produto.tipo : 1;
+      var controlesHtml = '';
+      // Note: edit/remove would need to communicate back to iframe
+      html += '<div class="admin-mini-cart-item">'
+        + '<div class="nome">'
+        + item.nome
+        + (saboresText ? '<small>' + saboresText + '</small>' : '')
+        + '</div>'
+        + '<span class="preco">R$ ' + Number(item.preco).toFixed(2) + '</span>'
+        + '<span class="qtd-display">\u00d7' + item.quantidade + '</span>'
+        + '</div>';
+    });
+    adminMiniCartLista.innerHTML = html;
+  }
+
+  function toggleAdminMiniCart() {
+    if (!adminMiniCart) return;
+    adminMiniCart.classList.toggle('aberto');
+  }
+
+  function fecharAdminMiniCart() {
+    if (!adminMiniCart) return;
+    adminMiniCart.classList.remove('aberto');
+  }
+
+  window.toggleAdminMiniCart = toggleAdminMiniCart;
+  window.fecharAdminMiniCart = fecharAdminMiniCart;
 
   var pollTimer = setInterval(function() {
     if (iframe.contentWindow) {
@@ -1725,7 +1808,7 @@ async function carregarNaoConcluidos() {
 }
 
 async function initAdmin() {
-  try { var r = await fetch('/api/public/produtos'); window.products = await r.json() || []; } catch(e) { window.products = []; }
+  try { var r = await fetch('/api/public/produtos'); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
   carregarPedidos();
 }
 initAdmin();

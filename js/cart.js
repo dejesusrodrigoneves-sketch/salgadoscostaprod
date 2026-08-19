@@ -5,6 +5,7 @@ let deliveryValue = 0;
 let discountPercent = 0;
 let taxaCartao = 0;
 let taxaPix = 0;
+let asaasPixFeePercent = 2;
 let pacoteSelecionado = null;
 
 const pacotesFixos = [201,202,203,204,205,206,207,401,402];
@@ -106,6 +107,16 @@ function fecharOverlayBairro() {
 
 carregarBairros();
 
+function carregarConfig() {
+  fetch('/api/public/config').then(function(r) { return r.json(); }).then(function(config) {
+    if (config.asaasPixFeePercent !== undefined) {
+      asaasPixFeePercent = Number(config.asaasPixFeePercent) || 2;
+    }
+    updateValores();
+  }).catch(function(e) { console.warn('Erro ao carregar config:', e); });
+}
+carregarConfig();
+
 function getCart(){ return JSON.parse(localStorage.getItem('cart')) || []; }
 function setCart(cart){ localStorage.setItem("cart", JSON.stringify(cart)); }
 
@@ -160,14 +171,15 @@ if(formaPagamento.value === "debito"){
 
   taxaCartao = totalComDesconto * percentual;
 
-  document.getElementById("taxaCartaoBox").style.display = "block";
+  document.getElementById("taxaCartaoBox").style.display = "flex";
   document.getElementById("showTaxaCartao").textContent =
     "+ R$ " + taxaCartao.toFixed(2).replace(".", ",");
 
   totalComDesconto += taxaCartao;
 
 } else if (formaPagamento.value === "pix") {
-  document.getElementById("taxaPixBox").style.display = "block";
+  taxaPix = totalComDesconto * (asaasPixFeePercent / 100);
+  document.getElementById("taxaPixBox").style.display = "flex";
   document.getElementById("showTaxaPix").textContent =
     "+ R$ " + taxaPix.toFixed(2).replace(".", ",");
   totalComDesconto += taxaPix;
@@ -234,13 +246,29 @@ function renderizaItens(){
       </div>
       <div class="sabores-container" id="sabores-${item.id}"></div>`;
       if (prod.sabores && Object.keys(prod.sabores).length > 0) {
-        const saboresArray = Object.entries(prod.sabores)
-          .filter(([idSabor,qtd]) => qtd>0)
-          .map(([idSabor,qtd]) => {
-            const s = window.products.find(p => p.id == idSabor);
-            return `${qtd}x ${escapeHtml(s.name)}`;
-          });
-        html += `<p class="caixaItem">${saboresArray.join(', <br />')}</p>`;
+        const ehCombo = item && item.config && ComboConfig && ComboConfig.tipoDe(item.config) === 'combo_salgado';
+        if (ehCombo) {
+          const linhas = Object.entries(prod.sabores)
+            .filter(([,qtd]) => Number(qtd) > 0)
+            .map(([idSabor,qtd]) => {
+              const ehIdNumerico = /^\d+$/.test(String(idSabor));
+              const nome = ehIdNumerico
+                ? (window.products.find(p => p.id == idSabor) || {}).name
+                : idSabor;
+              return `<div class="sabor-linha"><span>${escapeHtml(nome || 'Sabor #' + idSabor)}</span><span>${qtd}</span></div>`;
+            }).join('');
+          html += `<div class="combo-sabores">${linhas}
+            <button onclick="abrirModalSaboresEdicao(${prod.id})" class="btn-editar-combo">✏️ Editar combo</button>
+          </div>`;
+        } else {
+          const saboresArray = Object.entries(prod.sabores)
+            .filter(([idSabor,qtd]) => qtd>0)
+            .map(([idSabor,qtd]) => {
+              const s = window.products.find(p => p.id == idSabor);
+              return `${qtd}x ${escapeHtml(s.name)}`;
+            });
+          html += `<p class="caixaItem">${saboresArray.join(', <br />')}</p>`;
+        }
       }
     });
     html += `</div>`;
@@ -389,21 +417,29 @@ function abrirModalSabores(pacote) {
   if (!modaisState[pacote.id]) modaisState[pacote.id] = { open: true, sabores: {}, qtd: 1 };
   const state = modaisState[pacote.id];
 
-  let saboresParaExibir = products.filter(p => p.type === 1);
-  if (pacote.type === 3 || pacote.type === 6) {
-    saboresParaExibir = saboresParaExibir.filter(s => ![4, 5, 12].includes(s.id));
+  const ehComboSalgado = typeof ComboConfig !== 'undefined' && ComboConfig.tipoDe(pacote.config) === 'combo_salgado';
+  let saboresParaExibir;
+  if (ehComboSalgado) {
+    saboresParaExibir = (pacote.config.sabores || []).filter(s => !s.pausado).map(s => ({ id: s.nome, name: s.nome }));
+    state.nomes = saboresParaExibir.map(s => s.id);
+  } else {
+    saboresParaExibir = products.filter(p => p.type === 1);
+    if (pacote.type === 3 || pacote.type === 6) {
+      saboresParaExibir = saboresParaExibir.filter(s => ![4, 5, 12].includes(s.id));
+    }
   }
 
   let html = `<div class="boxSabores">
       <h4>Escolha os sabores (${pacote.name})</h4>
-      ${saboresParaExibir.map(sabor => {
+      ${saboresParaExibir.map((sabor, idx) => {
         const val = state.sabores[sabor.id] ?? 0;
+        const argSabor = ehComboSalgado ? "'" + String(sabor.id).replace(/'/g, "\\'") + "'" : sabor.id;
         return `<div class="saborItem">
           <span>${sabor.name}</span>
           <div class="counter">
-            <button type="button" onclick="mudaQtdSabor(${pacote.id},${sabor.id},-1)">-</button>
-            <span id="qtd-sabor-${pacote.id}-${sabor.id}">${val}</span>
-            <button type="button" onclick="mudaQtdSabor(${pacote.id},${sabor.id},1)">+</button>
+            <button type="button" onclick="mudaQtdSabor(${pacote.id},${argSabor},-1)">-</button>
+            <span id="qtd-sabor-${pacote.id}-${idx}">${val}</span>
+            <button type="button" onclick="mudaQtdSabor(${pacote.id},${argSabor},1)">+</button>
           </div>
         </div>`;
       }).join("")}
@@ -421,14 +457,26 @@ function abrirModalSabores(pacote) {
 
 function mudaQtdSabor(pacoteId, saborId, delta){
   if(!modaisState[pacoteId]) modaisState[pacoteId] = {open:true, sabores:{}, qtd:1};
-  const atual = modaisState[pacoteId].sabores[saborId] || 0;
+  const state = modaisState[pacoteId];
+  const idx = Array.isArray(state.nomes) ? state.nomes.indexOf(String(saborId)) : -1;
+  const key = idx !== -1 ? state.nomes[idx] : saborId;
+  const atual = state.sabores[key] || 0;
   const novo = Math.max(0, atual + delta);
-  modaisState[pacoteId].sabores[saborId] = novo;
-  document.getElementById(`qtd-sabor-${pacoteId}-${saborId}`).textContent = novo;
+  if (novo > atual) {
+    const pacote = window.products.find(p => p.id === pacoteId);
+    const unidades = pacote && pacote.config ? Number(pacote.config.unidades) || 0 : 0;
+    if (unidades > 0 && typeof ComboLimite !== 'undefined' && !ComboLimite.podeIncrementar(state.sabores, unidades)) {
+      toast('Limite de ' + unidades + ' unidades atingido.', 'warning');
+      return;
+    }
+  }
+  state.sabores[key] = novo;
+  const el = document.getElementById(`qtd-sabor-${pacoteId}-${idx !== -1 ? idx : key}`);
+  if (el) el.textContent = novo;
 
-  const total = Object.values(modaisState[pacoteId].sabores).reduce((a,b)=>a+b,0);
-  const el = document.getElementById(`totalEscolhido-${pacoteId}`);
-  if(el) el.textContent = total;
+  const total = Object.values(state.sabores).reduce((a,b)=>a+b,0);
+  const elTotal = document.getElementById(`totalEscolhido-${pacoteId}`);
+  if(elTotal) elTotal.textContent = total;
 }
 
 
@@ -458,19 +506,37 @@ function confirmarSabores(pacoteId){
     return;
   }
 
+  const pacote = window.products.find(p => p.id === pacoteId);
+  const unidades = pacote && pacote.config ? Number(pacote.config.unidades) || 0 : 0;
+  if (unidades > 0 && totalEscolhido > unidades) {
+    toast('Máximo de ' + unidades + ' unidades.', 'warning');
+    return;
+  }
+
   let cart = getCart();
   const index = cart.findIndex(i=>i.id===pacoteId);
   if(index!==-1){
-    cart[index].qtd = totalEscolhido; // quantidade atualizada
+    cart[index].qtd = totalEscolhido;
     cart[index].sabores = {...state.sabores};
     setCart(cart);
   }
 
   fecharSabores(pacoteId);
-  renderizaItens(); // recalcula valores
+  renderizaItens();
 }
 
 
+
+
+function abrirModalSaboresEdicao(pacoteId) {
+  const cart = getCart();
+  const item = cart.find(i => i.id === pacoteId);
+  const pacote = window.products.find(p => p.id === pacoteId);
+  if (!pacote || !item) return;
+  modaisState[pacoteId] = { open: true, sabores: item.sabores || {}, qtd: item.qtd || 1 };
+  abrirModalSabores(pacote);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 
 const pacoteQuantidades = {201:25,202:50,203:100,204:150,205:200,206:300,207:400,208:500};
@@ -826,16 +892,19 @@ async function generateOrder() {
     taxaPix = Number(result.pagamento.taxaServico);
     document.getElementById("showTaxaPix").textContent =
       "+ R$ " + taxaPix.toFixed(2).replace(".", ",");
-    document.getElementById("taxaPixBox").style.display = "block";
+    document.getElementById("taxaPixBox").style.display = "flex";
     updateValores(); // recalcula total com taxa real
   }
+
+  // Recalcula totalFinal incluindo taxa PIX se aplicável
+  var totalFinalComPix = valorItens + deliveryValueLocal + taxaCartaoLocal + (formaPagamentoValue === "pix" ? taxaPix : 0) - desconto;
 
     localStorage.removeItem("cart");
     renderizaItens();
     if (result.pagamento && result.pagamento.pixCode) {
-      mostrarPagamentoPix(result.id, result.pagamento, itensFormatados, totalFinal);
+      mostrarPagamentoPix(result.id, result.pagamento, itensFormatados, totalFinalComPix);
     } else {
-      mostrarConfirmacaoPedido(result.id, itensFormatados, totalFinal);
+      mostrarConfirmacaoPedido(result.id, itensFormatados, totalFinalComPix);
     }
   } catch (error) {
     console.error("Erro ao salvar pedido:", error);
@@ -855,6 +924,14 @@ function mostrarPagamentoPix(orderId, pagamento, itens, total) {
   document.getElementById("pixCodeText").textContent = pagamento.pixCode;
   document.getElementById("pixOrderId").textContent = orderId;
   document.getElementById("pixStatusMsg").textContent = "Aguardando pagamento... O pedido será liberado após a confirmação do pagamento.";
+
+  // Exibe resumo do pedido no overlay
+  var detailsEl = document.getElementById("pixOrderDetails");
+  if (detailsEl) {
+    var itensHtml = itens.map(function(i) { return escapeHtml(i); }).join('<br>');
+    detailsEl.innerHTML = itensHtml + '<br><br><strong>Total: R$ ' + total.toFixed(2).replace('.', ',') + '</strong>';
+  }
+
   el.classList.remove("hidden");
 
   // SSE

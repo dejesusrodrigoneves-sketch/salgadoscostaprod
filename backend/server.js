@@ -15,6 +15,14 @@ app.listen(config.port, async () => {
     logger.error('Schema ensure falhou:', err.message);
   }
 
+  // PIX expiration job: checks pending payments every 2 min
+  try {
+    const { iniciarPixExpirationJob } = require('./src/jobs/pixExpirationJob');
+    iniciarPixExpirationJob();
+  } catch (err) {
+    logger.error('PIX sync job falhou:', err.message);
+  }
+
   // Audit cleanup: purge client logs + enforce 90-day retention
   try {
     const { deleteClienteLogs, deleteOldLogs } = require('./src/repositories/auditRepository');

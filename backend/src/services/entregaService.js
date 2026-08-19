@@ -111,20 +111,28 @@ async function resumoDiario(data) {
 async function montarResumoPeriodo(entregas, buscarPedidoFn) {
   const map = {};
   for (const e of entregas) {
+    let pedido;
+    try {
+      pedido = await buscarPedidoFn(e.pedidoId);
+    } catch {
+      // Erro transiente de consulta → mantém a entrega com fallback
+      pedido = {};
+    }
+    // Pedido deletado (soft delete) ou não encontrado → exclui a entrega do relatório
+    if (pedido == null) continue;
+
     const id = e.entregadorId;
     if (!map[id]) {
       map[id] = { id, nome: e.entregador.nome, entregas: 0, valorTotal: 0, totalPedidos: 0, pedidos: [] };
     }
     map[id].entregas += 1;
     map[id].valorTotal += Number(e.valor || 0);
-
-    const pedido = await buscarPedidoFn(e.pedidoId).catch(() => null);
-    map[id].totalPedidos += Number(pedido ? pedido.total : 0);
+    map[id].totalPedidos += Number(pedido.total || 0);
     map[id].pedidos.push({
       pedidoId: e.pedidoId,
       valor: Number(e.valor || 0),
-      cliente: pedido ? pedido.clienteNome : '-',
-      itens: pedido && Array.isArray(pedido.itens) ? pedido.itens.map(function (i) {
+      cliente: pedido.clienteNome || '-',
+      itens: Array.isArray(pedido.itens) ? pedido.itens.map(function (i) {
         return {
           produtoId: i.produtoId,
           nome: i.produto ? i.produto.name : 'Produto #' + i.produtoId,
@@ -132,18 +140,18 @@ async function montarResumoPeriodo(entregas, buscarPedidoFn) {
           precoUnitario: i.precoUnitario
         };
       }) : [],
-      totalPedido: pedido ? Number(pedido.total || 0) : 0,
-      formaPagamento: pedido ? pedido.formaPagamento : '-',
-      tipoEntrega: pedido ? pedido.tipoEntrega : '-',
-      bairro: pedido ? pedido.clienteBairro : '-',
-      data: pedido ? pedido.createdAt : null,
+      totalPedido: Number(pedido.total || 0),
+      formaPagamento: pedido.formaPagamento || '-',
+      tipoEntrega: pedido.tipoEntrega || '-',
+      bairro: pedido.clienteBairro || '-',
+      data: pedido.createdAt || null,
     });
   }
 
   const entregadores = Object.values(map);
   return {
-    totalEntregas: entregas.length,
-    totalValor: entregas.reduce((acc, e) => acc + Number(e.valor || 0), 0),
+    totalEntregas: entregadores.reduce((a, d) => a + d.entregas, 0),
+    totalValor: entregadores.reduce((acc, d) => acc + d.valorTotal, 0),
     totalPedidos: entregadores.reduce((a, d) => a + d.totalPedidos, 0),
     entregadores,
   };
