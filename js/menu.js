@@ -75,9 +75,12 @@ const addItemToArray = prod => {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const inCart = cart.find(i => i.id === prod.id);
     const qtd = inCart ? inCart.qtd || 1 : 0;
-    const btnHTML = qtd > 0
-      ? '<button class="btn btn-minus" onclick="removeFromCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:minus"></span></button><span class="cart-qty">' + qtd + '</span><button class="btn btn-plus" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
-      : '<button class="btn btn-add" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>';
+    const isComboSalgado = ComboConfig && ComboConfig.tipoDe(prod.config) === 'combo_salgado';
+    const btnHTML = isComboSalgado
+      ? '<button class="btn btn-add" onclick="abrirOverlayCombo(' + prod.id + ')"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
+      : qtd > 0
+        ? '<button class="btn btn-minus" onclick="removeFromCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:minus"></span></button><span class="cart-qty">' + qtd + '</span><button class="btn btn-plus" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
+        : '<button class="btn btn-add" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>';
     itemsHTML += `
     <div class="card">
         <div>
@@ -914,3 +917,92 @@ document.addEventListener('DOMContentLoaded', function () {
   if (elRegPhone) maskPhone(elRegPhone);
   if (elRegCep) maskCEP(elRegCep);
 });
+
+let comboSelecao = {};
+let comboProdutoAtual = null;
+
+function abrirOverlayCombo(produtoId) {
+  if (typeof ComboConfig === 'undefined' || typeof ComboLimite === 'undefined') return;
+  const produto = products.find(p => p.id === produtoId);
+  if (!produto || ComboConfig.tipoDe(produto.config) !== 'combo_salgado') return;
+  const statusBar = document.getElementById('statusBar');
+  const isOpen = statusBar && statusBar.style.backgroundColor === 'green';
+  if (!isOpen) { toast('Loja fechada!', 'danger'); return; }
+
+  comboProdutoAtual = produto;
+  comboSelecao = {};
+  const cfg = produto.config;
+  const saboresAtivos = (cfg.sabores || []).filter(s => !s.pausado);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'overlayComboSabores';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;padding:20px;">
+      <h3 style="margin:0 0 4px;color:#333;">${escapeHtml(produto.name)}</h3>
+      <p style="font-size:13px;color:#666;margin-bottom:14px;">Escolha até ${cfg.unidades} unidades — combinação livre.</p>
+      ${saboresAtivos.map(s => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
+          <span style="color:#333;font-weight:500;">${escapeHtml(s.nome)}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" onclick="mudaQtdOverlayCombo(${produto.id},'${escapeHtml(s.nome)}',-1)" style="width:32px;height:32px;border:none;border-radius:8px;background:#1FA58D;color:#fff;font-weight:bold;cursor:pointer;">-</button>
+            <span id="qtd-overlay-${produto.id}-${escapeHtml(s.nome)}">0</span>
+            <button type="button" onclick="mudaQtdOverlayCombo(${produto.id},'${escapeHtml(s.nome)}',1)" style="width:32px;height:32px;border:none;border-radius:8px;background:#1FA58D;color:#fff;font-weight:bold;cursor:pointer;">+</button>
+          </div>
+        </div>`).join('')}
+      <p style="margin:14px 0;font-weight:600;color:#333;">Total: <span id="total-overlay-combo">0</span> / ${cfg.unidades}</p>
+      <div style="display:flex;gap:8px;">
+        <button onclick="confirmarOverlayCombo(${produto.id})" style="flex:1;padding:12px;border:none;border-radius:10px;background:#1FA58D;color:#fff;font-weight:600;cursor:pointer;">Adicionar</button>
+        <button onclick="fecharOverlayCombo()" style="padding:12px 20px;border:1px solid #ccc;border-radius:10px;background:#fff;color:#666;font-weight:600;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function mudaQtdOverlayCombo(produtoId, saborNome, delta) {
+  const produto = products.find(p => p.id === produtoId);
+  if (!produto || !ComboLimite) return;
+  const unidades = Number(produto.config.unidades) || 0;
+  const atual = comboSelecao[saborNome] || 0;
+  const novo = Math.max(0, atual + delta);
+  if (novo > atual && !ComboLimite.podeIncrementar(comboSelecao, unidades)) {
+    toast('Limite de ' + unidades + ' unidades atingido.', 'warning');
+    return;
+  }
+  comboSelecao[saborNome] = novo;
+  const el = document.getElementById('qtd-overlay-' + produtoId + '-' + saborNome);
+  if (el) el.textContent = novo;
+  const total = ComboLimite.totalSelecionado(comboSelecao);
+  const totalEl = document.getElementById('total-overlay-combo');
+  if (totalEl) totalEl.textContent = total;
+}
+
+function confirmarOverlayCombo(produtoId) {
+  const total = ComboLimite.totalSelecionado(comboSelecao);
+  if (total <= 0) { toast('Escolha pelo menos 1 unidade.', 'warning'); return; }
+
+  const saboresObj = {};
+  Object.entries(comboSelecao).forEach(([nome, qtd]) => {
+    const sabor = products.find(p => p.name === nome && p.type === 1);
+    saboresObj[sabor ? sabor.id : nome] = qtd;
+  });
+
+  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  const existing = cart.find(i => i.id === produtoId);
+  if (existing) {
+    existing.sabores = saboresObj;
+    existing.qtd = total;
+  } else {
+    cart.push({ id: produtoId, qtd: total, sabores: saboresObj });
+  }
+  localStorage.setItem('cart', JSON.stringify(cart));
+  fecharOverlayCombo();
+  refreshProductCards();
+  toast('Combo adicionado!', 'success');
+}
+
+function fecharOverlayCombo() {
+  const overlay = document.getElementById('overlayComboSabores');
+  if (overlay) overlay.remove();
+  comboProdutoAtual = null;
+}

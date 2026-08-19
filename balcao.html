@@ -12,28 +12,6 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/balcao.css">
 <style>
-.mini-cart-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #e2e8f0;z-index:9998;display:none;flex-direction:column;max-height:50vh;overflow:hidden;box-shadow:0 -4px 20px rgba(0,0,0,0.12);border-radius:16px 16px 0 0;}
-.mini-cart-bar.aberto{display:flex;}
-.mini-cart-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#f8fafc;cursor:pointer;}
-.mini-cart-header h4{margin:0;font-size:15px;font-weight:700;color:#1e293b;}
-.mini-cart-header .badge{background:#f97316;color:white;border-radius:50%;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-left:8px;}
-.mini-cart-header .fechar-btn{background:none;border:none;font-size:20px;color:#64748b;cursor:pointer;padding:0 4px;}
-.mini-cart-lista{flex:1;overflow-y:auto;padding:8px 12px;}
-.mini-cart-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9;}
-.mini-cart-item:last-child{border-bottom:none;}
-.mini-cart-item .nome{flex:1;font-size:13px;font-weight:600;color:#1e293b;}
-.mini-cart-item .nome small{display:block;font-weight:400;color:#64748b;font-size:11px;}
-.mini-cart-item .controles{display:flex;align-items:center;gap:4px;}
-.mini-cart-item .controles button{width:28px;height:28px;border-radius:50%;border:1px solid #e2e8f0;background:#f8fafc;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#334155;transition:0.15s;}
-.mini-cart-item .controles button:hover{background:#e2e8f0;}
-.mini-cart-item .controles .btn-remover-mini{width:auto;border-radius:6px;font-size:11px;padding:0 8px;color:#dc2626;border-color:#fecaca;}
-.mini-cart-item .controles .btn-editar-mini{width:auto;border-radius:6px;font-size:11px;padding:0 8px;color:#2563eb;border-color:#bfdbfe;}
-.mini-cart-item .controles .btn-excluir-mini{width:auto;border-radius:6px;font-size:11px;padding:0 8px;color:#dc2626;border-color:#fecata;}
-.mini-cart-item .qtd-display{font-size:14px;font-weight:700;min-width:20px;text-align:center;color:#1e293b;}
-.mini-cart-footer{padding:12px 16px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:space-between;}
-.mini-cart-footer .total-mini{font-size:16px;font-weight:800;color:#16a34a;}
-.mini-cart-footer .btn-fechar-pedido{background:#16a34a;color:white;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:0.2s;}
-.mini-cart-footer .btn-fechar-pedido:hover{background:#15803d;}
 .toast-container{position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;}
 .toast-msg{background:#1e293b;color:white;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;animation:toastIn 0.3s ease,toastOut 0.3s ease 2.2s forwards;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
 .toast-msg.warning{background:#f59e0b;}
@@ -241,7 +219,7 @@ function atualizarFormulario() {
   }
 
  calcularTotalFinal();
-  renderMiniCart();
+ notifyParent();
 }
 
 function abrirSeletorSabores(itemIndex) {
@@ -386,15 +364,14 @@ function atualizarContador() {
 
 function abrirSeletorComboSalgado(produto) {
   const cfg = produto.config;
-  const existente = carrinho.find(p => p.id === produto.id);
 
-  let saboresSelecionados = existente && existente.sabores ? [...existente.sabores] : [];
+  let saboresSelecionados = [];
 
   const modal = document.createElement('div');
   modal.className = 'modal-sabores';
   modal.innerHTML = `
     <div class="box-sabores">
-      <h3>${escapeHtml(produto.name)} — escolha ${cfg.unidades} unidades</h3>
+      <h3>${escapeHtml(produto.nome || produto.name)} — escolha ${cfg.unidades} unidades</h3>
       <div class="lista-sabores"></div>
       <p id="contadorTotal" style="margin:10px 0;font-weight:600;text-align:right;">Selecionados: ${saboresSelecionados.reduce((a,s)=>a+s.qtd,0)}/${cfg.unidades}</p>
       <button id="finalizarSabores" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;">Finalizar</button>
@@ -404,21 +381,21 @@ function abrirSeletorComboSalgado(produto) {
   const lista = modal.querySelector('.lista-sabores');
   const contador = modal.querySelector('#contadorTotal');
 
-  cfg.sabores.forEach(nome => {
-    let qtd = (saboresSelecionados.find(s => s.nome === nome) || {}).qtd || 0;
+  cfg.sabores.filter(s => !s.pausado).forEach(sabor => {
+    let qtd = (saboresSelecionados.find(s => s.nome === sabor.nome) || {}).qtd || 0;
     const div = document.createElement('div');
     div.className = 'sabor-item';
-    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;';
-    div.innerHTML = `<span>${escapeHtml(nome)}</span><input type="number" min="0" value="${qtd}" style="width:50px;text-align:center;">`;
+    div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 12px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:10px;background:var(--secondary, #f8fafc);';
+    div.innerHTML = `<span>${escapeHtml(sabor.nome)}</span><input type="number" min="0" value="${qtd}" style="width:50px;text-align:center;">`;
     const input = div.querySelector('input');
     input.addEventListener('input', () => {
       let valor = parseInt(input.value) || 0;
       const usados = saboresSelecionados.reduce((a, s) => a + s.qtd, 0) - qtd;
       if (usados + valor > cfg.unidades) { valor = cfg.unidades - usados; input.value = valor; }
       qtd = valor;
-      const ex = saboresSelecionados.find(s => s.nome === nome);
-      if (ex) { ex.qtd = qtd; if (qtd === 0) saboresSelecionados = saboresSelecionados.filter(s => s.nome !== nome); }
-      else if (qtd > 0) saboresSelecionados.push({ nome: nome, qtd: qtd });
+      const ex = saboresSelecionados.find(s => s.nome === sabor.nome);
+      if (ex) { ex.qtd = qtd; if (qtd === 0) saboresSelecionados = saboresSelecionados.filter(s => s.nome !== sabor.nome); }
+      else if (qtd > 0) saboresSelecionados.push({ nome: sabor.nome, qtd: qtd });
       const total = saboresSelecionados.reduce((a, s) => a + s.qtd, 0);
       contador.textContent = `Selecionados: ${total}/${cfg.unidades}`;
     });
@@ -428,18 +405,16 @@ function abrirSeletorComboSalgado(produto) {
   modal.querySelector('#finalizarSabores').addEventListener('click', () => {
     const total = saboresSelecionados.reduce((a, s) => a + s.qtd, 0);
     if (total !== cfg.unidades) { toast(`Distribua exatamente ${cfg.unidades} unidades.`, 'warning'); return; }
-    if (!existente) carrinho.push({ id: produto.id, nome: produto.name, preco: Number(produto.price), qtd: 1, type: 3, sabores: saboresSelecionados });
-    else existente.sabores = saboresSelecionados;
+    carrinho.push({ id: produto.id, nome: produto.name, preco: Number(produto.price), qtd: 1, type: 3, config: produto.config, sabores: saboresSelecionados });
     modal.remove();
     renderizarCarrinho();
-    renderMiniCart();
+    notifyParent();
   });
 }
 
 function abrirSeletorComboAcai(produto) {
   const cfg = produto.config;
-  const existente = carrinho.find(p => p.id === produto.id);
-  let escolhidos = existente && existente.sabores ? existente.sabores.map(s => s.nome) : [];
+  let escolhidos = [];
 
   const modal = document.createElement('div');
   modal.className = 'modal-sabores';
@@ -477,14 +452,10 @@ function abrirSeletorComboAcai(produto) {
   modal.querySelector('#finalizarSabores').addEventListener('click', () => {
     const r = ComboConfig.calcularPrecoAcai(cfg, escolhidos);
     const sabores = escolhidos.map(nome => ({ nome: nome, qtd: 1 }));
-    if (!existente) {
-      carrinho.push({ id: produto.id, nome: produto.name, preco: Number(produto.price), qtd: 1, type: 3, sabores: sabores, extra: r.extra });
-    } else {
-      existente.sabores = sabores; existente.extra = r.extra;
-    }
+    carrinho.push({ id: produto.id, nome: produto.name, preco: Number(produto.price), qtd: 1, type: 3, config: produto.config, sabores: sabores, extra: r.extra });
     modal.remove();
     renderizarCarrinho();
-    renderMiniCart();
+    notifyParent();
   });
 }
 
@@ -500,7 +471,7 @@ function renderizarCarrinho() {
   if (carrinho.length === 0) {
     lista.innerHTML = '<div class="empty-cart-msg"><div class="icon">&#9744;</div><p>Carrinho vazio<br>Clique nos produtos acima</p></div>';
     document.getElementById("total").innerText = "R$ 0,00";
-    renderMiniCart();
+    notifyParent();
     return;
   }
 
@@ -565,7 +536,7 @@ function renderizarCarrinho() {
   });
 
  calcularTotalFinal();
-  renderMiniCart();
+ notifyParent();
 }
 
 function removerItem(index) {
@@ -598,108 +569,21 @@ function diminuirQtd(index) {
 
 let carrinho = [];
 
-// ===== MINI-CART FUNCTIONS =====
-function toggleMiniCart() {
-  const bar = document.getElementById('mini-cart-bar');
-  if (!bar) return;
-  bar.classList.toggle('aberto');
-}
-
-function fecharMiniCart() {
-  const bar = document.getElementById('mini-cart-bar');
-  if (!bar) return;
-  bar.classList.remove('aberto');
-}
-
-function renderMiniCart() {
+// Notifica parent (admin) sobre mudanças no carrinho
+function notifyParent() {
   if (!isEmbedded) return;
-  const lista = document.getElementById('mini-cart-lista');
-  const badge = document.getElementById('mini-cart-badge');
-  const totalSpan = document.getElementById('mini-cart-total');
-  if (!lista) return;
-
-  lista.innerHTML = '';
-
-  if (carrinho.length === 0) {
-    lista.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">Carrinho vazio</div>';
-    badge.textContent = '0';
-    totalSpan.textContent = 'R$ 0,00';
-    fecharMiniCart();
-    return;
-  }
-
-  let total = 0;
-  let totalItens = 0;
-
-  carrinho.forEach((item, index) => {
-    total += item.preco * item.qtd + (Number(item.extra) || 0);
-    totalItens += item.qtd;
-
-    const div = document.createElement('div');
-    div.className = 'mini-cart-item';
-
-    const saboresText = item.sabores && item.sabores.length > 0
-      ? item.sabores.map(s => typeof s === 'string' ? s : `${s.nome} (${s.qtd})`).join(', ')
-      : '';
-
-    let controlesHtml = '';
-    if (item.type === 3 || item.type === 6) {
-      controlesHtml = `
-        <div class="controles">
-          <span class="qtd-display">${item.qtd}</span>
-          <button class="btn-editar-mini" onclick="editarSabores(${index})">Editar</button>
-          <button class="btn-excluir-mini" onclick="removerItemMini(${index})">Excluir</button>
-        </div>
-      `;
-    } else {
-      controlesHtml = `
-        <div class="controles">
-          <button onclick="diminuirQtdMini(${index})">−</button>
-          <span class="qtd-display">${item.qtd}</span>
-          <button onclick="aumentarQtdMini(${index})">+</button>
-          <button class="btn-remover-mini" onclick="removerItemMini(${index})">✕</button>
-        </div>
-      `;
-    }
-
-    div.innerHTML = `
-      <div class="nome">
-        ${item.nome} (R$ ${item.preco.toFixed(2)})
-        ${saboresText ? `<small>${saboresText}</small>` : ''}
-      </div>
-      ${controlesHtml}
-    `;
-
-    lista.appendChild(div);
+  const itens = carrinho.map(function(item) {
+    return {
+      produtoId: item.id,
+      quantidade: item.qtd,
+      sabores: formatarSabores(item.sabores),
+      preco: item.preco,
+      nome: item.nome,
+      extra: item.extra || 0,
+    };
   });
-
-  badge.textContent = totalItens;
-  totalSpan.textContent = 'R$ ' + total.toFixed(2);
-
-  // Mostrar barra se há itens
-  const bar = document.getElementById('mini-cart-bar');
-  if (bar && carrinho.length > 0) bar.classList.add('aberto');
-}
-
-function aumentarQtdMini(index) {
-  carrinho[index].qtd++;
-  renderMiniCart();
-  renderizarCarrinho();
-}
-
-function diminuirQtdMini(index) {
-  carrinho[index].qtd--;
-  if (carrinho[index].qtd <= 0) {
-    carrinho.splice(index, 1);
-  }
-  renderMiniCart();
-  renderizarCarrinho();
-}
-
-function removerItemMini(index) {
-  carrinho.splice(index, 1);
-  renderMiniCart();
-  renderizarCarrinho();
+  const total = carrinho.reduce((sum, item) => sum + item.preco * item.qtd + (Number(item.extra) || 0), 0);
+  window.parent.postMessage({ type: 'CARRINHO_UPDATE', itens: itens, total: total, totalItens: itens.reduce((sum, i) => sum + i.quantidade, 0) }, '*');
 }
 
 function fecharPedido() {
@@ -718,8 +602,8 @@ function fecharPedido() {
   window.parent.postMessage({ type: 'FECHAR_PEDIDO', itens: itens }, '*');
   toast('Pedido enviado!', 'success');
   carrinho = [];
-  renderMiniCart();
   renderizarCarrinho();
+  notifyParent();
 }
 
 function toast(msg, type) {
@@ -757,23 +641,6 @@ if (isEmbedded) {
   if (elCheckout) elCheckout.style.display = 'none';
   // Mantém filtros e grid
 
-  // Criar container do mini-cart
-  const miniCartBar = document.createElement('div');
-  miniCartBar.className = 'mini-cart-bar';
-  miniCartBar.id = 'mini-cart-bar';
-  miniCartBar.innerHTML = `
-    <div class="mini-cart-header" onclick="toggleMiniCart()">
-      <div><h4>Carrinho <span class="badge" id="mini-cart-badge">0</span></h4></div>
-      <button class="fechar-btn" onclick="event.stopPropagation();fecharMiniCart()">✕</button>
-    </div>
-    <div class="mini-cart-lista" id="mini-cart-lista"></div>
-    <div class="mini-cart-footer">
-      <span class="total-mini" id="mini-cart-total">R$ 0,00</span>
-      <button class="btn-fechar-pedido" onclick="fecharPedido()">Finalizar Pedido</button>
-    </div>
-  `;
-  document.body.appendChild(miniCartBar);
-
   window.addEventListener('message', function(e) {
     if (e.origin !== window.location.origin) return;
     if (e.data && e.data.type === 'SOLICITAR_ITENS') {
@@ -805,7 +672,7 @@ function adicionarAoCarrinho(produto) {
   if (existente) {
     existente.qtd++;
     renderizarCarrinho();
-    renderMiniCart();
+    notifyParent();
     return;
   }
 
@@ -820,7 +687,7 @@ function adicionarAoCarrinho(produto) {
 
   const index = carrinho.length - 1;
   renderizarCarrinho();
-  renderMiniCart();
+  notifyParent();
 
   // Toast apenas na primeira vez por item
   if (!itensNotificados.has(produto.id)) {
@@ -1036,9 +903,14 @@ async function pagar() {
   };
 
   try {
+    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+    const token = authUser.token || '';
     const res = await fetch('/api/pedidos', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {

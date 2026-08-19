@@ -88,13 +88,29 @@ describe('montarResumoPeriodo', () => {
     expect(result).toMatchObject({ totalEntregas: 0, totalValor: 0, entregadores: [] });
   });
 
-  it('trata valor null da entrega como 0', async () => {
+  it('exclui entregas de pedidos deletados ou não encontrados (buscarPedidoFn retorna null)', async () => {
     const entregas = [
-      { entregadorId: 1, valor: null, pedidoId: '1', entregador: { nome: 'X' } },
+      { entregadorId: 1, valor: '12.00', pedidoId: 'DEL', entregador: { nome: 'X' } },
     ];
     const result = await montarResumoPeriodo(entregas, async () => null);
+    expect(result.totalEntregas).toBe(0);
     expect(result.totalValor).toBe(0);
-    expect(result.entregadores[0].valorTotal).toBe(0);
-    expect(result.entregadores[0].pedidos[0].valor).toBe(0);
+    expect(result.entregadores).toEqual([]);
+  });
+
+  it('exclui entrega de pedido deletado sem zerar taxa de entregas válidas do mesmo entregador', async () => {
+    const entregas = [
+      { entregadorId: 1, valor: '5.00', pedidoId: 'VAL', entregador: { nome: 'João' } },
+      { entregadorId: 1, valor: '8.00', pedidoId: 'DEL', entregador: { nome: 'João' } },
+    ];
+    const buscarPedidoFn = async (id) => (id === 'DEL' ? null : { clienteNome: 'Cliente', total: '20.00', itens: [], formaPagamento: 'dinheiro', tipoEntrega: 'delivery' });
+    const result = await montarResumoPeriodo(entregas, buscarPedidoFn);
+    expect(result.totalEntregas).toBe(1);
+    expect(result.totalValor).toBe(5);
+    const joao = result.entregadores[0];
+    expect(joao.entregas).toBe(1);
+    expect(joao.valorTotal).toBe(5);
+    expect(joao.pedidos).toHaveLength(1);
+    expect(joao.pedidos[0].pedidoId).toBe('VAL');
   });
 });

@@ -151,6 +151,19 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
               <option value="combo_acai">Combo Açaí</option>
             </select>
           </div>
+          <div class="row">
+            <div class="lbl">Status</div>
+            <select id="prodStatus">
+              <option value="active">Ativo</option>
+              <option value="paused">Pausado</option>
+            </select>
+          </div>
+          <div class="row">
+            <div class="lbl">Categoria</div>
+            <select id="prodCategoryId">
+              <option value="">Sem categoria</option>
+            </select>
+          </div>
           <div id="camposComboSalgado" style="display:none;">
             <div class="row">
               <div class="lbl">Total de unidades</div>
@@ -185,21 +198,8 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
           </summary>
           <div style="margin-top:12px;">
             <div class="row">
-              <div class="lbl">Status</div>
-              <select id="prodStatus">
-                <option value="active">Ativo</option>
-                <option value="paused">Pausado</option>
-              </select>
-            </div>
-            <div class="row">
               <div class="lbl">Congelado</div>
               <label class="chip"><input type="checkbox" id="prodCongelado" /> Congelado</label>
-            </div>
-            <div class="row">
-              <div class="lbl">Categoria</div>
-              <select id="prodCategoryId">
-                <option value="">Sem categoria</option>
-              </select>
             </div>
             <div class="row">
               <div class="lbl">Controlar Estoque</div>
