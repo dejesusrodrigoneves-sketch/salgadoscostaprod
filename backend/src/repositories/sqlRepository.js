@@ -9,6 +9,9 @@ const sql = {
   async buscarProduto(id) {
     return prisma.produto.findFirst({ where: { id: Number(id), empresaId: EMPRESA_ID } });
   },
+  async buscarProdutosPorIds(ids) {
+    return prisma.produto.findMany({ where: { id: { in: ids.map(Number) } } });
+  },
   async criarProduto(data) {
     const { id, empresaId, ...rest } = data;
     if (rest.categoryId) {
@@ -72,13 +75,23 @@ const sql = {
       include: { itens: { include: { produto: { select: { name: true } } } } }
     });
   },
+  async listarPedidosPorIds(ids) {
+    return prisma.pedido.findMany({
+      where: { id: { in: ids.map(Number) }, deletedAt: null },
+      include: { itens: { include: { produto: { select: { name: true } } } } },
+    });
+  },
   async criarPedido(data) {
     const payload = { ...data };
     if (Array.isArray(data.itens)) {
+      const produtoIds = data.itens.map(i => Number(i.produtoId));
+      const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds } } });
+      const produtoMap = new Map(produtos.map(p => [p.id, p]));
+
       let valoresItens = 0;
       payload.itens = { create: [] };
       for (const item of data.itens) {
-        const produto = await this.buscarProduto(item.produtoId);
+        const produto = produtoMap.get(Number(item.produtoId));
         const preco = Number(produto ? produto.price : 0);
         const qtd = Number(item.quantidade) || 1;
         valoresItens += preco * qtd;

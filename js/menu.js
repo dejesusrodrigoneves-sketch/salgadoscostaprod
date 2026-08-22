@@ -75,8 +75,8 @@ const addItemToArray = prod => {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const inCart = cart.find(i => i.id === prod.id);
     const qtd = inCart ? inCart.qtd || 1 : 0;
-    const isComboSalgado = ComboConfig && ComboConfig.tipoDe(prod.config) === 'combo_salgado';
-    const btnHTML = isComboSalgado
+    const isCombo = ComboConfig && ComboConfig.tipoDe(prod.config);
+    const btnHTML = isCombo
       ? '<button class="btn btn-add" onclick="abrirOverlayCombo(' + prod.id + ')"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
       : qtd > 0
         ? '<button class="btn btn-minus" onclick="removeFromCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:minus"></span></button><span class="cart-qty">' + qtd + '</span><button class="btn btn-plus" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
@@ -241,7 +241,7 @@ async function atualizarStatusBar(){
     }
 }
 atualizarStatusBar();
-setInterval(atualizarStatusBar,60000);
+setInterval(atualizarStatusBar,300000);
 
 // Search filter
 document.addEventListener('DOMContentLoaded', function() {
@@ -269,6 +269,11 @@ function addToCart(id, event){
     const cart=JSON.parse(localStorage.getItem('cart'))||[];
     const existing = cart.find(i=>i.id===id);
     if (existing) {
+      const produto = products.find(p => p.id === id);
+      if (produto && ComboConfig && ComboConfig.tipoDe(produto.config)) {
+        abrirOverlayCombo(id, existing.sabores || {});
+        return;
+      }
       existing.qtd = (existing.qtd || 1) + 1;
     } else {
       cart.push({id:id,qtd:1});
@@ -344,35 +349,29 @@ document.addEventListener('DOMContentLoaded', function() {
 var _origRefresh = refreshProductCards;
 refreshProductCards = function() { _origRefresh(); updateOrderBar(); };
 
-async function carregarHorarios() {
-    const container = document.getElementById("daysContainer");
-    const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-    try {
-        const res = await fetch('/api/loja/settings');
-        if (res.ok) {
-            const data = await res.json();
-            const workingDays = Array.isArray(data.workingDays) ? data.workingDays : [];
-            const opening = data.openingTime || '08:00';
-            const closing = data.closingTime || '18:00';
-            let html = "";
-            diasSemana.forEach(dia => {
-                const aberto = workingDays.includes(dia);
-                html += `<p><b>${dia}:</b> ${aberto ? opening + ' - ' + closing : 'Fechado'}</p>`;
-            });
-            container.innerHTML = html;
-            return;
-        }
-    } catch (e) {
-        container.innerHTML = "<p>Erro ao carregar horários!</p>";
-    }
-}
-
-async function carregarConfigLoja() {
+async function carregarSettingsLoja() {
   try {
-    const res = await fetch('/api/loja/settings');
+    var _fetch = (typeof fetchCached === 'function') ? fetchCached : fetch;
+    const res = await _fetch('/api/loja/settings', {}, 300000);
     if (!res.ok) return;
     const config = await res.json();
+
+    // --- Horários ---
+    const container = document.getElementById("daysContainer");
+    if (container) {
+      const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+      const workingDays = Array.isArray(config.workingDays) ? config.workingDays : [];
+      const opening = config.openingTime || '08:00';
+      const closing = config.closingTime || '18:00';
+      let html = "";
+      diasSemana.forEach(dia => {
+        const aberto = workingDays.includes(dia);
+        html += `<p><b>${dia}:</b> ${aberto ? opening + ' - ' + closing : 'Fechado'}</p>`;
+      });
+      container.innerHTML = html;
+    }
+
+    // --- Configurações da loja ---
     const nome = config.nome || 'Fabrica de Salgados Costa';
 
     // Update page title
@@ -459,12 +458,11 @@ async function carregarConfigLoja() {
       applyTheme(config.themeSettings);
     }
   } catch (e) {
-    console.warn('Failed to load store config:', e);
+    console.warn('Failed to load store settings:', e);
   }
 }
 
-carregarHorarios();
-carregarConfigLoja();
+carregarSettingsLoja();
 
 // --- Login & Cadastro ---
 const userMenuBtn = document.getElementById("userMenuBtn");
@@ -804,6 +802,7 @@ function fecharOverlayPedidos() {
   pararPolling();
 }
 
+var _lastOrderHash = '';
 function iniciarPolling() {
   pararPolling();
   _pollTimer = setInterval(async function() {
@@ -811,6 +810,9 @@ function iniciarPolling() {
       var pedidos = await PUBLIC_API.meusPedidos();
       _pollFalhas = 0;
       if (!pedidos) return;
+      var hash = JSON.stringify(pedidos.map(function(p) { return p.id + p.status; }));
+      if (hash === _lastOrderHash) return;
+      _lastOrderHash = hash;
       var ativosAntes = Object.keys(_ultimosStatus).filter(function(id) { return _ultimosStatus[id] === 'pendente' || _ultimosStatus[id] === 'preparando'; });
       pedidos.forEach(function(p) {
         var antigo = _ultimosStatus[p.id];
@@ -921,39 +923,50 @@ document.addEventListener('DOMContentLoaded', function () {
 let comboSelecao = {};
 let comboProdutoAtual = null;
 
-function abrirOverlayCombo(produtoId) {
+function abrirOverlayCombo(produtoId, prefill, opts) {
   if (typeof ComboConfig === 'undefined' || typeof ComboLimite === 'undefined') return;
   const produto = products.find(p => p.id === produtoId);
-  if (!produto || ComboConfig.tipoDe(produto.config) !== 'combo_salgado') return;
-  const statusBar = document.getElementById('statusBar');
-  const isOpen = statusBar && statusBar.style.backgroundColor === 'green';
-  if (!isOpen) { toast('Loja fechada!', 'danger'); return; }
+  if (!produto) return;
+  const tipo = ComboConfig.tipoDe(produto.config);
+  if (!tipo) return;
+  if (!(opts && opts.skipOpenCheck)) {
+    const statusBar = document.getElementById('statusBar');
+    const isOpen = statusBar && statusBar.style.backgroundColor === 'green';
+    if (!isOpen) { toast('Loja fechada!', 'danger'); return; }
+  }
 
   comboProdutoAtual = produto;
-  comboSelecao = {};
+  comboSelecao = prefill ? { ...prefill } : {};
   const cfg = produto.config;
+
+  if (tipo === 'combo_acai') {
+    montarOverlayAcai(produto);
+    return;
+  }
+
+  // === combo_salgado (existing, unchanged) ===
   const saboresAtivos = (cfg.sabores || []).filter(s => !s.pausado);
 
   const overlay = document.createElement('div');
   overlay.id = 'overlayComboSabores';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
-    <div style="background:#fff;border-radius:14px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;padding:20px;">
-      <h3 style="margin:0 0 4px;color:#333;">${escapeHtml(produto.name)}</h3>
-      <p style="font-size:13px;color:#666;margin-bottom:14px;">Escolha até ${cfg.unidades} unidades — combinação livre.</p>
+    <div style="background:#191919;border-radius:14px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+      <h3 style="margin:0 0 4px;color:#FFFCE1;">${escapeHtml(produto.name)}</h3>
+      <p style="font-size:13px;color:rgba(255,252,225,0.6);margin-bottom:14px;">Escolha até ${cfg.unidades} unidades — combinação livre.</p>
       ${saboresAtivos.map(s => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;">
-          <span style="color:#333;font-weight:500;">${escapeHtml(s.nome)}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,252,225,0.15);">
+          <span style="color:#FFFCE1;font-weight:500;">${escapeHtml(s.nome)}</span>
           <div style="display:flex;align-items:center;gap:8px;">
             <button type="button" onclick="mudaQtdOverlayCombo(${produto.id},'${escapeHtml(s.nome)}',-1)" style="width:32px;height:32px;border:none;border-radius:8px;background:#1FA58D;color:#fff;font-weight:bold;cursor:pointer;">-</button>
-            <span id="qtd-overlay-${produto.id}-${escapeHtml(s.nome)}">0</span>
+            <span id="qtd-overlay-${produto.id}-${escapeHtml(s.nome)}" style="color:#F26D3D;font-weight:600;">0</span>
             <button type="button" onclick="mudaQtdOverlayCombo(${produto.id},'${escapeHtml(s.nome)}',1)" style="width:32px;height:32px;border:none;border-radius:8px;background:#1FA58D;color:#fff;font-weight:bold;cursor:pointer;">+</button>
           </div>
         </div>`).join('')}
-      <p style="margin:14px 0;font-weight:600;color:#333;">Total: <span id="total-overlay-combo">0</span> / ${cfg.unidades}</p>
+      <p style="margin:14px 0;font-weight:600;color:#FFFCE1;">Total: <span id="total-overlay-combo">0</span> / ${cfg.unidades}</p>
       <div style="display:flex;gap:8px;">
         <button onclick="confirmarOverlayCombo(${produto.id})" style="flex:1;padding:12px;border:none;border-radius:10px;background:#1FA58D;color:#fff;font-weight:600;cursor:pointer;">Adicionar</button>
-        <button onclick="fecharOverlayCombo()" style="padding:12px 20px;border:1px solid #ccc;border-radius:10px;background:#fff;color:#666;font-weight:600;cursor:pointer;">Cancelar</button>
+        <button onclick="fecharOverlayCombo()" style="padding:12px 20px;border:1px solid rgba(255,252,225,0.3);border-radius:10px;background:transparent;color:#FFFCE1;font-weight:600;cursor:pointer;">Cancelar</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -978,17 +991,39 @@ function mudaQtdOverlayCombo(produtoId, saborNome, delta) {
 }
 
 function confirmarOverlayCombo(produtoId) {
+  const produto = products.find(p => p.id === produtoId);
+  const tipo = produto ? ComboConfig.tipoDe(produto.config) : null;
   const total = ComboLimite.totalSelecionado(comboSelecao);
   if (total <= 0) { toast('Escolha pelo menos 1 unidade.', 'warning'); return; }
 
+  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+  const existing = cart.find(i => i.id === produtoId);
+
+  if (tipo === 'combo_acai') {
+    // sabores: {nome:qtd} ordered by insertion, extra from helper
+    const saboresObj = { ...comboSelecao };
+    const cfg = produto.config;
+    const split = ComboConfig.separarAcai(cfg, saboresObj);
+    const item = { id: produtoId, qtd: 1, sabores: saboresObj, extra: split.extra };
+    if (existing) {
+      Object.assign(existing, item);
+    } else {
+      cart.push(item);
+    }
+    localStorage.setItem('cart', JSON.stringify(cart));
+    fecharOverlayCombo();
+    refreshProductCards();
+    if (typeof renderizaItens === 'function') renderizaItens();
+    toast('Açaí adicionado!', 'success');
+    return;
+  }
+
+  // combo_salgado (existing logic)
   const saboresObj = {};
   Object.entries(comboSelecao).forEach(([nome, qtd]) => {
     const sabor = products.find(p => p.name === nome && p.type === 1);
     saboresObj[sabor ? sabor.id : nome] = qtd;
   });
-
-  const cart = JSON.parse(localStorage.getItem('cart')) || [];
-  const existing = cart.find(i => i.id === produtoId);
   if (existing) {
     existing.sabores = saboresObj;
     existing.qtd = total;
@@ -1005,4 +1040,112 @@ function fecharOverlayCombo() {
   const overlay = document.getElementById('overlayComboSabores');
   if (overlay) overlay.remove();
   comboProdutoAtual = null;
+}
+
+// ===== COMBO AÇAÍ OVERLAY ===== //
+function montarOverlayAcai(produto) {
+  const cfg = produto.config;
+  const itensAtivos = (cfg.acrescimos || []).filter(a => !a.pausado);
+  const gratis = Number(cfg.acrescimosGratis) || 0;
+  const maximo = Number(cfg.maxAcrescimos) || 0;
+
+  // Compute current state
+  const totalSelecionado = ComboLimite.totalSelecionado(comboSelecao);
+  const usarStepper = totalSelecionado >= gratis;
+
+  // Build list HTML
+  let listaHtml = '';
+  itensAtivos.forEach(op => {
+    const qty = comboSelecao[op.nome] || 0;
+    const checked = qty > 0;
+    const preco = Number(op.preco) || 0;
+
+    if (!usarStepper) {
+      // Checkbox mode
+      listaHtml += `
+        <label style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,252,225,0.15);cursor:pointer;">
+          <span style="display:flex;align-items:center;gap:10px;color:#FFFCE1;font-weight:500;">
+            <input type="checkbox" ${checked ? 'checked' : ''} data-nome="${escapeHtml(op.nome)}" onchange="toggleOverlayAcai(${produto.id},this.dataset.nome)" style="accent-color:#1FA58D;width:18px;height:18px;cursor:pointer;">
+            ${escapeHtml(op.nome)}
+          </span>
+          <span style="color:${checked ? '#1FA58D' : 'rgba(255,252,225,0.6)'};font-size:12px;">${checked ? 'grátis' : '+ R$ ' + preco.toFixed(2)}</span>
+        </label>`;
+    } else {
+      // Stepper mode
+      const split = ComboConfig.separarAcai(cfg, comboSelecao);
+      const freeForThis = split.gratis.find(g => g.nome === op.nome);
+      const paidForThis = split.pagos.find(p => p.nome === op.nome);
+      const freeQty = freeForThis ? freeForThis.qtd : 0;
+      const paidQty = paidForThis ? paidForThis.qtd : 0;
+      const paidTotal = paidQty * preco;
+
+      listaHtml += `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,252,225,0.15);">
+          <span style="color:#FFFCE1;font-weight:500;">${escapeHtml(op.nome)}
+            ${paidQty > 0 ? '<span style="color:#F26D3D;font-size:12px;margin-left:6px;">+ R$ ' + paidTotal.toFixed(2) + '</span>' : ''}
+            ${freeQty > 0 ? '<span style="color:#1FA58D;font-size:12px;margin-left:6px;">grátis' + (freeQty > 1 ? ' ×' + freeQty : '') + '</span>' : ''}
+          </span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button type="button" data-nome="${escapeHtml(op.nome)}" onclick="mudaQtdOverlayAcai(${produto.id},this.dataset.nome,-1)" style="width:32px;height:32px;border:none;border-radius:8px;background:#1FA58D;color:#fff;font-weight:bold;cursor:pointer;">-</button>
+            <span style="color:#F26D3D;font-weight:600;min-width:20px;text-align:center;">${qty}</span>
+            <button type="button" data-nome="${escapeHtml(op.nome)}" onclick="mudaQtdOverlayAcai(${produto.id},this.dataset.nome,1)" style="width:32px;height:32px;border:none;border-radius:8px;background:#1FA58D;color:#fff;font-weight:bold;cursor:pointer;">+</button>
+          </div>
+        </div>`;
+    }
+  });
+
+  // Compute total extra
+  const split = ComboConfig.separarAcai(cfg, comboSelecao);
+  const totalExtra = split.extra;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'overlayComboSabores';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="background:#191919;border-radius:14px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+      <h3 style="margin:0 0 4px;color:#FFFCE1;">${escapeHtml(produto.name)}</h3>
+      <p style="font-size:13px;color:rgba(255,252,225,0.6);margin-bottom:14px;">${gratis} grátis · máx ${maximo} · cada extra +R$ individual</p>
+      <div id="combo-lista-${produto.id}">${listaHtml}</div>
+      <p style="margin:14px 0;font-weight:600;color:#FFFCE1;">Selecionados: <span id="total-overlay-combo">${totalSelecionado}</span> · Acréscimos: <span id="total-extra-overlay" style="color:#F26D3D;">+ R$ ${totalExtra.toFixed(2)}</span></p>
+      <div style="display:flex;gap:8px;">
+        <button onclick="confirmarOverlayCombo(${produto.id})" style="flex:1;padding:12px;border:none;border-radius:10px;background:#1FA58D;color:#fff;font-weight:600;cursor:pointer;">Adicionar</button>
+        <button onclick="fecharOverlayCombo()" style="padding:12px 20px;border:1px solid rgba(255,252,225,0.3);border-radius:10px;background:transparent;color:#FFFCE1;font-weight:600;cursor:pointer;">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function toggleOverlayAcai(produtoId, nome) {
+  const produto = products.find(p => p.id === produtoId);
+  if (!produto) return;
+  const cfg = produto.config;
+  const gratis = Number(cfg.acrescimosGratis) || 0;
+
+  if (comboSelecao[nome]) {
+    delete comboSelecao[nome];
+  } else {
+    const totalAtual = ComboLimite.totalSelecionado(comboSelecao);
+    if (totalAtual >= gratis) return; // switched to stepper already
+    comboSelecao[nome] = 1;
+  }
+  // Re-render overlay
+  const overlay = document.getElementById('overlayComboSabores');
+  if (overlay) overlay.remove();
+  montarOverlayAcai(produto);
+}
+
+function mudaQtdOverlayAcai(produtoId, nome, delta) {
+  const produto = products.find(p => p.id === produtoId);
+  if (!produto) return;
+  const atual = comboSelecao[nome] || 0;
+  const novo = Math.max(0, atual + delta);
+  if (novo === 0) {
+    delete comboSelecao[nome];
+  } else {
+    comboSelecao[nome] = novo;
+  }
+  // Re-render overlay
+  const overlay = document.getElementById('overlayComboSabores');
+  if (overlay) overlay.remove();
+  montarOverlayAcai(produto);
 }

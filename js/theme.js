@@ -65,7 +65,8 @@
   }
 
   function loadThemeFromAPI() {
-    fetch('/api/loja/settings')
+    var _fetch = (typeof fetchCached === 'function') ? fetchCached : fetch;
+    _fetch('/api/loja/settings', {}, 300000)
       .then(function (res) {
         if (!res.ok) throw new Error('Failed to load theme');
         return res.json();

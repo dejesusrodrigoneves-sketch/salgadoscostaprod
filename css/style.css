@@ -425,7 +425,7 @@ img { max-width: 100%; height: auto; display: block; }
 }
 
 .cardsMenu .card .cardImg {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 2;
   overflow: hidden;
   background: var(--primary-bg);
   border-radius: var(--radius-sm);

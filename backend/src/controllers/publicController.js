@@ -10,6 +10,10 @@ const consentimentoService = require('../services/consentimentoService');
 
 const SALT_ROUNDS = 10;
 
+function setCache(res, seconds) {
+  res.set('Cache-Control', 'public, max-age=' + seconds + ', s-maxage=' + seconds);
+}
+
 async function authenticatePublic(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -35,23 +39,27 @@ async function authenticatePublic(req, res, next) {
 
 exports.listarProdutos = asyncHandler(async (req, res) => {
   const produtos = await productService.listar();
+  setCache(res, 60);
   res.json(produtos);
 });
 
 exports.listarCategorias = asyncHandler(async (req, res) => {
   const categorias = await sql.listarCategorias();
+  setCache(res, 60);
   res.json(categorias);
 });
 
 exports.statusLoja = asyncHandler(async (req, res) => {
   const service = require('../services/lojaService');
   const status = await service.getStatus('salgadoscosta');
+  setCache(res, 30);
   res.json(status);
 });
 
 exports.settingsLoja = asyncHandler(async (req, res) => {
   const service = require('../services/lojaService');
   const settings = await service.getSettings();
+  setCache(res, 300);
   res.json(settings);
 });
 
@@ -252,11 +260,17 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   }
   const pedidoId = await sql.nextPedidoId();
 
+  const produtoIds = itens.map(i => Number(i.produtoId));
+  const produtos = await sql.buscarProdutosPorIds(produtoIds);
+  const produtoMap = new Map(produtos.map(p => [p.id, p]));
+
   let valoresItens = 0;
   const itensPedido = [];
   for (const item of itens) {
-    const produto = await sql.buscarProduto(item.produtoId);
-    if (!produto) continue;
+    const produto = produtoMap.get(Number(item.produtoId));
+    if (!produto) {
+      return res.status(400).json({ error: 'Produto #' + item.produtoId + ' nao encontrado' });
+    }
     const preco = Number(produto.price);
     const qtd = item.quantidade || 1;
     valoresItens += preco * qtd;

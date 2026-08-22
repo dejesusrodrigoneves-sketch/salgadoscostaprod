@@ -43,7 +43,36 @@
     return { ok: false, erro: 'tipo invalido' };
   }
 
-  var api = { tipoDe: tipoDe, calcularPrecoAcai: calcularPrecoAcai, calcularPrecoSalgado: calcularPrecoSalgado, validarConfig: validarConfig };
+  function separarAcai(config, saboresObj) {
+    var units = [];
+    Object.keys(saboresObj).forEach(function (nome) {
+      var qtd = Number(saboresObj[nome]) || 0;
+      for (var i = 0; i < qtd; i++) units.push(nome);
+    });
+    var resultado = calcularPrecoAcai(config, units);
+
+    function agrupar(arr) {
+      var map = {};
+      arr.forEach(function (nome) {
+        if (!map[nome]) map[nome] = 0;
+        map[nome]++;
+      });
+      return arr.reduce(function (acc, nome) {
+        if (acc.length === 0 || acc[acc.length - 1].nome !== nome) {
+          acc.push({ nome: nome, qtd: map[nome] });
+        }
+        return acc;
+      }, []);
+    }
+
+    return {
+      gratis: agrupar(resultado.gratis),
+      pagos: agrupar(resultado.pagos),
+      extra: resultado.extra
+    };
+  }
+
+  var api = { tipoDe: tipoDe, calcularPrecoAcai: calcularPrecoAcai, calcularPrecoSalgado: calcularPrecoSalgado, validarConfig: validarConfig, separarAcai: separarAcai };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.ComboConfig = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -120,6 +120,7 @@ async function getSettings() {
 }
 
 async function updateSettings(data, ctx = {}) {
+  const empresa = await sql.buscarEmpresa(1);
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
@@ -129,16 +130,18 @@ async function updateSettings(data, ctx = {}) {
   for (const key of allowed) {
     if (data[key] !== undefined) payload[key] = data[key];
   }
-  // Keep themeSettings in sync for backward compat
-  if (data.capa !== undefined || data.bairrosAtendidos !== undefined) {
-    const empresa = await sql.buscarEmpresa(1);
-    const current = empresa?.themeSettings ? (typeof empresa.themeSettings === 'string' ? JSON.parse(empresa.themeSettings) : empresa.themeSettings) : {};
-    if (data.capa !== undefined) current.capa = data.capa;
-    if (data.bairrosAtendidos !== undefined) current.bairrosAtendidos = data.bairrosAtendidos;
-    payload.themeSettings = current;
+  // Merge themeSettings + standalone sub-fields (capa, bairrosAtendidos, notificationSound)
+  // with existing to prevent overwrite when saving partial theme or standalone fields
+  if (data.themeSettings || data.notificationSound !== undefined || data.capa !== undefined || data.bairrosAtendidos !== undefined) {
+    const existing = empresa?.themeSettings ? (typeof empresa.themeSettings === 'string' ? JSON.parse(empresa.themeSettings) : empresa.themeSettings) : {};
+    const merged = { ...existing };
+    if (data.themeSettings && typeof data.themeSettings === 'object') Object.assign(merged, data.themeSettings);
+    if (data.notificationSound !== undefined) merged.notificationSound = data.notificationSound;
+    if (data.capa !== undefined) merged.capa = data.capa;
+    if (data.bairrosAtendidos !== undefined) merged.bairrosAtendidos = data.bairrosAtendidos;
+    payload.themeSettings = merged;
   }
 
-  const empresa = await sql.buscarEmpresa(1);
   const changedFields = Object.keys(payload);
   const before = {};
   const after = {};

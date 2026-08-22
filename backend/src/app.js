@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const compression = require('compression');
 const cors = require('cors');
 const helmet = require('helmet');
 const { errorHandler } = require('./middleware/errorHandler');
@@ -29,6 +30,7 @@ const { webhookRouter } = require('./routes/webhookRoutes');
 const app = express();
 
 app.use(contextMiddleware);
+app.use(compression({ threshold: 1024 }));
 app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://cdn.tailwindcss.com"], scriptSrcAttr: ["'unsafe-inline'"], styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"], fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"], imgSrc: ["'self'", "data:", "https:"] } } }));
 var corsOrigin = process.env.CORS_ORIGIN || '*';
 if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
@@ -36,10 +38,6 @@ if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
 }
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ type: ['application/json', 'application/json;charset=utf-8'] }));
-if (!process.env.VERCEL) {
-  app.use(express.static(path.join(__dirname, '..', '..', 'public')));
-  app.use(express.static(path.join(__dirname, '..', '..')));
-}
 app.use('/api', apiLimiter);
 
 app.use('/api/auth', authRoutes);
@@ -63,10 +61,18 @@ app.use('/webhooks', webhookRouter);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));
-app.get('/api/config', authenticate, (req, res) => res.json({
-  mapboxToken: process.env.MAPBOX_TOKEN || '',
-  graphhopperKey: process.env.GRAPHHOPPER_KEY || '',
-}));
+app.get('/api/config', authenticate, (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300, s-maxage=300');
+  res.json({
+    mapboxToken: process.env.MAPBOX_TOKEN || '',
+    graphhopperKey: process.env.GRAPHHOPPER_KEY || '',
+  });
+});
+
+if (!process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, '..', '..', 'public'), { maxAge: '1d', index: false }));
+  app.use(express.static(path.join(__dirname, '..', '..'), { index: false, extensions: ['html'] }));
+}
 
 app.use(errorHandler);
 

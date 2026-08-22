@@ -133,6 +133,9 @@ model Pedido {
 
   @@index([paymentStatus])
   @@index([deletedAt])
+  @@index([empresaId])
+  @@index([empresaId, createdAt(sort: Desc)])
+  @@index([clienteWhatsapp])
   @@map("pedidos")
 }
 
@@ -146,6 +149,8 @@ model ItensPedido {
   pedido        Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   produto       Produto  @relation(fields: [produtoId], references: [id])
 
+  @@index([pedidoId])
+  @@index([produtoId])
   @@map("itens_pedido")
 }
 
@@ -209,6 +214,9 @@ model EntregaDiaria {
   empresa      Empresa    @relation(fields: [empresaId], references: [id])
   entregador   Entregador @relation(fields: [entregadorId], references: [id])
 
+  @@index([pedidoId])
+  @@index([data])
+  @@index([entregadorId])
   @@map("entregas_diarias")
 }
 
@@ -228,6 +236,7 @@ model CaixaDiario {
   fechadoEm         DateTime? @map("fechado_em")
   empresa           Empresa   @relation(fields: [empresaId], references: [id])
 
+  @@index([data])
   @@map("caixa_diario")
 }
 

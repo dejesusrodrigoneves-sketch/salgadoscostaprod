@@ -33,7 +33,7 @@ function selectTab(which){
   });
 }
 document.getElementById('tab-horarios')?.addEventListener('click', () => selectTab('horarios'));
-document.getElementById('tab-produtos')?.addEventListener('click', () => selectTab('produtos'));
+document.getElementById('tab-produtos')?.addEventListener('click', () => { selectTab('produtos'); carregarCategorias(); });
 document.getElementById('tab-categorias')?.addEventListener('click', () => { selectTab('categorias'); carregarCategorias(); });
 document.getElementById('tab-config')?.addEventListener('click', () => { selectTab('config'); carregarConfigLoja(); });
 document.getElementById('tab-personalizacao')?.addEventListener('click', () => { selectTab('personalizacao'); carregarTema(); });
@@ -338,9 +338,15 @@ fImgFile?.addEventListener('change', async function() {
     this.value = '';
     return;
   }
-  const allowed = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
-  if (!allowed.test(file.name)) {
+  const allowedExt = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+  const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+  if (!allowedExt.test(file.name)) {
     toast('Formato inválido. Use jpg, png, gif, webp ou svg.', 'danger');
+    this.value = '';
+    return;
+  }
+  if (file.type && !allowedMime.includes(file.type)) {
+    toast('Tipo de arquivo inválido. O arquivo não é uma imagem válida.', 'danger');
     this.value = '';
     return;
   }
@@ -352,7 +358,11 @@ fImgFile?.addEventListener('change', async function() {
   const formData = new FormData();
   formData.append('file', file);
   try {
-    const res = await fetch(API_BASE + '/upload', { method: 'POST', body: formData });
+    const res = await fetch(API_BASE + '/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+      body: formData
+    });
     const data = await res.json();
     if (!res.ok) {
       fImgPreview.src = previewAnterior;
@@ -909,6 +919,87 @@ document.getElementById('btnSalvarTema')?.addEventListener('click', async functi
   }
 });
 
+// Notification sound upload
+const notifSoundFile = document.getElementById('notifSoundFile');
+const notifSoundPreview = document.getElementById('notifSoundPreview');
+const notifSoundAudio = document.getElementById('notifSoundAudio');
+const btnRemoveSound = document.getElementById('btnRemoveSound');
+
+// Load current sound on page load
+(async function() {
+  try {
+    const settings = await apiRequest('/loja/settings-admin');
+    const soundUrl = settings.notificationSound || (settings.themeSettings && settings.themeSettings.notificationSound);
+    if (soundUrl && notifSoundAudio) {
+      notifSoundAudio.src = soundUrl;
+      notifSoundPreview.style.display = 'flex';
+    }
+  } catch(e) { /* silent — default beep used */ }
+})();
+
+notifSoundFile?.addEventListener('change', async function() {
+  const file = this.files[0];
+  if (!file) return;
+  if (file.size > 500 * 1024) {
+    toast('Som muito grande! Máximo 500KB.', 'danger');
+    this.value = '';
+    return;
+  }
+  const allowedMime = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/x-wav', 'audio/webm'];
+  const allowedExt = /\.(mp3|wav|ogg)$/i;
+  if (!allowedExt.test(file.name)) {
+    toast('Formato inválido. Use MP3, WAV ou OGG.', 'danger');
+    this.value = '';
+    return;
+  }
+  if (file.type && !allowedMime.includes(file.type)) {
+    toast('Tipo de arquivo inválido. Envie um áudio MP3, WAV ou OGG.', 'danger');
+    this.value = '';
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(API_BASE + '/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + TOKEN },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      toast(data.error || 'Erro no upload do som', 'danger');
+      this.value = '';
+      return;
+    }
+    // Save URL to settings
+    await apiRequest('/loja/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ notificationSound: data.url }),
+    });
+    notifSoundAudio.src = data.url;
+    notifSoundPreview.style.display = 'flex';
+    toast('Som de notificação salvo!');
+  } catch (e) {
+    toast('Falha ao enviar som: ' + e.message, 'danger');
+    this.value = '';
+  }
+});
+
+btnRemoveSound?.addEventListener('click', async function() {
+  try {
+    await apiRequest('/loja/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ notificationSound: '' }),
+    });
+    notifSoundAudio.src = '';
+    notifSoundPreview.style.display = 'none';
+    notifSoundFile.value = '';
+    toast('Som removido. Usando beep padrão.');
+  } catch (e) {
+    toast('Erro ao remover som: ' + e.message, 'danger');
+  }
+});
+
 document.getElementById('btnResetarTema')?.addEventListener('click', async function() {
   var defaults = {
     primaryColor: '#F26D3D',
@@ -929,4 +1020,4 @@ document.getElementById('btnResetarTema')?.addEventListener('click', async funct
   }
 });
 
-(function init(){ carregarHorarios(); carregarLojaConfig(); listenProdutos(); })();
+(function init(){ carregarHorarios(); carregarLojaConfig(); listenProdutos(); carregarCategorias(); })();

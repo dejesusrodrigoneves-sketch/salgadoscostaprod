@@ -619,6 +619,9 @@ hr {
 
 img {
   width: 120px;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 8px;
   -webkit-user-select: none;
      -moz-user-select: none;
       -ms-user-select: none;

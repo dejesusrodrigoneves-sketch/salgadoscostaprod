@@ -94,7 +94,8 @@ function calcularTaxaEntregaPorBairro() {
 
 
 function carregarBairros() {
-  fetch('/api/public/loja/settings').then(function(r) { return r.json(); }).then(function(config) {
+  var _fetch = (typeof fetchCached === 'function') ? fetchCached : fetch;
+  _fetch('/api/public/loja/settings', {}, 300000).then(function(r) { return r.json(); }).then(function(config) {
     if (Array.isArray(config.bairrosAtendidos)) {
       bairrosAtendidos = config.bairrosAtendidos;
     }
@@ -117,8 +118,22 @@ function carregarConfig() {
 }
 carregarConfig();
 
-function getCart(){ return JSON.parse(localStorage.getItem('cart')) || []; }
-function setCart(cart){ localStorage.setItem("cart", JSON.stringify(cart)); }
+var _cartCache = null;
+
+function getCart() {
+  if (_cartCache !== null) return _cartCache;
+  try {
+    _cartCache = JSON.parse(localStorage.getItem('cart')) || [];
+  } catch (e) {
+    _cartCache = [];
+  }
+  return _cartCache;
+}
+
+function setCart(cart) {
+  _cartCache = cart;
+  localStorage.setItem('cart', JSON.stringify(cart));
+}
 
 // ---------------- CÁLCULO ---------------- //
 function calculaValorItens() {
@@ -136,6 +151,7 @@ function calculaValorItens() {
     } else {
       total += item.price * (prod.qtd || 1); // outros produtos também multiplicam
     }
+    total += Number(prod.extra) || 0; // açaí acréscimos
   });
 
   return total;
@@ -226,6 +242,7 @@ function renderizaItens(){
       } else {
         precoItem = item.price * (prod.qtd || 1);
       }
+      precoItem += Number(prod.extra) || 0;
       const preco = precoItem.toFixed(2).replace(".", ",");
 
       html += `
@@ -246,8 +263,8 @@ function renderizaItens(){
       </div>
       <div class="sabores-container" id="sabores-${item.id}"></div>`;
       if (prod.sabores && Object.keys(prod.sabores).length > 0) {
-        const ehCombo = item && item.config && ComboConfig && ComboConfig.tipoDe(item.config) === 'combo_salgado';
-        if (ehCombo) {
+        const tipoCombo = item && item.config && ComboConfig && ComboConfig.tipoDe(item.config);
+        if (tipoCombo === 'combo_salgado') {
           const linhas = Object.entries(prod.sabores)
             .filter(([,qtd]) => Number(qtd) > 0)
             .map(([idSabor,qtd]) => {
@@ -258,6 +275,28 @@ function renderizaItens(){
               return `<div class="sabor-linha"><span>${escapeHtml(nome || 'Sabor #' + idSabor)}</span><span>${qtd}</span></div>`;
             }).join('');
           html += `<div class="combo-sabores">${linhas}
+            <button onclick="abrirModalSaboresEdicao(${prod.id})" class="btn-editar-combo">✏️ Editar combo</button>
+          </div>`;
+        } else if (tipoCombo === 'combo_acai' && item.config) {
+          const split = ComboConfig.separarAcai(item.config, prod.sabores);
+          const precoMap = {};
+          (item.config.acrescimos || []).forEach(a => { precoMap[a.nome] = Number(a.preco) || 0; });
+          let gratisHtml = '';
+          let extrasHtml = '';
+          if (split.gratis.length) {
+            gratisHtml = `<div style="margin-bottom:4px;"><span style="color:#1FA58D;font-size:11px;font-weight:600;">Grátis</span>` +
+              split.gratis.map(s => `<div class="sabor-linha"><span>${escapeHtml(s.nome)}</span><span>${s.qtd}</span></div>`).join('') +
+              '</div>';
+          }
+          if (split.pagos.length) {
+            extrasHtml = `<div style="margin-bottom:4px;"><span style="color:#F26D3D;font-size:11px;font-weight:600;">Extras + R$ ${split.extra.toFixed(2)}</span>` +
+              split.pagos.map(s => {
+                const p = precoMap[s.nome] || 0;
+                return `<div class="sabor-linha"><span>${escapeHtml(s.nome)}</span><span>${s.qtd} × R$ ${p.toFixed(2)}</span></div>`;
+              }).join('') +
+              '</div>';
+          }
+          html += `<div class="combo-sabores">${gratisHtml}${extrasHtml}
             <button onclick="abrirModalSaboresEdicao(${prod.id})" class="btn-editar-combo">✏️ Editar combo</button>
           </div>`;
         } else {
@@ -417,7 +456,16 @@ function abrirModalSabores(pacote) {
   if (!modaisState[pacote.id]) modaisState[pacote.id] = { open: true, sabores: {}, qtd: 1 };
   const state = modaisState[pacote.id];
 
-  const ehComboSalgado = typeof ComboConfig !== 'undefined' && ComboConfig.tipoDe(pacote.config) === 'combo_salgado';
+  const tipoCombo = typeof ComboConfig !== 'undefined' ? ComboConfig.tipoDe(pacote.config) : null;
+  if (tipoCombo === 'combo_acai') {
+    // Delegate to overlay with prefill
+    const cart = getCart();
+    const item = cart.find(i => i.id === pacote.id);
+    const prefill = item && item.sabores ? item.sabores : {};
+    abrirOverlayCombo(pacote.id, prefill, { skipOpenCheck: true });
+    return;
+  }
+  const ehComboSalgado = tipoCombo === 'combo_salgado';
   let saboresParaExibir;
   if (ehComboSalgado) {
     saboresParaExibir = (pacote.config.sabores || []).filter(s => !s.pausado).map(s => ({ id: s.nome, name: s.nome }));
@@ -827,7 +875,8 @@ async function generateOrder() {
       const saboresFormatados = Object.entries(prod.sabores)
         .map(([idSabor, qtd]) => {
           const s = productsMap[idSabor];
-          return `${qtd}x ${s?.name || "??"}`;
+          const nome = s ? s.name : (/^\d+$/.test(String(idSabor)) ? '??' : idSabor);
+          return `${qtd}x ${nome}`;
         }).join(", ");
       return `${prod.qtd}x ${produto.name} [${tipoTexto}] → ${saboresFormatados}`;
     }
@@ -841,7 +890,7 @@ async function generateOrder() {
     const produto = productsMap[String(prod.id)];
     if (!produto) return acc;
     if (pacotesFixos.includes(prod.id) || pacotesEspeciais.includes(prod.id)) return acc + produto.price;
-    return acc + (produto.price * (prod.qtd || 1));
+    return acc + (produto.price * (prod.qtd || 1)) + (Number(prod.extra) || 0);
   }, 0));
 
   let coords = { lat: null, lon: null };
@@ -899,6 +948,7 @@ async function generateOrder() {
   // Recalcula totalFinal incluindo taxa PIX se aplicável
   var totalFinalComPix = valorItens + deliveryValueLocal + taxaCartaoLocal + (formaPagamentoValue === "pix" ? taxaPix : 0) - desconto;
 
+    _cartCache = null;
     localStorage.removeItem("cart");
     renderizaItens();
     if (result.pagamento && result.pagamento.pixCode) {

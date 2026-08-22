@@ -142,17 +142,6 @@ body { background: var(--secondary) !important; color: var(--text) !important; }
   .admin-mini-cart-footer .total-mini{font-size:20px;}
 }
 </style>
-<script src="js/utils.js"></script>
-<script>
-// Auth guard — MUST be first, before any HTML renders
-if (typeof authGuard === 'function' && !authGuard()) {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h2>Acesso negado</h2><p>Redirecionando para login...</p></div>';
-  });
-  setTimeout(function(){ window.location.href = 'login.html'; }, 500);
-  throw new Error('Redirecting to login');
-}
-</script>
 <script>
 function api(path, opts) {
   var headers = { 'Content-Type': 'application/json' };
@@ -487,7 +476,6 @@ function renderCard(p, docId) {
   function notificarComLoading(acao, status, extraData, msgSucesso) {
     return async function() {
       var loadEl = toast('📤 Enviando notificação para o cliente...', 'info', 0);
-      await new Promise(function(r) { setTimeout(r, 3000); });
       try {
         var body = { status: status, ...(extraData || {}) };
         await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify(body) });
@@ -516,7 +504,6 @@ function renderCard(p, docId) {
     const driverId = await selecionarEntregadorModal(nome);
     if (!driverId) return;
     var loadEl = toast('📤 Enviando notificação para o cliente...', 'info', 0);
-    await new Promise(function(r) { setTimeout(r, 3000); });
     try {
       await api('/pedidos/' + docId + '/status', { method: 'PATCH', body: JSON.stringify({ status: 'em_rota', entregadorId: driverId }) });
       await api('/entregas', { method: 'POST', body: JSON.stringify({ entregadorId: Number(driverId), pedidoId: docId, valor: Number(p.valores?.entrega) || 0 }) });
@@ -534,7 +521,6 @@ function renderCard(p, docId) {
     const ok = await confirmModal('Deseja finalizar o pedido de ' + nome + '?');
     if (!ok) return;
     var loadEl = toast('📤 Enviando notificação de finalização...', 'info', 0);
-    await new Promise(function(r) { setTimeout(r, 3000); });
     try {
       await api('/pedidos/' + docId + '/finalizar', { method: 'POST' });
       if (loadEl.parentNode) loadEl.remove();
@@ -1435,6 +1421,19 @@ function modalEntrega(p, est) {
 let audioCtx = null;
 let beepLoopId = null;
 let beepInProg = false;
+let customNotifSound = null;
+
+async function loadNotifSound() {
+  try {
+    const config = await api('/loja/settings-admin');
+    const url = config.notificationSound || (config.themeSettings && config.themeSettings.notificationSound);
+    if (url) {
+      customNotifSound = new Audio(url);
+      customNotifSound.load();
+    }
+  } catch(e) { /* fallback to beep */ }
+}
+loadNotifSound();
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1458,6 +1457,23 @@ function beep(freq, duration, type) {
 }
 
 function tocarAlarmeNovoPedido() {
+  if (customNotifSound) {
+    try {
+      const clone = customNotifSound.cloneNode();
+      clone.volume = 1;
+      clone.play().catch(function(e) {
+        console.warn('Som custom falhou, usando beep:', e);
+        toast('Som padrão usado (erro ao reproduzir custom)', 'warning');
+        beep(880, 0.2);
+        setTimeout(function() { beep(880, 0.2); }, 250);
+        setTimeout(function() { beep(880, 0.3); }, 500);
+      });
+      return;
+    } catch(e) {
+      console.warn('Som custom erro:', e);
+      customNotifSound = null;
+    }
+  }
   beep(880, 0.2);
   setTimeout(function() { beep(880, 0.2); }, 250);
   setTimeout(function() { beep(880, 0.3); }, 500);
@@ -1468,7 +1484,20 @@ function beepLoop() {
   beepInProg = true;
   function tick() {
     beepLoopId = setTimeout(function() {
-      beep(880, 0.5, 'sine');
+      if (customNotifSound) {
+        try {
+          const clone = customNotifSound.cloneNode();
+          clone.volume = 0.7;
+          clone.play().catch(function(e) {
+            console.warn('Loop custom falhou, usando beep:', e);
+            beep(880, 0.5, 'sine');
+          });
+        } catch(e) {
+          beep(880, 0.5, 'sine');
+        }
+      } else {
+        beep(880, 0.5, 'sine');
+      }
       tick();
     }, 3000);
   }
@@ -1812,7 +1841,19 @@ async function initAdmin() {
   carregarPedidos();
 }
 initAdmin();
-var pedidosTimer = setInterval(carregarPedidos, 10000);
+var lastPedidosHash = '';
+var pedidosTimer = setInterval(async function() {
+  try {
+    var res = await fetch('/api/pedidos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
+    var data = await res.json();
+    var hash = JSON.stringify(data.map(function(p) { return p.id + p.status; }));
+    if (hash !== lastPedidosHash) {
+      lastPedidosHash = hash;
+      renderPedidos(data);
+    }
+    else { console.log('[polling] hash igual, skip re-render'); }
+  } catch (e) { console.error('[polling] erro:', e); }
+}, 10000);
 </script>
 <script src="js/theme.js" defer></script>
 </body>

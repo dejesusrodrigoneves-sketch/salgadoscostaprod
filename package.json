@@ -29,5 +29,8 @@
   "bugs": {
     "url": "https://github.com/viniciuslimaan/onlineMenu/issues"
   },
-  "homepage": "https://github.com/viniciuslimaan/onlineMenu#readme"
+  "homepage": "https://github.com/viniciuslimaan/onlineMenu#readme",
+  "dependencies": {
+    "@sentry/node": "^10.70.0"
+  }
 }

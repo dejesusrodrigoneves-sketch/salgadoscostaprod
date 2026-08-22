@@ -109,16 +109,21 @@ async function resumoDiario(data) {
 // Helper puro+injetado: recebe entregas ja consultadas e uma fn buscarPedido(id) -> Promise<pedido>.
 // Nao depende de prisma diretamente — testavel via vitest sem DB.
 async function montarResumoPeriodo(entregas, buscarPedidoFn) {
+  if (!entregas.length) return { totalEntregas: 0, totalValor: 0, totalPedidos: 0, entregadores: [] };
+
+  const pedidoIds = [...new Set(entregas.map(e => e.pedidoId))];
+  let pedidos;
+  try {
+    pedidos = await buscarPedidoFn(pedidoIds);
+  } catch {
+    pedidos = pedidoIds.map(id => ({ id, itens: [] }));
+  }
+  if (!Array.isArray(pedidos)) pedidos = [];
+  const pedidoMap = new Map(pedidos.filter(Boolean).map(p => [p.id, p]));
+
   const map = {};
   for (const e of entregas) {
-    let pedido;
-    try {
-      pedido = await buscarPedidoFn(e.pedidoId);
-    } catch {
-      // Erro transiente de consulta → mantém a entrega com fallback
-      pedido = {};
-    }
-    // Pedido deletado (soft delete) ou não encontrado → exclui a entrega do relatório
+    const pedido = pedidoMap.get(e.pedidoId);
     if (pedido == null) continue;
 
     const id = e.entregadorId;
@@ -169,7 +174,7 @@ async function resumoPorPeriodo(inicio, fim, entregadorId, ctx = {}) {
     orderBy: { createdAt: 'asc' },
   });
 
-  const resultado = await montarResumoPeriodo(entregas, (id) => sql.buscarPedidoComItens(id));
+  const resultado = await montarResumoPeriodo(entregas, sql.listarPedidosPorIds);
   return { inicio, fim, ...resultado };
 }
 

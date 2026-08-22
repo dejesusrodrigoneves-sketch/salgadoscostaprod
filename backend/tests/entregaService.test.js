@@ -39,11 +39,11 @@ describe('montarResumoPeriodo', () => {
       { entregadorId: 1, valor: '12.00', pedidoId: '004', data: new Date('2026-08-04T11:00:00Z'), entregador: { nome: 'João' } },
       { entregadorId: 2, valor: '10.00', pedidoId: '005', data: new Date('2026-08-04T12:00:00Z'), entregador: { nome: 'Maria' } },
     ];
-    const buscarPedidoFn = async (id) => ({
+    const buscarPedidoFn = async (ids) => Array.isArray(ids) ? ids.map(id => ({
       id, clienteNome: 'Cliente ' + id,
       itens: [{ produtoId: 1, quantidade: 2, precoUnitario: '6.00' }],
       total: id === '005' ? '10.00' : '12.00',
-    });
+    })) : [];
 
     const result = await montarResumoPeriodo(entregas, buscarPedidoFn);
 
@@ -62,7 +62,7 @@ describe('montarResumoPeriodo', () => {
       cliente: 'Cliente 003',
       totalPedido: 12,
     });
-    expect(joao.pedidos[0].itens).toEqual([{ produtoId: 1, quantidade: 2, precoUnitario: '6.00' }]);
+    expect(joao.pedidos[0].itens).toEqual([{ produtoId: 1, nome: 'Produto #1', quantidade: 2, precoUnitario: '6.00' }]);
 
     const maria = result.entregadores.find(r => r.id === 2);
     expect(maria.valorTotal).toBe(10);
@@ -92,7 +92,7 @@ describe('montarResumoPeriodo', () => {
     const entregas = [
       { entregadorId: 1, valor: '12.00', pedidoId: 'DEL', entregador: { nome: 'X' } },
     ];
-    const result = await montarResumoPeriodo(entregas, async () => null);
+    const result = await montarResumoPeriodo(entregas, async () => []);
     expect(result.totalEntregas).toBe(0);
     expect(result.totalValor).toBe(0);
     expect(result.entregadores).toEqual([]);
@@ -103,7 +103,7 @@ describe('montarResumoPeriodo', () => {
       { entregadorId: 1, valor: '5.00', pedidoId: 'VAL', entregador: { nome: 'João' } },
       { entregadorId: 1, valor: '8.00', pedidoId: 'DEL', entregador: { nome: 'João' } },
     ];
-    const buscarPedidoFn = async (id) => (id === 'DEL' ? null : { clienteNome: 'Cliente', total: '20.00', itens: [], formaPagamento: 'dinheiro', tipoEntrega: 'delivery' });
+    const buscarPedidoFn = async (ids) => Array.isArray(ids) ? ids.map(id => (id === 'DEL' ? null : { id, clienteNome: 'Cliente', total: '20.00', itens: [], formaPagamento: 'dinheiro', tipoEntrega: 'delivery' })) : [];
     const result = await montarResumoPeriodo(entregas, buscarPedidoFn);
     expect(result.totalEntregas).toBe(1);
     expect(result.totalValor).toBe(5);
