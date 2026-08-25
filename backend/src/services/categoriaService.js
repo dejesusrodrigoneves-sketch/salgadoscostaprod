@@ -6,12 +6,12 @@ function sanitize(v) {
   return v.trim().replace(/<[^>]*>/g, '');
 }
 
-async function listar() {
-  return sql.listarCategorias();
+async function listar(empresaId) {
+  return sql.listarCategorias(empresaId);
 }
 
-async function buscar(id) {
-  const categoria = await sql.buscarCategoria(id);
+async function buscar(id, empresaId) {
+  const categoria = await sql.buscarCategoria(id, empresaId);
   if (!categoria) throw Object.assign(new Error('Categoria não encontrada'), { status: 404 });
   return categoria;
 }
@@ -34,8 +34,8 @@ async function criar(data, ctx = {}) {
   return categoria;
 }
 
-async function atualizar(id, data, ctx = {}) {
-  const categoria = await sql.buscarCategoria(id);
+async function atualizar(id, data, empresaId, ctx = {}) {
+  const categoria = await sql.buscarCategoria(id, empresaId);
   if (!categoria) throw Object.assign(new Error('Categoria não encontrada'), { status: 404 });
   const sanitized = { ...data };
   if (sanitized.nome) sanitized.nome = sanitize(sanitized.nome);
@@ -63,8 +63,8 @@ async function atualizar(id, data, ctx = {}) {
   return atualizada;
 }
 
-async function deletar(id, ctx = {}) {
-  const categoria = await sql.buscarCategoria(id);
+async function deletar(id, empresaId, ctx = {}) {
+  const categoria = await sql.buscarCategoria(id, empresaId);
   if (!categoria) throw Object.assign(new Error('Categoria não encontrada'), { status: 404 });
   await sql.deletarCategoria(id);
 

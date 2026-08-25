@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const sql = require('../repositories/sqlRepository');
+const prisma = require('../config/prisma');
 const paymentService = require('../services/paymentService');
 const logger = require('../config/logger');
 const env = require('../config/env');
@@ -10,12 +11,16 @@ async function sincronizarPendentes() {
   if (isRunning) return;
   isRunning = true;
   try {
-    const pendentes = await sql.listarPedidosFiltrados({ paymentStatus: 'aguardando_pagamento' });
-    for (const pedido of pendentes) {
-      try {
-        await paymentService.consultarESincronizar(pedido.id);
-      } catch (e) {
-        logger.error(`Sync PIX falhou pedido ${pedido.id}: ${e.message}`);
+    // Itera todas empresas ativas
+    const empresas = await prisma.empresa.findMany({ select: { id: true } });
+    for (const emp of empresas) {
+      const pendentes = await sql.listarPedidosFiltrados(emp.id, { paymentStatus: 'aguardando_pagamento' });
+      for (const pedido of pendentes) {
+        try {
+          await paymentService.consultarESincronizar(pedido.id);
+        } catch (e) {
+          logger.error(`Sync PIX falhou pedido ${pedido.id}: ${e.message}`);
+        }
       }
     }
   } finally {

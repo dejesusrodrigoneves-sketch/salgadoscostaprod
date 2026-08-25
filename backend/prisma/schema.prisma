@@ -45,6 +45,17 @@ model Empresa {
   usuarios          Usuario[]
   pagamentos        Pagamento[]
   whatsappInstances WhatsAppInstance[]
+  weeklySettlements WeeklySettlement[]
+  email             String?            @unique
+  cpfCnpj           String?            @map("cpf_cnpj")
+  pixKey            String?            @map("pix_key")
+  pixKeyType        String?            @map("pix_key_type")
+  asaasSubcontaId   String?            @map("asaas_subconta_id")
+  asaasWalletId     String?            @map("asaas_wallet_id")
+  asaasApiKey       String?            @map("asaas_api_key")
+  asaasOnboarded    Boolean            @default(false) @map("asaas_onboarded")
+  asaasCreatedAt    DateTime?          @map("asaas_created_at")
+  deletedAt DateTime?
 
   @@map("empresas")
 }
@@ -127,6 +138,7 @@ model Pedido {
   paymentMethod     String?       @map("payment_method")
   paymentId         Int?          @map("payment_id")
   deletedAt         DateTime?     @map("deleted_em")
+  semanaNoAcervo    Boolean       @default(false)
   pagamentos        Pagamento[]
   itens             ItensPedido[]
   empresa           Empresa       @relation(fields: [empresaId], references: [id])
@@ -365,4 +377,31 @@ model WhatsAppInstance {
 
   @@unique([empresaId, instanceId])
   @@map("whatsapp_instances")
+}
+
+model WeeklySettlement {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int
+  weekStart       DateTime
+  weekEnd         DateTime
+  totalPedidos    Int       @default(0)
+  totalBruto      Decimal   @db.Decimal(10, 2) @default(0)
+  totalLiquido    Decimal   @db.Decimal(10, 2) @default(0)
+  status          String    @default("processando")
+  processedAt     DateTime?
+  paidAt          DateTime?
+  asaasTransferId String?
+  splitStatus     String?   @map("split_status")
+  splitError      String?   @map("split_error")
+  transferId           String?   @map("transfer_id")
+  transferStatus       String?   @map("transfer_status")
+  transferScheduledAt  DateTime? @map("transfer_scheduled_at")
+  transferAmount       Decimal?  @db.Decimal(10, 2) @map("transfer_amount")
+  createdAt            DateTime  @default(now())
+
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, weekStart])
+  @@index([empresaId])
+  @@index([status])
 }

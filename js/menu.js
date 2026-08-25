@@ -47,7 +47,7 @@ inputCEP.addEventListener('input', debounce(async () => {
             document.getElementById('regBairro').value = enderecoData.bairro || '';
 
             const userLogged = JSON.parse(localStorage.getItem('userLogged'));
-            if(userLogged && localStorage.getItem('clientToken')){
+            if(userLogged && PUBLIC_API.getToken()){
                 try {
                     await PUBLIC_API.updateMe({ endereco: enderecoData.rua || '', bairro: enderecoData.bairro || '' });
                 } catch(e) { /* fallback silencioso */ }
@@ -204,11 +204,8 @@ async function atualizarStatusBar(){
     try{
         let aberto = false;
         try {
-            const res = await fetch('/api/loja/status');
-            if (res.ok) {
-                const data = await res.json();
-                aberto = data.isOpen;
-            }
+            const data = await PUBLIC_API.lojaStatus();
+            aberto = !!data && !!data.isOpen;
         } catch (e) {}
 
         const statusBar = document.getElementById("statusBar");
@@ -351,10 +348,7 @@ refreshProductCards = function() { _origRefresh(); updateOrderBar(); };
 
 async function carregarSettingsLoja() {
   try {
-    var _fetch = (typeof fetchCached === 'function') ? fetchCached : fetch;
-    const res = await _fetch('/api/loja/settings', {}, 300000);
-    if (!res.ok) return;
-    const config = await res.json();
+    const config = await PUBLIC_API.lojaSettings();
 
     // --- Horários ---
     const container = document.getElementById("daysContainer");
@@ -516,7 +510,7 @@ document.getElementById("btnLogin").addEventListener("click", async () => {
 
   try {
     var result = await PUBLIC_API.login({ telefone: phone, password: password });
-    localStorage.setItem('clientToken', result.token);
+    PUBLIC_API.setToken(result.token);
     localStorage.setItem("userLogged", JSON.stringify(result.cliente));
     toast("Login realizado!", 'success');
     userDropdown.classList.add("hidden");
@@ -550,7 +544,7 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
     const numero = document.getElementById("regNumero").value;
     const bairro = document.getElementById("regBairro").value;
     const ponto = document.getElementById("regPonto").value;
-    var isEditing = !!localStorage.getItem('clientToken');
+    var isEditing = !!PUBLIC_API.getToken();
 
     if (isEditing) {
         try {
@@ -583,7 +577,7 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
             endereco: endereco, numero: numero, bairro: bairro, cep: cep, pontoReferencia: ponto,
             aceitePoliticas: true, consentVersion: 'v1.0',
         });
-        localStorage.setItem('clientToken', result.token);
+        PUBLIC_API.setToken(result.token);
         localStorage.setItem("userLogged", JSON.stringify(result.cliente));
         toast("Cadastro realizado!", 'success');
         registerOverlay.classList.add("hidden");
@@ -777,12 +771,12 @@ async function abrirOverlayPedidos(user) {
     if (msg.includes('Token') || msg.includes('401') || msg.includes('invál') || msg.includes('não fornecido')) {
       msg = 'Sessão expirada. Faça login novamente.';
       icon = '🔒';
-      localStorage.removeItem('clientToken');
+      PUBLIC_API.clearToken();
       localStorage.removeItem('userLogged');
     } else if (msg.includes('não encontrada') || msg.includes('removida')) {
       msg = 'Conta não encontrada. Crie uma nova conta.';
       icon = '👤';
-      localStorage.removeItem('clientToken');
+      PUBLIC_API.clearToken();
       localStorage.removeItem('userLogged');
     } else if (!navigator.onLine || msg.includes('fetch') || msg.includes('Network')) {
       msg = 'Sem conexão com a internet.';
@@ -886,7 +880,7 @@ function atualizarUserMenu(user) {
 
   document.getElementById("btnLogout").addEventListener("click", function() {
     localStorage.removeItem("userLogged");
-    localStorage.removeItem("clientToken");
+    PUBLIC_API.clearToken();
     location.reload();
   });
 
@@ -896,7 +890,7 @@ function atualizarUserMenu(user) {
     try {
       await PUBLIC_API.deleteMe();
       localStorage.removeItem("userLogged");
-      localStorage.removeItem("clientToken");
+      PUBLIC_API.clearToken();
       toast("Conta excluída. Dados pessoais removidos.", 'success');
       location.reload();
     } catch(e) {

@@ -3,8 +3,12 @@ const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId;
+}
+
 exports.listar = asyncHandler(async (req, res) => {
-  const where = { empresaId: 1 };
+  const where = { empresaId: empresaId(req) };
   if (req.query.ativo === 'true') where.ativo = true;
   const prisma = require('../config/prisma');
   const entregadores = await prisma.entregador.findMany({
@@ -15,7 +19,7 @@ exports.listar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const entregador = await sql.criarEntregador({ ...req.body, empresaId: 1 });
+  const entregador = await sql.criarEntregador({ ...req.body, empresaId: empresaId(req) });
 
   auditService.audit({
     ...getCtx(req),
@@ -32,7 +36,7 @@ exports.criar = asyncHandler(async (req, res) => {
 
 exports.atualizar = asyncHandler(async (req, res) => {
   const prisma = require('../config/prisma');
-  const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: 1 } });
+  const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: empresaId(req) } });
   if (!existente) return res.status(404).json({ error: 'Entregador não encontrado' });
   const entregador = await sql.atualizarEntregador(req.params.id, req.body);
 
@@ -61,7 +65,7 @@ exports.atualizar = asyncHandler(async (req, res) => {
 exports.toggle = asyncHandler(async (req, res) => {
   const { ativo } = req.body;
   const prisma = require('../config/prisma');
-  const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: 1 } });
+  const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: empresaId(req) } });
   if (!existente) return res.status(404).json({ error: 'Entregador não encontrado' });
   const entregador = await sql.toggleEntregador(req.params.id, ativo);
 
@@ -81,7 +85,7 @@ exports.toggle = asyncHandler(async (req, res) => {
 
 exports.deletar = asyncHandler(async (req, res) => {
   const prisma = require('../config/prisma');
-  const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: 1 } });
+  const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: empresaId(req) } });
   if (!existente) return res.status(404).json({ error: 'Entregador não encontrado' });
 
   auditService.audit({

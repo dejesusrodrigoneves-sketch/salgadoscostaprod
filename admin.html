@@ -190,6 +190,12 @@ function api(path, opts) {
 
 <script src="js/utils.js"></script>
 <script>
+var host = window.location.hostname;
+var isLocal = host === 'localhost' || /^\d+(\.\d+){3}$/.test(host);
+var sub = host.split('.')[0];
+if (!isLocal && (sub === 'admin' || sub === 'www')) {
+  window.location.href = '/superadmin.html';
+}
 // Auth guard — stops execution if not authenticated
 if (typeof authGuard === 'function' && !authGuard()) {
   document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h2>Acesso negado</h2><p>Redirecionando para login...</p></div>';
@@ -683,7 +689,7 @@ function modalEditarItens(p) {
     var produtos = window.products || [];
     if (!produtos.length) {
       try {
-        var r = await fetch('/api/public/produtos');
+        var r = await fetch('/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
         var d = await r.json(); produtos = Array.isArray(d) ? d : [];
         window.products = produtos;
       } catch(e) { console.error('Falha ao carregar produtos', e); }
@@ -1837,7 +1843,7 @@ async function carregarNaoConcluidos() {
 }
 
 async function initAdmin() {
-  try { var r = await fetch('/api/public/produtos'); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
+  try { var r = await fetch('/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } }); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
   carregarPedidos();
 }
 initAdmin();

@@ -51,13 +51,7 @@
 // Nota: superadmin é validado via Firestore (coleção 'usuarios')
 // A senha NÃO deve ser hardcoded no frontend — consulte o admin do sistema
 
-function switchTab(tab, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.form-box').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById(tab === 'login' ? 'boxLogin' : 'boxRegister').classList.add('active');
-  document.getElementById('loginError').classList.remove('show');
-}
+function switchTab() { /* no-op: register disabled in multi-tenant mode */ }
 
 // ========== LOGIN ==========
 // Sistema de login administrativo (coleção 'usuarios' no Firestore).
@@ -101,58 +95,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   } catch (err) {
     console.error(err);
     error.textContent = 'Erro de conexão. Tente novamente.';
-    error.classList.add('show');
-  } finally {
-    btn.classList.remove('loading');
-    btn.disabled = false;
-  }
-});
-
-// ========== REGISTER ==========
-document.getElementById('registerForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const user = document.getElementById('regUser').value.trim();
-  const pass = document.getElementById('regPass').value.trim();
-  const pass2 = document.getElementById('regPass2').value.trim();
-  const error = document.getElementById('registerError');
-  const success = document.getElementById('registerSuccess');
-  const btn = document.getElementById('btnRegister');
-
-  error.classList.remove('show');
-  success.classList.remove('show');
-
-  if (!user || !pass) { error.textContent = 'Preencha todos os campos.'; error.classList.add('show'); return; }
-  if (pass.length < 6) { error.textContent = 'Senha deve ter no mínimo 6 caracteres.'; error.classList.add('show'); return; }
-  if (pass !== pass2) { error.textContent = 'Senhas não conferem.'; error.classList.add('show'); return; }
-
-  btn.classList.add('loading');
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/auth/register-public', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, password: pass, lojaNome: user }),
-    });
-
-    if (res.ok) {
-      success.textContent = 'Conta criada! Faça login.';
-      success.classList.add('show');
-      setTimeout(() => {
-        document.getElementById('loginUser').value = user;
-        switchTab('login', document.querySelector('.tab[data-tab="login"]'));
-      }, 1500);
-      btn.classList.remove('loading');
-      btn.disabled = false;
-      return;
-    }
-
-    const errData = await res.json().catch(() => ({}));
-    error.textContent = errData.error || 'Erro ao criar conta.';
-    error.classList.add('show');
-  } catch (err) {
-    console.error(err);
-    error.textContent = 'Erro ao cadastrar. Tente novamente.';
     error.classList.add('show');
   } finally {
     btn.classList.remove('loading');

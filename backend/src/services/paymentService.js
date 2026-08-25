@@ -5,6 +5,7 @@ import asaasClient from './asaasClient.js';
 import orderService from './orderService.js';
 import auditService from './auditService.js';
 import env from '../config/env.js';
+import logger from '../config/logger.js';
 
 const paymentEvents = new EventEmitter();
 paymentEvents.setMaxListeners(0);
@@ -15,6 +16,10 @@ function registrarLog(tipo, meta, level = 'info') {
 
 async function criarPixPedido(pedidoId, { cliente, valor }) {
   const v = Number(valor);
+  const pedido = await sql.buscarPedido(pedidoId); // obter empresaId (corrige pedido undefined)
+  if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
+  const empresaId = pedido.empresaId;
+  const empresa = await sql.buscarEmpresa(empresaId);
   let asaasCustomerId = cliente.asaasCustomerId;
   if (!asaasCustomerId) {
     asaasCustomerId = await asaasClient.criarCustomer({
@@ -28,16 +33,25 @@ async function criarPixPedido(pedidoId, { cliente, valor }) {
   const expiryMin = env.asaasPixExpiryMin;
   const taxaServico = Math.round(v * env.asaasPixFeePercent / 100 * 100) / 100;
   const dueDate = new Date(Date.now() + expiryMin * 60 * 1000);
-  const pix = await asaasClient.criarPix({
+  const pixPayload = {
     customerId: asaasCustomerId,
     valor: v,
     descricao: `Pedido ${pedidoId}`,
     dueDate: dueDate.toISOString().slice(0, 10),
-  });
+  };
+
+  let pix;
+  if (empresa && empresa.asaasOnboarded && empresa.asaasWalletId) {
+    pixPayload.splits = [{ walletId: empresa.asaasWalletId, percentualValue: 98 }];
+    pix = await asaasClient.criarPixComSplit(pixPayload);
+    registrarLog('PIX_SPLIT_CREATED', { pedidoId, empresaId, walletId: empresa.asaasWalletId });
+  } else {
+    pix = await asaasClient.criarPix(pixPayload);
+  }
 
   const pagamento = await prisma.pagamento.create({
     data: {
-      pedidoId, empresaId: 1,
+      pedidoId, empresaId,
       asaasPaymentId: pix.paymentId,
       asaasCustomerId,
       valor: v,
@@ -128,7 +142,7 @@ async function consultarESincronizar(pedidoId) {
 
 async function processarWebhook(evento) {
   const { id: eventId, event, payment } = evento;
-  if (!payment) return { received: true };
+  if (!payment && event !== 'TRANSFER_RECEIVED') return { received: true };
 
   const jaVisto = await sql.buscarEventoWebhook(eventId);
   if (jaVisto) {
@@ -136,6 +150,16 @@ async function processarWebhook(evento) {
     return { received: true };
   }
   await sql.criarEventoWebhook(eventId);
+
+  if (event === 'TRANSFER_RECEIVED') {
+    const asaasTransferId = evento.transferId || evento.id;
+    const settlement = await sql.buscarSettlementByTransferId(asaasTransferId);
+    if (settlement) {
+      await sql.atualizarSettlement(settlement.id, { status: 'pago' });
+      logger.info({ settlementId: settlement.id }, 'Settlement marked as paid via transfer');
+    }
+    return { received: true };
+  }
 
   if (event !== 'PAYMENT_RECEIVED') return { received: true };
 

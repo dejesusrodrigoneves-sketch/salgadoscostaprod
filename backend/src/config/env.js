@@ -22,4 +22,5 @@ module.exports = {
   pixSyncCron: process.env.PIX_SYNC_CRON || '*/2 * * * *',
   pedidoRetencaoDias: Number(process.env.PEDIDO_RETENCAO_DIAS) || 30,
   pixEnabled: process.env.PIX_ENABLED === 'true',
+  asaasSubcontaKey: process.env.ASAAS_SUBCONTA_KEY,
 };

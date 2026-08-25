@@ -65,8 +65,34 @@
   }
 
   function loadThemeFromAPI() {
-    var _fetch = (typeof fetchCached === 'function') ? fetchCached : fetch;
-    _fetch('/api/loja/settings', {}, 300000)
+    var url;
+    var headers = {};
+
+    // Detect context: admin (authed) vs public (slug) vs neither
+    var authUser;
+    try { authUser = JSON.parse(localStorage.getItem('authUser') || 'null'); } catch (e) {}
+
+    if (authUser && authUser.token) {
+      // Admin page — use authenticated endpoint
+      url = '/api/loja/settings-admin';
+      headers['Authorization'] = 'Bearer ' + authUser.token;
+    } else {
+      // Public page — detect slug from URL or sessionStorage
+      var slug = '';
+      try {
+        var p = new URLSearchParams(window.location.search);
+        slug = (p.get('slug') || '').trim().toLowerCase();
+        if (!slug) slug = (sessionStorage.getItem('sic_ia_slug') || '').trim();
+      } catch (e) {}
+      if (!slug) {
+        // No context (login page) — apply dark default theme
+        applyTheme(Object.assign({}, DEFAULT_THEME, { isDark: true }));
+        return;
+      }
+      url = '/api/loja/settings?slug=' + encodeURIComponent(slug);
+    }
+
+    fetch(url, { headers: headers })
       .then(function (res) {
         if (!res.ok) throw new Error('Failed to load theme');
         return res.json();
@@ -77,31 +103,20 @@
         try { localStorage.setItem('themeCache', JSON.stringify({ theme: t, time: Date.now() })); } catch (e) {}
       })
       .catch(function () {
-        // Fallback: try cache
+        // Fallback: try cache, then dark default
         try {
           var cached = JSON.parse(localStorage.getItem('themeCache'));
           if (cached && cached.theme && (Date.now() - cached.time < 300000)) {
             applyTheme(cached.theme);
+            return;
           }
         } catch (e) {}
+        applyTheme(Object.assign({}, DEFAULT_THEME, { isDark: true }));
       });
   }
 
-  // Auto-detect: always load theme from single store
   function init() {
     loadThemeFromAPI();
-    var cached = JSON.parse(localStorage.getItem('themeCache'));
-    if (!cached || !cached.theme) {
-      try {
-        var auth = JSON.parse(localStorage.getItem('authUser'));
-        if (auth && auth.token) loadThemeFromAPI();
-      } catch (e) {
-        try {
-          cached = JSON.parse(localStorage.getItem('themeCache'));
-          if (cached && cached.theme) applyTheme(cached.theme);
-        } catch (e2) {}
-      }
-    }
   }
 
   // Expose globally for the theme editor

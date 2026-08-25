@@ -9,6 +9,10 @@ const { asyncHandler } = require('../middleware/errorHandler');
 
 const router = Router();
 
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId;
+}
+
 router.get('/', authenticate, controller.listar);
 router.get('/nao-concluidos', authenticate, controller.listarNaoConcluidos);
 router.get('/:id', authenticate, requireOwnership('pedido'), controller.buscar);
@@ -26,27 +30,28 @@ function legacyCtx(req, rota) {
     module: 'whatsapp',
     targetType: 'pedido',
     targetId: req.body.pedidoId,
+    empresaId: req.ctx?.empresaId,
     after: { clienteNome: req.body.nome, clienteWhatsapp: req.body.telefone },
     changedFields: ['clienteNome', 'clienteWhatsapp'],
     metadata: { ...(ctx.metadata || {}), rotaLegada: `/api/pedidos/${rota}` },
   };
 }
 
-// Rotas legadas de notificação WhatsApp (backward compatible)
-router.post('/producao', asyncHandler(async (req, res) => {
-  await whatsapp.notificarStatus({ clienteNome: req.body.nome, clienteWhatsapp: req.body.telefone, id: req.body.pedidoId }, 'producao');
+// Rotas legadas de notificação WhatsApp (backward compatible) — autenticadas
+router.post('/producao', authenticate, requireOwnership('pedido'), asyncHandler(async (req, res) => {
+  await whatsapp.notificarStatus({ clienteNome: req.body.nome, clienteWhatsapp: req.body.telefone, id: req.body.pedidoId, empresaId: empresaId(req) }, 'producao');
   auditService.audit(legacyCtx(req, 'producao'));
   res.json({ success: true });
 }));
 
-router.post('/pronto', asyncHandler(async (req, res) => {
-  await whatsapp.notificarStatus({ clienteNome: req.body.nome, clienteWhatsapp: req.body.telefone, id: req.body.pedidoId }, 'pronto');
+router.post('/pronto', authenticate, requireOwnership('pedido'), asyncHandler(async (req, res) => {
+  await whatsapp.notificarStatus({ clienteNome: req.body.nome, clienteWhatsapp: req.body.telefone, id: req.body.pedidoId, empresaId: empresaId(req) }, 'pronto');
   auditService.audit(legacyCtx(req, 'pronto'));
   res.json({ success: true });
 }));
 
-router.post('/em-rota', asyncHandler(async (req, res) => {
-  await whatsapp.enviarMensagem(req.body.telefone, `🚚 Olá ${req.body.nome}!\n\nSeu pedido está a caminho!\n\n${req.body.rastreioLink}`);
+router.post('/em-rota', authenticate, requireOwnership('pedido'), asyncHandler(async (req, res) => {
+  await whatsapp.enviarMensagem(req.body.telefone, `🚚 Olá ${req.body.nome}!\n\nSeu pedido está a caminho!\n\n${req.body.rastreioLink}`, empresaId(req));
   auditService.audit(legacyCtx(req, 'em_rota'));
   res.json({ success: true });
 }));

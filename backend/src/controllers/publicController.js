@@ -7,8 +7,24 @@ const auditService = require('../services/auditService');
 const tokenService = require('../services/tokenService');
 const productService = require('../services/productService');
 const consentimentoService = require('../services/consentimentoService');
+const { validateMaxLen } = require('../utils/validation');
 
 const SALT_ROUNDS = 10;
+
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId || req.cliente?.empresaId;
+}
+
+// FAIL-CLOSED: rotas de tenant exigem tenant resolvido (subdomínio).
+// Sem tenant (host raiz/www/api/localhost) => 404, nunca vaza dados globais.
+function requireTenant(req, res) {
+  const id = empresaId(req);
+  if (!id) {
+    res.status(404).json({ error: 'Loja não encontrada' });
+    return null;
+  }
+  return id;
+}
 
 function setCache(res, seconds) {
   res.set('Cache-Control', 'public, max-age=' + seconds + ', s-maxage=' + seconds);
@@ -22,7 +38,10 @@ async function authenticatePublic(req, res, next) {
   try {
     const token = authHeader.split(' ')[1];
     const decoded = tokenService.verificarToken(token);
-    // S3/LGPD: invalida acesso de cliente excluído ou com consentimento revogado
+    // Cross-tenant: token cunhado em empresa A não vale em empresa B
+    if (decoded.empresaId && req.ctx?.empresaId && decoded.empresaId !== req.ctx.empresaId) {
+      return res.status(403).json({ error: 'Acesso negado: empresa não corresponde' });
+    }
     const cliente = await sql.buscarClientePorId(decoded.id);
     if (!cliente) {
       return res.status(401).json({ error: 'Conta não encontrada ou removida' });
@@ -38,32 +57,42 @@ async function authenticatePublic(req, res, next) {
 }
 
 exports.listarProdutos = asyncHandler(async (req, res) => {
-  const produtos = await productService.listar();
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const produtos = await productService.listar(empId);
   setCache(res, 60);
   res.json(produtos);
 });
 
 exports.listarCategorias = asyncHandler(async (req, res) => {
-  const categorias = await sql.listarCategorias();
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const categorias = await sql.listarCategorias(empId);
   setCache(res, 60);
   res.json(categorias);
 });
 
 exports.statusLoja = asyncHandler(async (req, res) => {
+  const slug = req.ctx?.empresa?.slug;
+  if (!slug) return res.status(404).json({ error: 'Loja não encontrada' });
   const service = require('../services/lojaService');
-  const status = await service.getStatus('salgadoscosta');
+  const status = await service.getStatus(slug);
   setCache(res, 30);
   res.json(status);
 });
 
 exports.settingsLoja = asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res);
+  if (!empId) return;
   const service = require('../services/lojaService');
-  const settings = await service.getSettings();
+  const settings = await service.getSettings(empId);
   setCache(res, 300);
   res.json(settings);
 });
 
 exports.registrarCliente = asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res);
+  if (!empId) return;
   const { nome, telefone, password, endereco, numero, bairro, cep, pontoReferencia } = req.body;
   if (!nome || !telefone) {
     return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
@@ -72,7 +101,7 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
   if (!consent.ok) {
     return res.status(400).json({ error: consent.erro });
   }
-  const existing = await sql.buscarCliente(telefone);
+  const existing = await sql.buscarCliente(telefone, empId);
   if (existing) {
     auditService.audit({
       ...getCtx(req),
@@ -89,12 +118,12 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
   }
   const passwordHash = password ? await bcrypt.hash(password, SALT_ROUNDS) : null;
   const cliente = await sql.criarCliente({
-    empresaId: 1,
+    empresaId: empId,
     nome, telefone, endereco, numero, bairro, cep, pontoReferencia, passwordHash,
     consentimentoAt: new Date(),
     politicaVersao: consent.versao,
   });
-  const token = tokenService.gerarToken({ id: cliente.id, empresaId: 1, telefone: cliente.telefone, nome: cliente.nome });
+  const token = tokenService.gerarToken({ id: cliente.id, empresaId: empId, telefone: cliente.telefone, nome: cliente.nome });
 
   auditService.audit({
     ...getCtx(req),
@@ -110,9 +139,15 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone } });
+  // Set httpOnly cookie for additional security
+  res.cookie('clientToken_' + empId, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  });
 });
 
-// LGPD Art. 8 §5: revogação de consentimento — gratuita, facilitada, a qualquer momento.
 exports.revogarConsentimento = [authenticatePublic, asyncHandler(async (req, res) => {
   const agora = new Date();
   const cliente = await sql.buscarClientePorId(req.cliente.id);
@@ -134,8 +169,6 @@ exports.revogarConsentimento = [authenticatePublic, asyncHandler(async (req, res
   res.json({ ok: true, revogadoEm: agora.toISOString() });
 })];
 
-// LGPD Art. 18 VI: eliminação de dados pessoais do titular.
-// Pedidos (dados fiscais) são retidos por obrigação legal — Art. 16 I.
 exports.excluirConta = [authenticatePublic, asyncHandler(async (req, res) => {
   const cliente = await sql.buscarClientePorId(req.cliente.id);
   if (!cliente) return res.status(404).json({ error: 'Cliente não encontrado' });
@@ -157,10 +190,12 @@ exports.excluirConta = [authenticatePublic, asyncHandler(async (req, res) => {
 })];
 
 exports.loginCliente = asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res);
+  if (!empId) return;
   const { telefone, password } = req.body;
   if (!telefone) return res.status(400).json({ error: 'Telefone é obrigatório' });
   const base = { ...getCtx(req), module: 'clientes' };
-  const cliente = await sql.buscarCliente(telefone);
+  const cliente = await sql.buscarCliente(telefone, empId);
   if (!cliente) {
     auditService.audit({
       ...base,
@@ -191,7 +226,7 @@ exports.loginCliente = asyncHandler(async (req, res) => {
   } else if (cliente.passwordHash && !password) {
     return res.status(401).json({ error: 'Senha necessária' });
   }
-  const token = tokenService.gerarToken({ id: cliente.id, empresaId: 1, telefone: cliente.telefone, nome: cliente.nome });
+  const token = tokenService.gerarToken({ id: cliente.id, empresaId: empId, telefone: cliente.telefone, nome: cliente.nome });
 
   auditService.audit({
     ...base,
@@ -204,6 +239,13 @@ exports.loginCliente = asyncHandler(async (req, res) => {
   });
 
   res.json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia } });
+  // Set httpOnly cookie for additional security
+  res.cookie('clientToken_' + empId, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  });
 });
 
 exports.clientePerfil = [authenticatePublic, asyncHandler(async (req, res) => {
@@ -241,8 +283,10 @@ exports.atualizarCliente = [authenticatePublic, asyncHandler(async (req, res) =>
 })];
 
 exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res);
+  if (!empId) return;
   const pedidos = await prisma.pedido.findMany({
-    where: { empresaId: 1, clienteWhatsapp: req.cliente.telefone },
+    where: { empresaId: empId, clienteWhatsapp: req.cliente.telefone },
     orderBy: { createdAt: 'desc' },
     include: { itens: { include: { produto: true } } },
   });
@@ -250,18 +294,25 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
 })];
 
 exports.criarPedido = asyncHandler(async (req, res) => {
-  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, total, cpf } = req.body;
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, cpf } = req.body;
   if (!clienteNome || !itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ error: 'Dados do pedido incompletos' });
+  }
+  // Input length validation
+  for (const [field, value] of Object.entries({ clienteNome, clienteWhatsapp, clienteEndereco, clienteBairro, clienteCep, clienteReferencia })) {
+    const check = validateMaxLen(field, value);
+    if (!check.valid) return res.status(400).json({ error: check.error });
   }
   const ehPix = String(formaPagamento || '').toLowerCase() === 'pix';
   if (ehPix && (!cpf || !/^\d{11}$/.test(String(cpf).replace(/\D/g, '')))) {
     return res.status(400).json({ error: 'CPF obrigatório para pagamento via PIX' });
   }
-  const pedidoId = await sql.nextPedidoId();
+  const pedidoId = await sql.nextPedidoId(empId);
 
   const produtoIds = itens.map(i => Number(i.produtoId));
-  const produtos = await sql.buscarProdutosPorIds(produtoIds);
+  const produtos = await sql.buscarProdutosPorIds(produtoIds, empId);
   const produtoMap = new Map(produtos.map(p => [p.id, p]));
 
   let valoresItens = 0;
@@ -285,7 +336,7 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   const pedido = await prisma.pedido.create({
     data: {
       id: pedidoId,
-      empresaId: 1,
+      empresaId: empId,
       clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia,
       tipoEntrega: tipoEntrega || 'delivery',
       formaPagamento: formaPagamento || null,
@@ -297,7 +348,7 @@ exports.criarPedido = asyncHandler(async (req, res) => {
       taxasEntrega: taxasEntrega !== undefined ? Number(taxasEntrega) : 0,
       taxasCartao: taxasCartao !== undefined ? Number(taxasCartao) : 0,
       desconto: desconto !== undefined ? Number(desconto) : 0,
-      total: total !== undefined ? Number(total) : valoresItens,
+      total: Number(valoresItens) + Number(taxasEntrega || 0) + Number(taxasCartao || 0) - Number(desconto || 0),
       itens: { create: itensPedido },
     },
     include: { itens: true },
@@ -350,16 +401,18 @@ exports.criarPedido = asyncHandler(async (req, res) => {
 });
 
 exports.buscarPedido = asyncHandler(async (req, res) => {
-  const pedido = await sql.buscarPedido(req.params.id);
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const pedido = await sql.buscarPedido(req.params.id, empId);
   if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
   res.json(pedido);
 });
 
 exports.validarCupom = asyncHandler(async (req, res) => {
-  const cupom = await sql.buscarCupom(req.params.codigo);
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const cupom = await sql.buscarCupom(req.params.codigo, empId);
   if (!cupom) return res.status(404).json({ error: 'Cupom não encontrado' });
   if (cupom.usado) return res.status(400).json({ error: 'Cupom já utilizado' });
   res.json({ codigo: cupom.codigo, desconto: Number(cupom.desconto) });
 });
-
-

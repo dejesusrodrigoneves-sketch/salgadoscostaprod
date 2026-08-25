@@ -23,6 +23,14 @@ app.listen(config.port, async () => {
     logger.error('PIX sync job falhou:', err.message);
   }
 
+  // Weekly settlement job: processes all empresas every Saturday 00:00
+  try {
+    const settlementJob = require('./src/jobs/weeklySettlement');
+    settlementJob.start();
+  } catch (err) {
+    logger.error('Settlement job falhou:', err.message);
+  }
+
   // Audit cleanup: purge client logs + enforce 90-day retention
   try {
     const { deleteClienteLogs, deleteOldLogs } = require('./src/repositories/auditRepository');

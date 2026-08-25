@@ -52,6 +52,16 @@ router.post('/', authenticate, upload.single('file'), async (req, res, next) => 
     if (isSvg) {
       const head = buf.toString('utf8', 0, Math.min(buf.length, 256));
       valid = head.includes('<svg') || head.includes('<?xml');
+      // Strip dangerous elements from SVG to prevent XSS
+      if (valid) {
+        const full = buf.toString('utf8');
+        const sanitized = full
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/javascript:/gi, '')
+          .replace(/data:text\/html/gi, '');
+        req.file.buffer = Buffer.from(sanitized, 'utf8');
+      }
     } else if (isJpeg) {
       valid = buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF;
     } else if (isPng) {

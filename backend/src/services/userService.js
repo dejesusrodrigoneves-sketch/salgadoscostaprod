@@ -3,6 +3,7 @@ const prisma = require('../config/prisma');
 const auditService = require('./auditService');
 
 const SALT_ROUNDS = 10;
+const ROLES_VALIDOS = ['user', 'admin', 'superadmin'];
 
 function base(ctx) {
   return {
@@ -14,15 +15,17 @@ function base(ctx) {
   };
 }
 
-async function listar() {
+async function listar(empresaId) {
   return prisma.usuario.findMany({
+    where: { empresaId },
     orderBy: { createdAt: 'desc' },
     select: { id: true, username: true, role: true, lojaNome: true, createdAt: true },
   });
 }
 
-async function criar({ username, password, lojaNome, role }, ctx = {}) {
-  const existing = await prisma.usuario.findUnique({ where: { empresaId_username: { empresaId: 1, username } } });
+async function criar({ username, password, lojaNome, role, empresaId }, ctx = {}) {
+  if (!empresaId) throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
+  const existing = await prisma.usuario.findUnique({ where: { empresaId_username: { empresaId, username } } });
   if (existing) {
     auditService.audit({
       ...base(ctx),
@@ -36,9 +39,10 @@ async function criar({ username, password, lojaNome, role }, ctx = {}) {
     throw Object.assign(new Error('Usuário já existe'), { status: 409 });
   }
 
+  const roleNorm = ROLES_VALIDOS.includes(role) ? role : 'user';
   const hash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await prisma.usuario.create({
-    data: { empresaId: 1, username, passwordHash: hash, lojaNome: lojaNome || username, role: role || 'user' },
+    data: { empresaId, username, passwordHash: hash, lojaNome: lojaNome || username, role: roleNorm },
     select: { id: true, username: true, role: true, lojaNome: true },
   });
 
@@ -55,9 +59,9 @@ async function criar({ username, password, lojaNome, role }, ctx = {}) {
   return user;
 }
 
-async function deletar(id, ctx = {}) {
-  const user = await prisma.usuario.findUnique({
-    where: { id: Number(id) },
+async function deletar(id, empresaId, ctx = {}) {
+  const user = await prisma.usuario.findFirst({
+    where: { id: Number(id), empresaId },
     select: { id: true, username: true, role: true },
   });
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 404 });
@@ -78,9 +82,9 @@ async function deletar(id, ctx = {}) {
   return { success: true };
 }
 
-async function resetarSenha(id, password, ctx = {}) {
-  const user = await prisma.usuario.findUnique({
-    where: { id: Number(id) },
+async function resetarSenha(id, password, empresaId, ctx = {}) {
+  const user = await prisma.usuario.findFirst({
+    where: { id: Number(id), empresaId },
     select: { id: true, username: true, role: true },
   });
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 404 });

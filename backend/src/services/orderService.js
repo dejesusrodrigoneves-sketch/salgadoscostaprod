@@ -3,19 +3,19 @@ const sql = require('../repositories/sqlRepository');
 const whatsapp = require('./whatsappService');
 const auditService = require('./auditService');
 
-async function listar(filtros) {
-  return sql.listarPedidos(filtros);
+async function listar(filtros, empresaId) {
+  return sql.listarPedidos(empresaId, filtros);
 }
 
-async function buscar(id) {
-  const pedido = await sql.buscarPedido(id);
+async function buscar(id, empresaId) {
+  const pedido = await sql.buscarPedido(id, empresaId);
   if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
   return pedido;
 }
 
-async function criar(data, ctx = {}) {
-  const pedidoId = await sql.nextPedidoId();
-  const pedido = { ...data, id: pedidoId };
+async function criar(data, empresaId, ctx = {}) {
+  const pedidoId = await sql.nextPedidoId(empresaId);
+  const pedido = { ...data, id: pedidoId, empresaId };
   await sql.criarPedido(pedido);
 
   auditService.audit({
@@ -34,7 +34,7 @@ async function criar(data, ctx = {}) {
 async function darBaixaEstoque(pedido, ctx = {}) {
   if (!pedido.itens || pedido.itens.length === 0) return;
   for (const item of pedido.itens) {
-    const produto = await sql.buscarProduto(item.produtoId);
+    const produto = await sql.buscarProduto(item.produtoId, pedido.empresaId);
     if (produto && produto.controlaEstoque) {
       const novoEstoque = Math.max(0, produto.estoqueAtual - item.quantidade);
       const updates = { estoqueAtual: novoEstoque };
@@ -58,12 +58,12 @@ async function darBaixaEstoque(pedido, ctx = {}) {
   }
 }
 
-async function listarFiltrado(filtros) {
-  return sql.listarPedidosFiltrados(filtros);
+async function listarFiltrado(filtros, empresaId) {
+  return sql.listarPedidosFiltrados(empresaId, filtros);
 }
 
-async function deletarPedido(id, ctx = {}) {
-  const pedido = await sql.buscarPedido(id);
+async function deletarPedido(id, empresaId, ctx = {}) {
+  const pedido = await sql.buscarPedido(id, empresaId);
   if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
 
   auditService.audit({
@@ -82,8 +82,8 @@ async function deletarPedido(id, ctx = {}) {
   return prisma.pedido.delete({ where: { id } });
 }
 
-async function finalizarPedido(id, ctx = {}) {
-  const pedido = await sql.buscarPedido(id);
+async function finalizarPedido(id, empresaId, ctx = {}) {
+  const pedido = await sql.buscarPedido(id, empresaId);
   if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
 
   auditService.audit({
@@ -102,8 +102,8 @@ async function finalizarPedido(id, ctx = {}) {
   return atualizado;
 }
 
-async function atualizarStatus(id, status, ctx = {}) {
-  const pedido = await sql.buscarPedido(id);
+async function atualizarStatus(id, status, empresaId, ctx = {}) {
+  const pedido = await sql.buscarPedido(id, empresaId);
   if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
 
   auditService.audit({
@@ -124,7 +124,7 @@ async function atualizarStatus(id, status, ctx = {}) {
 
   // Baixa de estoque ao confirmar pedido (status = aceito/producao)
   if (['aceito', 'producao'].includes(status)) {
-    const pedidoCompleto = await sql.buscarPedido(id);
+    const pedidoCompleto = await sql.buscarPedido(id, empresaId);
     darBaixaEstoque(pedidoCompleto, { ...ctx, metadata: { url: ctx.path || null } }).catch(err => console.error('Erro baixa estoque:', err));
   }
 
@@ -134,11 +134,6 @@ async function atualizarStatus(id, status, ctx = {}) {
   return atualizado;
 }
 
-// Helper puro e testável: calcula as mudanças de edição sem tocar no DB.
-// Retorna { updates, itensRemovidos, itensNovos, movimentosEstoque, itensFinal }.
-// buscarProdutoFn é injetável (default null => não calcula movimentos de estoque).
-
-// Agrupa itens por produtoId, somando quantidades (remove duplicatas).
 function temSabores(i) {
   if (!i.sabores) return false;
   if (typeof i.sabores === 'string') return i.sabores.trim().length > 0 && i.sabores !== '{}' && i.sabores !== 'null';
@@ -152,7 +147,6 @@ function agruparItens(lista) {
     const pid = Number(i.produtoId);
     const has = temSabores(i);
     if (has) {
-      // Combo/avulso: cada linha permanece separada (regra do usuário)
       resultado.push({
         produtoId: pid,
         quantidade: Number(i.quantidade),
@@ -188,7 +182,6 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
     if (!match) {
       itensRemovidos.push({ produtoId: itemAntigo.produtoId, quantidade: itemAntigo.quantidade });
     } else if (Number(match.quantidade) !== Number(itemAntigo.quantidade)) {
-      // quantidade editada => remove o volume antigo e registra o novo volume
       itensRemovidos.push({ produtoId: itemAntigo.produtoId, quantidade: itemAntigo.quantidade });
       itensNovos.push({
         produtoId: Number(match.produtoId),
@@ -221,9 +214,6 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
     troco: Number(data.troco ?? 0),
   };
 
-  // Endereço de entrega.
-  // - Entrega = delivery: grava strings não-vazias fornecidas (preserva ausentes).
-  // - Trocou para retirada/balcao (≠ delivery): limpa campos de endereço.
   const camposEndereco = [
     ['bairro', 'clienteBairro'],
     ['endereco', 'clienteEndereco'],
@@ -244,8 +234,6 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
     }
   }
 
-  // Movimentos de estoque: remoção soma (reversão), adição subtrai (baixa),
-  // ambos apenas se o produto controlaEstoque.
   const movimentosEstoque = [];
   if (typeof buscarProdutoFn === 'function') {
     for (const r of itensRemovidos) {
@@ -265,17 +253,14 @@ async function processarEdicaoPedido(pedido, data, buscarProdutoFn = null) {
   return { updates, itensRemovidos, itensNovos, movimentosEstoque, itensFinal: itensNovosLista };
 }
 
-// Thin wrapper: valida existência, aplica updates + substitui itens + movimenta estoque.
-async function editarPedido(id, data, ctx = {}) {
-  const pedido = await sql.buscarPedido(id);
+async function editarPedido(id, data, empresaId, ctx = {}) {
+  const pedido = await sql.buscarPedido(id, empresaId);
   if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
 
-  const result = await processarEdicaoPedido(pedido, data, (pid) => sql.buscarProduto(pid));
+  const result = await processarEdicaoPedido(pedido, data, (pid) => sql.buscarProduto(pid, empresaId));
 
-  // Atualiza campos do pedido (formaPagamento, troco, tipoEntrega, taxasEntrega, taxasCartao, desconto, total)
   const atualizado = await sql.atualizarPedido(id, result.updates);
 
-  // Substitui os itens do pedido pelos novos (delete + re-create).
   await prisma.itensPedido.deleteMany({ where: { pedidoId: id } });
   if (result.itensFinal && result.itensFinal.length > 0) {
     await prisma.itensPedido.createMany({
@@ -289,9 +274,8 @@ async function editarPedido(id, data, ctx = {}) {
     });
   }
 
-  // Aplica movimentos de estoque (reversão + baixa) com audit.
   for (const mv of result.movimentosEstoque) {
-    const produto = await sql.buscarProduto(mv.produtoId);
+    const produto = await sql.buscarProduto(mv.produtoId, empresaId);
     if (!produto) continue;
     const novoEstoque = Math.max(0, produto.estoqueAtual + mv.delta);
     const updatesProduto = { estoqueAtual: novoEstoque };
@@ -322,11 +306,11 @@ async function editarPedido(id, data, ctx = {}) {
     changedFields: ['total', 'formaPagamento', 'tipoEntrega', 'itens'],
   });
 
-  return sql.buscarPedido(id);
+  return sql.buscarPedido(id, empresaId);
 }
 
-async function listarNaoConcluidos(filtros) {
-  return sql.listarNaoConcluidos(filtros);
+async function listarNaoConcluidos(filtros, empresaId) {
+  return sql.listarNaoConcluidos(empresaId, filtros);
 }
 
 async function limparPedidosAntigos(dias = 30) {

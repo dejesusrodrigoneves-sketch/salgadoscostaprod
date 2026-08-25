@@ -4,7 +4,7 @@
   "description": "Backend API REST - Fábrica de Salgados Costa",
   "main": "server.js",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "start": "node server.js",
@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0",
-    "prisma": "^6.5.0",
+    "prisma": "^7.9.1",
     "supertest": "^7.2.2",
     "vitest": "^2.0.0"
   }

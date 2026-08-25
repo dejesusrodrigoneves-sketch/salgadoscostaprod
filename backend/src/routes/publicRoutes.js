@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const controller = require('../controllers/publicController');
+const { registerLimiter } = require('../middleware/rateLimit');
 
 const router = Router();
 
@@ -7,7 +8,7 @@ router.get('/produtos', controller.listarProdutos);
 router.get('/categorias', controller.listarCategorias);
 router.get('/loja/status', controller.statusLoja);
 router.get('/loja/settings', controller.settingsLoja);
-router.post('/clientes/register', controller.registrarCliente);
+router.post('/clientes/register', registerLimiter, controller.registrarCliente);
 router.post('/clientes/login', controller.loginCliente);
 router.get('/clientes/me', controller.clientePerfil);
 router.put('/clientes/me', controller.atualizarCliente);

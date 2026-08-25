@@ -49,13 +49,13 @@ function formatProduto(p) {
   return { ...p, img: formatImageUrl(p.img) };
 }
 
-async function listar() {
-  const produtos = await sql.listarProdutos();
+async function listar(empresaId) {
+  const produtos = await sql.listarProdutos(empresaId);
   return produtos.map(formatProduto);
 }
 
-async function buscar(id) {
-  const produto = await sql.buscarProduto(id);
+async function buscar(id, empresaId) {
+  const produto = await sql.buscarProduto(id, empresaId);
   if (!produto) throw Object.assign(new Error('Produto não encontrado'), { status: 404 });
   return formatProduto(produto);
 }
@@ -81,8 +81,8 @@ async function criar(data, ctx = {}) {
   return produto;
 }
 
-async function atualizar(id, data, ctx = {}) {
-  const produto = await sql.buscarProduto(id);
+async function atualizar(id, data, empresaId, ctx = {}) {
+  const produto = await sql.buscarProduto(id, empresaId);
   if (!produto) throw Object.assign(new Error('Produto não encontrado'), { status: 404 });
   const sanitized = { ...data };
   if (sanitized.name) sanitized.name = sanitize(sanitized.name);
@@ -113,8 +113,8 @@ async function atualizar(id, data, ctx = {}) {
   return atualizado;
 }
 
-async function deletar(id, ctx = {}) {
-  const produto = await sql.buscarProduto(id);
+async function deletar(id, empresaId, ctx = {}) {
+  const produto = await sql.buscarProduto(id, empresaId);
   if (!produto) throw Object.assign(new Error('Produto não encontrado'), { status: 404 });
   await sql.deletarProduto(id);
 

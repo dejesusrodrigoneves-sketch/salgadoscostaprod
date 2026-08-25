@@ -4,8 +4,8 @@ const sql = require('../repositories/sqlRepository');
 const config = require('../config/env');
 const auditService = require('./auditService');
 
-async function listar() {
-  const instancias = await sql.listarWhatsAppInstances();
+async function listar(empresaId) {
+  const instancias = await sql.listarWhatsAppInstances(empresaId);
   for (const inst of instancias) {
     if (config.evolutionUrl && config.evolutionApiKey) {
       try {
@@ -24,10 +24,16 @@ async function listar() {
       }
     }
   }
-  return sql.listarWhatsAppInstances();
+  return sql.listarWhatsAppInstances(empresaId);
 }
 
-async function criar(role, instanceName, phoneNumber, ctx = {}) {
+async function criar(role, instanceName, phoneNumber, empresaId, ctx = {}) {
+  if (!empresaId) {
+    throw Object.assign(
+      new Error('empresaId obrigatório (crie a instância no subdomínio da empresa)'),
+      { status: 400 }
+    );
+  }
   if (!instanceName || !phoneNumber) {
     throw Object.assign(
       new Error('Nome da instância e número de telefone são obrigatórios.'),
@@ -35,7 +41,7 @@ async function criar(role, instanceName, phoneNumber, ctx = {}) {
     );
   }
 
-  const existentes = await sql.listarWhatsAppInstances();
+  const existentes = await sql.listarWhatsAppInstances(empresaId);
 
   if (role !== 'superadmin' && existentes.length >= 1) {
     auditService.audit({
@@ -90,7 +96,7 @@ async function criar(role, instanceName, phoneNumber, ctx = {}) {
   }
 
   const instancia = await sql.criarWhatsAppInstance({
-    empresaId: 1,
+    empresaId,
     instanceId: instanceName,
     phoneNumber,
     connectionStatus: evolutionData ? 'qrcode' : 'disconnected',
@@ -111,8 +117,8 @@ async function criar(role, instanceName, phoneNumber, ctx = {}) {
   return { instancia, evolutionData };
 }
 
-async function deletar(id, ctx = {}) {
-  const instancia = await sql.buscarWhatsAppInstance(id);
+async function deletar(id, empresaId, ctx = {}) {
+  const instancia = await sql.buscarWhatsAppInstance(id, empresaId);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (config.evolutionUrl && config.evolutionApiKey) {
@@ -136,11 +142,11 @@ async function deletar(id, ctx = {}) {
     severity: 'warning',
   });
 
-  await sql.deletarWhatsAppInstance(id);
+  await sql.deletarWhatsAppInstance(id, empresaId);
 }
 
-async function gerarQrCode(id, ctx = {}) {
-  const instancia = await sql.buscarWhatsAppInstance(id);
+async function gerarQrCode(id, empresaId, ctx = {}) {
+  const instancia = await sql.buscarWhatsAppInstance(id, empresaId);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (!config.evolutionUrl || !config.evolutionApiKey) {
@@ -219,8 +225,8 @@ async function gerarQrCode(id, ctx = {}) {
   return { pairingCode: null, base64: null, type: null, raw: data };
 }
 
-async function reconectar(id, ctx = {}) {
-  const instancia = await sql.buscarWhatsAppInstance(id);
+async function reconectar(id, empresaId, ctx = {}) {
+  const instancia = await sql.buscarWhatsAppInstance(id, empresaId);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (!config.evolutionUrl || !config.evolutionApiKey) {
@@ -247,8 +253,8 @@ async function reconectar(id, ctx = {}) {
   return data;
 }
 
-async function status(id) {
-  const instancia = await sql.buscarWhatsAppInstance(id);
+async function status(id, empresaId) {
+  const instancia = await sql.buscarWhatsAppInstance(id, empresaId);
   if (!instancia) throw Object.assign(new Error('Instância não encontrada'), { status: 404 });
 
   if (config.evolutionUrl && config.evolutionApiKey) {
@@ -273,10 +279,11 @@ async function status(id) {
   return instancia;
 }
 
-async function statusAtivo() {
-  const instancia = await sql.buscarInstanciaAtiva();
+async function statusAtivo(empresaId) {
+  if (!empresaId) return null;
+  const instancia = await sql.buscarInstanciaAtiva(empresaId);
   if (!instancia) return null;
-  return status(instancia.id);
+  return status(instancia.id, empresaId);
 }
 
 module.exports = { listar, criar, deletar, gerarQrCode, reconectar, status, statusAtivo };

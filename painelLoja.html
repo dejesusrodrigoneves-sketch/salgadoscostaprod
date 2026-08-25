@@ -29,6 +29,8 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
       <button class="tab-btn" id="tab-categorias" role="tab" aria-selected="false">Categorias</button>
       <button class="tab-btn" id="tab-config" role="tab" aria-selected="false">Config. Loja</button>
       <button class="tab-btn" id="tab-personalizacao" role="tab" aria-selected="false">Personalizar</button>
+      <button class="tab-btn" id="tab-financeiro" role="tab" aria-selected="false">Financeiro</button>
+      <button class="tab-btn" id="tab-pagamentos" role="tab" aria-selected="false">Receber Pagamentos</button>
     </nav>
   </header>
 
@@ -425,6 +427,71 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
       <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
         <button class="btn save" id="btnSalvarTema"><i class="fas fa-save"></i> Salvar Personalização</button>
         <button class="btn ghost" id="btnResetarTema"><i class="fas fa-undo"></i> Restaurar Padrão</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABA: Financeiro -->
+  <div id="view-financeiro" class="tab-panel hidden">
+    <div class="section">
+      <h3>Semana Atual</h3>
+      <div id="settlementCard">Carregando...</div>
+    </div>
+    <div class="section">
+      <h3>Semanas Anteriores</h3>
+      <div id="settlementHistory">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- ABA: Receber Pagamentos -->
+  <section id="view-pagamentos" class="grid hidden" role="tabpanel">
+    <div class="card">
+      <h3><i class="fas fa-qrcode" style="color:var(--brand-2)"></i> Receber Pagamentos via PIX</h3>
+      <p class="tip">Configure sua chave PIX para receber pagamentos automaticamente toda segunda-feira.</p>
+      <div class="hr"></div>
+
+      <div id="payment-status-box" style="display:none; padding:12px 16px; border-radius:10px; margin-bottom:16px;">
+        <div id="payment-status-content"></div>
+      </div>
+
+      <div id="payment-form-container">
+        <div class="form-section">
+          <h4><i class="fas fa-user"></i> Dados do Titular</h4>
+          <div class="row">
+            <div class="lbl">E-mail</div>
+            <input type="email" id="payEmail" aria-label="E-mail" placeholder="email@exemplo.com" />
+          </div>
+          <div class="row">
+            <div class="lbl">CPF/CNPJ</div>
+            <input type="text" id="payCpfCnpj" aria-label="CPF ou CNPJ" placeholder="000.000.000-00" maxlength="18" />
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4><i class="fas fa-key"></i> Chave PIX</h4>
+          <div class="row">
+            <div class="lbl">Tipo da Chave</div>
+            <select id="payPixKeyType" aria-label="Tipo da chave PIX">
+              <option value="cpf">CPF</option>
+              <option value="cnpj">CNPJ</option>
+              <option value="email">E-mail</option>
+              <option value="phone">Telefone</option>
+              <option value="random">Aleatória</option>
+            </select>
+          </div>
+          <div class="row">
+            <div class="lbl">Chave PIX</div>
+            <input type="text" id="payPixKey" aria-label="Chave PIX" placeholder="Sua chave PIX" />
+          </div>
+        </div>
+
+        <div id="payment-error" style="display:none; color:var(--danger, #ef4444); padding:8px 0; font-size:13px;"></div>
+
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn save" id="btnAtivarPayment"><i class="fas fa-check"></i> Ativar Pagamentos</button>
+          <button class="btn refresh" id="btnAtualizarPayment" style="display:none;"><i class="fas fa-save"></i> Atualizar Chave</button>
+          <button class="btn danger" id="btnDesativarPayment" style="display:none;"><i class="fas fa-times"></i> Desativar</button>
+        </div>
       </div>
     </div>
   </section>

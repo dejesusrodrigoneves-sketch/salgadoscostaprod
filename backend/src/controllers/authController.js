@@ -6,7 +6,7 @@ exports.login = asyncHandler(async (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'];
-  const result = await authService.login(username, password, ip, userAgent, {
+  const result = await authService.login(username, password, req.ctx?.empresaId, ip, userAgent, {
     requestId: req.context?.requestId,
     ip: req.context?.ip,
     userAgent: req.context?.userAgent,
@@ -16,7 +16,10 @@ exports.login = asyncHandler(async (req, res) => {
 });
 
 exports.criarUsuario = asyncHandler(async (req, res) => {
-  const usuario = await authService.criarUsuario(req.body, {
+  const usuario = await authService.criarUsuario({
+    ...req.body,
+    empresaId: req.ctx?.empresaId || req.body.empresaId,
+  }, {
     requestId: req.context?.requestId,
     ip: req.context?.ip,
     userAgent: req.context?.userAgent,
@@ -35,7 +38,13 @@ exports.criarConta = asyncHandler(async (req, res) => {
   const { username, password, lojaNome } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
   if (password.length < 6) return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres' });
-  const result = await authService.criarConta({ username, password, lojaNome: lojaNome || username }, {
+  if (!/[A-Z]/.test(password)) return res.status(400).json({ error: 'Senha deve conter pelo menos uma letra maiúscula' });
+  if (!/[a-z]/.test(password)) return res.status(400).json({ error: 'Senha deve conter pelo menos uma letra minúscula' });
+  if (!/[0-9]/.test(password)) return res.status(400).json({ error: 'Senha deve conter pelo menos um número' });
+  const result = await authService.criarConta({
+    username, password, lojaNome: lojaNome || username,
+    empresaId: req.ctx?.empresaId,
+  }, {
     requestId: req.context?.requestId,
     ip: req.context?.ip,
     userAgent: req.context?.userAgent,
@@ -52,4 +61,21 @@ exports.alterarSenha = asyncHandler(async (req, res) => {
     path: req.context?.path,
   });
   res.json({ success: true });
+});
+
+exports.refreshToken = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ error: 'refreshToken obrigatório' });
+  const tokenService = require('../services/tokenService');
+  const decoded = tokenService.verificarRefreshToken(refreshToken);
+  const payload = {
+    id: decoded.id,
+    username: decoded.username,
+    role: decoded.role,
+    empresaId: decoded.empresaId,
+    lojaNome: decoded.lojaNome,
+  };
+  const newToken = tokenService.gerarToken(payload);
+  const newRefreshToken = tokenService.gerarRefreshToken(payload);
+  res.json({ token: newToken, refreshToken: newRefreshToken });
 });

@@ -1,5 +1,6 @@
 const sql = require('../repositories/sqlRepository');
 const auditService = require('./auditService');
+const { invalidateEmpresaCache } = require('../config/empresaCache');
 
 function isWorkingDay(workingDays) {
   if (!Array.isArray(workingDays) || workingDays.length === 0) return true;
@@ -113,14 +114,26 @@ function formatEmpresa(empresa) {
   };
 }
 
-async function getSettings() {
-  const empresa = await sql.buscarEmpresa(1);
+async function getSettings(empresaId) {
+  // Superadmin (empresaId null): retorna settings da primeira empresa
+  if (!empresaId) {
+    const empresas = await sql.listarEmpresas();
+    if (!empresas || empresas.length === 0) throw Object.assign(new Error('Nenhuma empresa encontrada'), { status: 404 });
+    return formatEmpresa(empresas[0]);
+  }
+  const empresa = await sql.buscarEmpresa(empresaId);
   if (!empresa) throw Object.assign(new Error('Empresa não encontrada'), { status: 404 });
   return formatEmpresa(empresa);
 }
 
-async function updateSettings(data, ctx = {}) {
-  const empresa = await sql.buscarEmpresa(1);
+async function updateSettings(empresaId, data, ctx = {}) {
+  // Superadmin (empresaId null): usa primeira empresa
+  if (!empresaId) {
+    const empresas = await sql.listarEmpresas();
+    if (!empresas || empresas.length === 0) throw Object.assign(new Error('Nenhuma empresa encontrada'), { status: 404 });
+    empresaId = empresas[0].id;
+  }
+  const empresa = await sql.buscarEmpresa(empresaId);
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
@@ -130,8 +143,6 @@ async function updateSettings(data, ctx = {}) {
   for (const key of allowed) {
     if (data[key] !== undefined) payload[key] = data[key];
   }
-  // Merge themeSettings + standalone sub-fields (capa, bairrosAtendidos, notificationSound)
-  // with existing to prevent overwrite when saving partial theme or standalone fields
   if (data.themeSettings || data.notificationSound !== undefined || data.capa !== undefined || data.bairrosAtendidos !== undefined) {
     const existing = empresa?.themeSettings ? (typeof empresa.themeSettings === 'string' ? JSON.parse(empresa.themeSettings) : empresa.themeSettings) : {};
     const merged = { ...existing };
@@ -152,14 +163,18 @@ async function updateSettings(data, ctx = {}) {
     after[key] = payload[key];
   }
 
-  const result = await sql.atualizarEmpresa(1, payload);
+  const result = await sql.atualizarEmpresa(empresaId, payload);
+
+  if (empresa && (data.slug !== undefined || data.nome !== undefined)) {
+    try { invalidateEmpresaCache(empresa.slug); } catch (e) {}
+  }
 
   auditService.audit({
     ...ctx,
     action: 'loja.settings_update',
     module: 'loja',
     targetType: 'empresa',
-    targetId: 1,
+    targetId: empresaId,
     before,
     after,
     changedFields,

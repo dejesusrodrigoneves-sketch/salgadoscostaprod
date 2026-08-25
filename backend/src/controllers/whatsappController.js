@@ -5,39 +5,43 @@ const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
 const { asyncHandler } = require('../middleware/errorHandler');
 
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId;
+}
+
 exports.listar = asyncHandler(async (req, res) => {
-  const instancias = await service.listar();
+  const instancias = await service.listar(empresaId(req));
   res.json(instancias);
 });
 
 exports.criar = asyncHandler(async (req, res) => {
   const { instanceName, phoneNumber } = req.body;
-  const resultado = await service.criar(req.user.role, instanceName, phoneNumber, getCtx(req));
+  const resultado = await service.criar(req.user.role, instanceName, phoneNumber, empresaId(req), getCtx(req));
   res.status(201).json(resultado);
 });
 
 exports.deletar = asyncHandler(async (req, res) => {
-  await service.deletar(req.params.id, getCtx(req));
+  await service.deletar(req.params.id, empresaId(req), getCtx(req));
   res.json({ success: true });
 });
 
 exports.qrCode = asyncHandler(async (req, res) => {
-  const resultado = await service.gerarQrCode(req.params.id, getCtx(req));
+  const resultado = await service.gerarQrCode(req.params.id, empresaId(req), getCtx(req));
   res.json(resultado);
 });
 
 exports.reconectar = asyncHandler(async (req, res) => {
-  const resultado = await service.reconectar(req.params.id, getCtx(req));
+  const resultado = await service.reconectar(req.params.id, empresaId(req), getCtx(req));
   res.json(resultado);
 });
 
 exports.status = asyncHandler(async (req, res) => {
-  const resultado = await service.status(req.params.id);
+  const resultado = await service.status(req.params.id, empresaId(req));
   res.json(resultado);
 });
 
 exports.enviarTeste = asyncHandler(async (req, res) => {
-  const instancia = await service.status(req.params.id);
+  const instancia = await service.status(req.params.id, empresaId(req));
   if (!instancia) {
     return res.status(404).json({ error: 'Instância não encontrada' });
   }
@@ -71,9 +75,9 @@ exports.enviarContatoPedido = asyncHandler(async (req, res) => {
   const { telefone, mensagem } = req.body;
   if (!telefone || !mensagem) return res.status(400).json({ error: 'telefone e mensagem obrigatórios' });
 
-  const instancia = await service.statusAtivo();
+  const instancia = await service.statusAtivo(empresaId(req));
   if (instancia && (instancia.connectionStatus === 'connected' || instancia.connectionStatus === 'open')) {
-    await whatsapp.enviarMensagem(telefone, mensagem);
+    await whatsapp.enviarMensagem(telefone, mensagem, empresaId(req));
     auditService.audit({
       ...getCtx(req),
       action: 'whatsapp.contact_send',

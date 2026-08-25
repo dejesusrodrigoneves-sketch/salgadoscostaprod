@@ -20,6 +20,8 @@
   <button class="tab" onclick="switchTab('senhas',this)"><i class="fas fa-key"></i> Gerenciar Senhas</button>
   <button class="tab" onclick="switchTab('registros',this)"><i class="fas fa-scroll"></i> Registros</button>
   <button class="tab" onclick="switchTab('clientes',this)"><i class="fas fa-user-tie"></i> Clientes</button>
+  <button class="tab" onclick="switchTab('empresas',this)"><i class="fas fa-store"></i> Empresas</button>
+  <button class="tab" onclick="switchTab('settlements',this)"><i class="fas fa-dollar-sign"></i> Settlements</button>
 </div>
 
 <!-- Users tab -->
@@ -42,6 +44,9 @@
         <option value="user">Usuário</option>
         <option value="admin">Administrador</option>
         <option value="superadmin">Super Admin</option>
+      </select>
+      <select id="newEmpresa" aria-label="Empresa da conta">
+        <option value="">— selecionar empresa —</option>
       </select>
       <button class="btn btn-primary" onclick="cadastrarUsuario()"><i class="fas fa-user-plus"></i> Cadastrar</button>
     </div>
@@ -107,7 +112,75 @@
   </div>
 </div>
 
-<!-- Empresas tab removida (single-tenant) -->
+<!-- Empresas tab -->
+<div class="tab-content" id="tabEmpresas">
+  <div class="card">
+    <h2><i class="fas fa-store"></i> Empresas Cadastradas</h2>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Nome</th><th>Slug</th><th>Telefone</th><th>Cidade</th><th>Split</th><th>Produtos</th><th>Pedidos</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody id="empresasTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2><i class="fas fa-plus-circle"></i> Cadastrar Nova Empresa</h2>
+    <div style="max-width:600px;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <input type="text" id="empNome" aria-label="Nome da loja" placeholder="Nome da loja *">
+      <input type="text" id="empSlug" aria-label="Slug da loja" placeholder="Slug (URL) *">
+      <input type="text" id="empTelefone" aria-label="Telefone" placeholder="Telefone">
+      <input type="text" id="empCidade" aria-label="Cidade" placeholder="Cidade">
+    </div>
+    <button class="btn btn-primary" onclick="cadastrarEmpresa()"><i class="fas fa-plus"></i> Cadastrar</button>
+  </div>
+
+  <!-- Modal Editar Empresa -->
+  <div class="modal-overlay" id="modalEditarEmpresa" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-store"></i> Editar Empresa</h3>
+      <input type="hidden" id="editEmpId">
+      <label>Nome <input type="text" id="editEmpNome"></label>
+      <label>Slug <input type="text" id="editEmpSlug"></label>
+      <label>Telefone <input type="text" id="editEmpTelefone"></label>
+      <label>Endereço <input type="text" id="editEmpEndereco"></label>
+      <label>Número <input type="text" id="editEmpNumero"></label>
+      <label>Bairro <input type="text" id="editEmpBairro"></label>
+      <label>CEP <input type="text" id="editEmpCep"></label>
+      <label>Cidade <input type="text" id="editEmpCidade"></label>
+      <label>Estado <input type="text" id="editEmpEstado"></label>
+      <label>Descrição <textarea id="editEmpDescricao" rows="2"></textarea></label>
+      <div class="payment-section" id="paymentSection" style="display:none;margin-top:12px;padding:12px;border:1px solid #334155;border-radius:8px;">
+        <h4 style="margin:0 0 8px;color:var(--accent,#f97316);font-size:0.95rem;"><i class="fas fa-credit-card"></i> Pagamento</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.85rem;">
+          <div><strong>Status:</strong> <span id="paymentStatusIcon"></span></div>
+          <div><strong>Onboarded:</strong> <span id="paymentOnboardedAt">—</span></div>
+          <div><strong>Wallet ID:</strong> <span id="paymentWalletId" style="font-family:monospace;font-size:0.8rem;word-break:break-all;">—</span></div>
+          <div><strong>Subconta ID:</strong> <span id="paymentSubcontaId" style="font-family:monospace;font-size:0.8rem;word-break:break-all;">—</span></div>
+        </div>
+        <div id="paymentSettlements" style="margin-top:8px;font-size:0.85rem;"></div>
+        <div style="margin-top:10px;" id="paymentDeactivateWrap">
+          <button class="btn btn-secondary" id="btnDesativarSplit" onclick="desativarSplit()" style="font-size:0.8rem;"><i class="fas fa-ban"></i> Desativar Split</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="fecharModal('modalEditarEmpresa')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarEdicaoEmpresa()"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-content" id="tabSettlements">
+  <div class="card">
+    <h2><i class="fas fa-dollar-sign"></i> Settlements Globais</h2>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Empresa</th><th>Periodo</th><th>Pedidos</th><th>Bruto</th><th>Liquido</th><th>Status</th></tr></thead>
+      <tbody id="settlementsTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
 
 <!-- Audit logs tab -->
 <div class="tab-content" id="tabRegistros">
@@ -163,6 +236,17 @@
 
 <script src="js/utils.js"></script>
 <script>
+var host = window.location.hostname;
+var isLocal = host === 'localhost' || /^\d+(\.\d+){3}$/.test(host);
+var isSuperadminDomain = isLocal || host.split('.')[0] === 'admin';
+if (!isSuperadminDomain) {
+  var labels = host.split('.');
+  // Só redireciona quando há subdomínio de tenant real (ex: salgadoscosta.sua-app.com)
+  if (labels.length >= 3) {
+    window.location.href = 'https://admin.' + labels.slice(1).join('.');
+  }
+  // domínio raiz / 2 labels (ex: sua-app.com, vercel.app): não redireciona — admin acessa no próprio domínio
+}
 if(!authGuard()) throw new Error('Redirect');
 function api(path, opts) {
   var headers = { 'Content-Type': 'application/json' };
@@ -180,10 +264,12 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes' };
+  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements' };
   document.getElementById(map[tab]).classList.add('active');
   if (tab === 'registros') superadminAudit.carregarAudit(1);
   if (tab === 'clientes') carregarClientes();
+  if (tab === 'empresas') carregarEmpresas();
+  if (tab === 'settlements') carregarSettlements();
 }
 
 // Load users via API
@@ -201,8 +287,9 @@ async function carregarUsuarios() {
     var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', user: 'Usuário' };
     usuarios.forEach(function(u) {
       var roleClass = u.role === 'superadmin' ? ' style="color:#f97316;font-weight:700;"' : '';
-      tbody.innerHTML += '<tr><td><strong>' + u.username + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || u.role) + '</td><td>' + (u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" aria-label="Excluir usuário ' + u.username + '" onclick="excluirUsuario(' + u.id + ',\'' + u.username + '\')"><i class="fas fa-trash"></i></button></td></tr>';
-      select.innerHTML += '<option value="' + u.id + '" data-user="' + u.username + '">' + u.username + '</option>';
+      var usernameEsc = escapeHtml(u.username);
+      tbody.innerHTML += '<tr><td><strong>' + usernameEsc + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || escapeHtml(u.role)) + '</td><td>' + escapeHtml(u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" aria-label="Excluir usuário" onclick="excluirUsuario(' + u.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+      select.innerHTML += '<option value="' + u.id + '">' + usernameEsc + '</option>';
     });
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;text-align:center;">Erro ao carregar usuários</td></tr>';
@@ -213,11 +300,13 @@ async function cadastrarUsuario() {
   const username = document.getElementById('newUsername').value.trim();
   const password = document.getElementById('newPassword').value.trim();
   const role = document.getElementById('newRole').value;
+  const empresaId = document.getElementById('newEmpresa').value;
   if (!username || !password) { toast('Preencha todos os campos', 'danger'); return; }
   if (password.length < 6) { toast('Senha deve ter 6+ caracteres', 'danger'); return; }
+  if (role !== 'superadmin' && !empresaId) { toast('Selecione a empresa da conta', 'danger'); return; }
   if (role === 'superadmin' && !(await confirmModal('ATENÇÃO: você está criando um Super Admin com acesso total ao sistema. Confirma?'))) return;
   try {
-    await api('/usuarios', { method: 'POST', body: JSON.stringify({ username, password, lojaNome: username, role }) });
+    await api('/usuarios', { method: 'POST', body: JSON.stringify({ username, password, lojaNome: username, role, empresaId: empresaId ? Number(empresaId) : null }) });
     document.getElementById('newUsername').value = '';
     document.getElementById('newPassword').value = '';
     document.getElementById('newRole').value = 'user';
@@ -228,7 +317,13 @@ async function cadastrarUsuario() {
   }
 }
 
-async function excluirUsuario(id, username) {
+async function excluirUsuario(id) {
+  let username = 'este usuário';
+  try {
+    const usuarios = await api('/usuarios');
+    const u = usuarios.find(function(x) { return x.id === id; });
+    if (u && u.username) username = u.username;
+  } catch(e) { /* segue com genérico */ }
   if (!(await confirmModal('Excluir usuário ' + username + '?'))) return;
   try {
     await api('/usuarios/' + id, { method: 'DELETE' });
@@ -270,9 +365,9 @@ async function carregarClientes() {
     tbody.innerHTML = '';
     clientes.forEach(function(c) {
       tbody.innerHTML += '<tr>'
-        + '<td><strong>' + (c.nome || '-') + '</strong></td>'
-        + '<td>' + (c.telefone || '-') + '</td>'
-        + '<td>' + (c.bairro || '-') + '</td>'
+        + '<td><strong>' + escapeHtml(c.nome || '-') + '</strong></td>'
+        + '<td>' + escapeHtml(c.telefone || '-') + '</td>'
+        + '<td>' + escapeHtml(c.bairro || '-') + '</td>'
         + '<td>' + (c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '-') + '</td>'
         + '<td style="white-space:nowrap;">'
         + '<button class="btn btn-primary btn-sm" aria-label="Editar cliente" onclick="abrirModalEditar(' + c.id + ')"><i class="fas fa-pen"></i></button> '
@@ -359,10 +454,185 @@ function fecharModal(id) {
   document.getElementById(id).style.display = 'none';
 }
 
+// ---- Empresas ----
+async function carregarEmpresas() {
+  const tbody = document.getElementById('empresasTableBody');
+  try {
+    const empresas = await api('/admin');
+    if (!empresas || empresas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="color:#94a3b8;text-align:center;">Nenhuma empresa cadastrada</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    document.getElementById('newEmpresa').innerHTML = '<option value="">— selecionar empresa —</option>';
+    empresas.forEach(function(e) {
+      var created = e.createdAt ? new Date(e.createdAt).toLocaleDateString('pt-BR') : '-';
+      var count = e._count || {};
+      var nomeEsc = escapeHtml(e.nome || '-');
+      document.getElementById('newEmpresa').innerHTML += '<option value="' + e.id + '">' + escapeHtml(e.nome) + ' (' + escapeHtml(e.slug) + ')</option>';
+      tbody.innerHTML += '<tr>'
+        + '<td><strong>' + nomeEsc + '</strong></td>'
+        + '<td><code style="background:#334155;padding:2px 6px;border-radius:4px;font-size:0.8rem;">' + escapeHtml(e.slug || '-') + '</code></td>'
+        + '<td>' + escapeHtml(e.telefone || '-') + '</td>'
+        + '<td>' + escapeHtml(e.cidade || '-') + '</td>'
+        + '<td>' + (e.asaasOnboarded ? '<i class="fas fa-circle" style="color:#10b981;" title="Onboarded"></i>' : '<i class="fas fa-circle" style="color:#6b7280;" title="Não onboarded"></i>') + '</td>'
+        + '<td>' + (count.produtos || 0) + '</td>'
+        + '<td>' + (count.pedidos || 0) + '</td>'
+        + '<td>' + created + '</td>'
+        + '<td style="white-space:nowrap;">'
+        + '<button class="btn btn-primary btn-sm" aria-label="Editar empresa" onclick="abrirModalEditarEmpresa(' + e.id + ')"><i class="fas fa-pen"></i></button> '
+        + '<button class="btn btn-danger btn-sm" aria-label="Excluir empresa" onclick="excluirEmpresa(' + e.id + ')"><i class="fas fa-trash"></i></button>'
+        + '</td></tr>';
+    });
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="9" style="color:#dc2626;text-align:center;">Erro ao carregar empresas: ' + e.message + '</td></tr>';
+  }
+}
+
+async function cadastrarEmpresa() {
+  const nome = document.getElementById('empNome').value.trim();
+  const slug = document.getElementById('empSlug').value.trim();
+  const telefone = document.getElementById('empTelefone').value.trim();
+  const cidade = document.getElementById('empCidade').value.trim();
+  if (!nome || !slug) { toast('Nome e slug são obrigatórios', 'danger'); return; }
+  try {
+    await api('/admin', { method: 'POST', body: JSON.stringify({ nome, slug, telefone, cidade }) });
+    document.getElementById('empNome').value = '';
+    document.getElementById('empSlug').value = '';
+    document.getElementById('empTelefone').value = '';
+    document.getElementById('empCidade').value = '';
+    toast('Empresa ' + nome + ' cadastrada!');
+    carregarEmpresas();
+  } catch(e) {
+    toast(e.message || 'Erro ao cadastrar', 'danger');
+  }
+}
+
+async function abrirModalEditarEmpresa(id) {
+  try {
+    const empresas = await api('/admin');
+    const emp = empresas.find(function(e) { return e.id === id; });
+    if (!emp) return;
+    document.getElementById('editEmpId').value = emp.id;
+    document.getElementById('editEmpNome').value = emp.nome || '';
+    document.getElementById('editEmpSlug').value = emp.slug || '';
+    document.getElementById('editEmpTelefone').value = emp.telefone || '';
+    document.getElementById('editEmpEndereco').value = emp.endereco || '';
+    document.getElementById('editEmpNumero').value = emp.numero || '';
+    document.getElementById('editEmpBairro').value = emp.bairro || '';
+    document.getElementById('editEmpCep').value = emp.cep || '';
+    document.getElementById('editEmpCidade').value = emp.cidade || '';
+    document.getElementById('editEmpEstado').value = emp.estado || '';
+    document.getElementById('editEmpDescricao').value = emp.descricao || '';
+
+    // Payment section
+    var ps = document.getElementById('paymentSection');
+    if (emp.asaasOnboarded) {
+      ps.style.display = 'block';
+      document.getElementById('paymentStatusIcon').innerHTML = '<i class="fas fa-circle" style="color:#10b981;"></i> Ativo';
+      document.getElementById('paymentWalletId').textContent = emp.asaasWalletId || '—';
+      document.getElementById('paymentSubcontaId').textContent = emp.asaasSubcontaId || '—';
+      document.getElementById('paymentOnboardedAt').textContent = emp.asaasCreatedAt ? new Date(emp.asaasCreatedAt).toLocaleDateString('pt-BR') : '—';
+    } else {
+      ps.style.display = 'block';
+      document.getElementById('paymentStatusIcon').innerHTML = '<i class="fas fa-circle" style="color:#6b7280;"></i> Inativo';
+      document.getElementById('paymentWalletId').textContent = '—';
+      document.getElementById('paymentSubcontaId').textContent = '—';
+      document.getElementById('paymentOnboardedAt').textContent = '—';
+    }
+
+    // Load last 5 settlements for this empresa
+    var settleDiv = document.getElementById('paymentSettlements');
+    settleDiv.innerHTML = '<em style="color:#94a3b8;">Carregando settlements...</em>';
+    try {
+      var setData = await api('/empresa/settlement/global?empresaId=' + id);
+      var emps = (setData.settlements || []).slice(0, 5);
+      if (emps.length === 0) {
+        settleDiv.innerHTML = '<em style="color:#94a3b8;">Nenhum settlement</em>';
+      } else {
+        var html = '<strong style="display:block;margin-bottom:4px;">Últimos settlements:</strong>';
+        html += '<table style="width:100%;font-size:0.8rem;border-collapse:collapse;">';
+        html += '<tr style="color:#94a3b8;"><th style="text-align:left;padding:2px 4px;">Período</th><th style="text-align:left;padding:2px 4px;">Split</th><th style="text-align:left;padding:2px 4px;">Transfer</th></tr>';
+        emps.forEach(function(s) {
+          var period = new Date(s.weekStart).toLocaleDateString('pt-BR') + ' - ' + new Date(s.weekEnd).toLocaleDateString('pt-BR');
+          var splitColor = s.splitStatus === 'auto' ? '#10b981' : s.splitStatus === 'manual' ? '#f59e0b' : '#6b7280';
+          var transferColor = s.transferStatus === 'scheduled' ? '#10b981' : s.transferStatus === 'completed' ? '#10b981' : '#6b7280';
+          html += '<tr style="border-top:1px solid #334155;">';
+          html += '<td style="padding:2px 4px;">' + period + '</td>';
+          html += '<td style="padding:2px 4px;color:' + splitColor + ';">' + (s.splitStatus || '—') + '</td>';
+          html += '<td style="padding:2px 4px;color:' + transferColor + ';">' + (s.transferStatus || '—') + '</td>';
+          html += '</tr>';
+        });
+        html += '</table>';
+        settleDiv.innerHTML = html;
+      }
+    } catch(err) {
+      settleDiv.innerHTML = '<em style="color:#ef4444;">Erro ao carregar settlements</em>';
+    }
+
+    document.getElementById('modalEditarEmpresa').style.display = 'flex';
+  } catch(e) { toast(e.message || 'Erro ao carregar', 'danger'); }
+}
+
+async function salvarEdicaoEmpresa() {
+  const id = document.getElementById('editEmpId').value;
+  const body = {
+    nome: document.getElementById('editEmpNome').value.trim(),
+    slug: document.getElementById('editEmpSlug').value.trim(),
+    telefone: document.getElementById('editEmpTelefone').value.trim(),
+    endereco: document.getElementById('editEmpEndereco').value.trim(),
+    numero: document.getElementById('editEmpNumero').value.trim(),
+    bairro: document.getElementById('editEmpBairro').value.trim(),
+    cep: document.getElementById('editEmpCep').value.trim(),
+    cidade: document.getElementById('editEmpCidade').value.trim(),
+    estado: document.getElementById('editEmpEstado').value.trim(),
+    descricao: document.getElementById('editEmpDescricao').value.trim(),
+  };
+  if (!body.nome) { toast('Nome é obrigatório', 'danger'); return; }
+  try {
+    await api('/admin/' + id, { method: 'PUT', body: JSON.stringify(body) });
+    fecharModal('modalEditarEmpresa');
+    toast('Empresa atualizada!');
+    carregarEmpresas();
+  } catch(e) {
+    toast(e.message || 'Erro ao salvar', 'danger');
+  }
+}
+
+async function desativarSplit() {
+  var id = document.getElementById('editEmpId').value;
+  if (!(await confirmModal('Desativar Split desta empresa? O onboarding Asaas será removido.'))) return;
+  try {
+    await api('/admin/empresa/' + id + '/payment', { method: 'DELETE' });
+    toast('Split desativado', 'warning');
+    fecharModal('modalEditarEmpresa');
+    carregarEmpresas();
+  } catch(e) {
+    toast(e.message || 'Erro ao desativar', 'danger');
+  }
+}
+
+async function excluirEmpresa(id) {
+  let nome = 'esta empresa';
+  try {
+    const empresas = await api('/admin');
+    const emp = empresas.find(function(e) { return e.id === id; });
+    if (emp && emp.nome) nome = emp.nome;
+  } catch(e) { /* segue com nome genérico */ }
+  if (!(await confirmModal('Excluir empresa ' + nome + '? Todos os dados vinculados serão protegidos de exclusão (409 se houver dados).'))) return;
+  try {
+    await api('/admin/' + id, { method: 'DELETE' });
+    toast('Empresa removida', 'danger');
+    carregarEmpresas();
+  } catch(e) {
+    toast(e.message || 'Erro ao remover', 'danger');
+  }
+}
+
 function activarTabPorQuery() {
   const p = new URLSearchParams(window.location.search);
   const tab = p.get('tab');
-  if (tab && ['usuarios', 'senhas', 'clientes', 'registros'].includes(tab)) {
+  if (tab && ['usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'settlements'].includes(tab)) {
     const btn = Array.from(document.querySelectorAll('.tab')).find(function(b) {
       return b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1;
     });
@@ -372,7 +642,28 @@ function activarTabPorQuery() {
 
 carregarUsuarios();
 carregarClientes();
+carregarEmpresas();
 activarTabPorQuery();
+
+async function carregarSettlements() {
+  try {
+    const data = await api('/empresa/settlement/global');
+    const tbody = document.getElementById('settlementsTableBody');
+    if (!data.settlements || !data.settlements.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Nenhum settlement encontrado</td></tr>';
+      return;
+    }
+    var statusColors = { processando: '#F59E0B', pendente: '#3B82F6', pago: '#10B981', erro: '#EF4444' };
+    tbody.innerHTML = data.settlements.map(function(s) {
+      var empresa = s.empresa ? escapeHtml(s.empresa.nome) : 'ID ' + s.empresaId;
+      var periodo = new Date(s.weekStart).toLocaleDateString('pt-BR') + ' - ' + new Date(s.weekEnd).toLocaleDateString('pt-BR');
+      var cor = statusColors[s.status] || '#666';
+      return '<tr><td><strong>' + empresa + '</strong></td><td>' + periodo + '</td><td>' + s.totalPedidos + '</td><td>R$ ' + Number(s.totalBruto).toFixed(2) + '</td><td>R$ ' + Number(s.totalLiquido).toFixed(2) + '</td><td style="color:' + cor + ';font-weight:600">' + s.status + '</td></tr>';
+    }).join('');
+  } catch(e) {
+    console.error('Erro ao carregar settlements', e);
+  }
+}
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>

@@ -17,8 +17,12 @@ function ctxFrom(req) {
   };
 }
 
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId;
+}
+
 exports.listar = asyncHandler(async (req, res) => {
-  res.json(await clientService.listarClientes());
+  res.json(await clientService.listarClientes(empresaId(req)));
 });
 
 exports.atualizar = asyncHandler(async (req, res) => {

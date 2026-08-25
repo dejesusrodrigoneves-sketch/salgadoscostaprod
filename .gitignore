@@ -40,6 +40,7 @@ firebase-debug.*.log
 *.bak
 *.backup
 .vercel
+.docs
 
 # Auditoria responsiva (runtime / exclusoes locais)
 .playwright-mcp/

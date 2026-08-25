@@ -19,8 +19,8 @@ function base(ctx) {
   };
 }
 
-async function listarClientes(d = deps()) {
-  const clientes = await d.sql.listarClientes();
+async function listarClientes(empresaId, d = deps()) {
+  const clientes = await d.sql.listarClientes(empresaId);
   return clientes.map(function (c) {
     return {
       id: c.id,

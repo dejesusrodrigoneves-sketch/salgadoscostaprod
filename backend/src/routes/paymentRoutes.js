@@ -30,7 +30,7 @@ paymentRouter.get('/status/:pedidoId', asyncHandler(async (req, res) => {
 
 // Admin: lista pagamentos rejeitados para refund manual
 paymentRouter.get('/rejeitados', authenticate, authorize('superadmin', 'admin'), asyncHandler(async (req, res) => {
-  const rows = await sql.listarPagamentosRejeitados();
+  const rows = await sql.listarPagamentosRejeitados(req.ctx?.empresaId || req.user?.empresaId);
   res.json(rows.map((r) => ({
     id: r.id,
     pedidoId: r.pedidoId,

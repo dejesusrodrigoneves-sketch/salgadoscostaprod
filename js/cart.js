@@ -93,13 +93,13 @@ function calcularTaxaEntregaPorBairro() {
 }
 
 
-function carregarBairros() {
-  var _fetch = (typeof fetchCached === 'function') ? fetchCached : fetch;
-  _fetch('/api/public/loja/settings', {}, 300000).then(function(r) { return r.json(); }).then(function(config) {
+async function carregarBairros() {
+  try {
+    const config = await PUBLIC_API.lojaSettings();
     if (Array.isArray(config.bairrosAtendidos)) {
       bairrosAtendidos = config.bairrosAtendidos;
     }
-  }).catch(function(e) { console.warn('Erro ao carregar bairros:', e); });
+  } catch (e) { console.warn('Erro ao carregar bairros:', e); }
 }
 
 function fecharOverlayBairro() {
@@ -107,16 +107,6 @@ function fecharOverlayBairro() {
 }
 
 carregarBairros();
-
-function carregarConfig() {
-  fetch('/api/public/config').then(function(r) { return r.json(); }).then(function(config) {
-    if (config.asaasPixFeePercent !== undefined) {
-      asaasPixFeePercent = Number(config.asaasPixFeePercent) || 2;
-    }
-    updateValores();
-  }).catch(function(e) { console.warn('Erro ao carregar config:', e); });
-}
-carregarConfig();
 
 var _cartCache = null;
 

@@ -4,8 +4,12 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { getCtx } = require('../middleware/context');
 const config = require('../config/env');
 
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId;
+}
+
 exports.listar = asyncHandler(async (req, res) => {
-  const pedidos = await orderService.listarFiltrado(req.query);
+  const pedidos = await orderService.listarFiltrado(req.query, empresaId(req));
   const formatado = pedidos.map(function(p) {
     return {
       ...p,
@@ -31,40 +35,38 @@ exports.listar = asyncHandler(async (req, res) => {
 });
 
 exports.buscar = asyncHandler(async (req, res) => {
-  const pedido = await orderService.buscar(req.params.id);
+  const pedido = await orderService.buscar(req.params.id, empresaId(req));
   res.json(pedido);
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const pedido = await orderService.criar({ ...req.body, empresaId: 1 }, getCtx(req));
+  const pedido = await orderService.criar({ ...req.body, empresaId: empresaId(req) }, empresaId(req), getCtx(req));
   res.status(201).json(pedido);
 });
 
 exports.deletar = asyncHandler(async (req, res) => {
-  await orderService.deletarPedido(req.params.id, getCtx(req));
+  await orderService.deletarPedido(req.params.id, empresaId(req), getCtx(req));
   res.json({ success: true });
 });
 
 exports.finalizar = asyncHandler(async (req, res) => {
-  const pedido = await orderService.finalizarPedido(req.params.id, getCtx(req));
-
+  const pedido = await orderService.finalizarPedido(req.params.id, empresaId(req), getCtx(req));
   res.json(pedido);
 });
 
 exports.atualizarStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   if (!status) return res.status(400).json({ error: 'status obrigatório' });
-  const pedido = await sql.buscarPedido(req.params.id);
+  const pedido = await sql.buscarPedido(req.params.id, empresaId(req));
   if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
-  const atualizado = await orderService.atualizarStatus(req.params.id, status, getCtx(req));
-
+  const atualizado = await orderService.atualizarStatus(req.params.id, status, empresaId(req), getCtx(req));
   res.json(atualizado);
 });
 
 exports.editarPedido = asyncHandler(async (req, res) => {
   const { total, itens, formaPagamento, tipoEntrega, bairro, taxasEntrega, taxasCartao, desconto, troco } = req.body;
   if (!total || !itens) return res.status(400).json({ error: 'total e itens obrigatórios' });
-  const pedido = await orderService.editarPedido(req.params.id, req.body, getCtx(req));
+  const pedido = await orderService.editarPedido(req.params.id, req.body, empresaId(req), getCtx(req));
   res.json(pedido);
 });
 
@@ -76,7 +78,7 @@ function formatarTempoDecorrido(agora, entao) {
 }
 
 exports.listarNaoConcluidos = asyncHandler(async (req, res) => {
-  const pedidos = await orderService.listarNaoConcluidos(req.query);
+  const pedidos = await orderService.listarNaoConcluidos(req.query, empresaId(req));
   const formatado = pedidos.map(function(p) {
     const dataExpiracao = p.updatedAt || p.createdAt;
     const motivo = p.paymentStatus === 'expirado'

@@ -5,8 +5,35 @@ const auditService = require('./auditService');
 const prisma = require('../config/prisma');
 
 const SALT_ROUNDS = 10;
+const ROLES_VALIDOS = ['user', 'admin', 'superadmin'];
 
-async function login(username, password, ip, userAgent, ctx = {}) {
+// Account lockout: track failed attempts per username
+const failedAttempts = new Map();
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+function isLockedOut(username) {
+  const record = failedAttempts.get(username);
+  if (!record) return false;
+  if (Date.now() - record.lastAttempt > LOCKOUT_DURATION) {
+    failedAttempts.delete(username);
+    return false;
+  }
+  return record.count >= LOCKOUT_THRESHOLD;
+}
+
+function recordFailedAttempt(username) {
+  const record = failedAttempts.get(username) || { count: 0, lastAttempt: 0 };
+  record.count++;
+  record.lastAttempt = Date.now();
+  failedAttempts.set(username, record);
+}
+
+function clearFailedAttempts(username) {
+  failedAttempts.delete(username);
+}
+
+async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
   const base = {
     requestId: ctx.requestId || null,
     ip: ip || ctx.ip || null,
@@ -14,7 +41,35 @@ async function login(username, password, ip, userAgent, ctx = {}) {
     metadata: { url: ctx.path || null },
   };
 
-  const user = await sql.buscarUsuario(username);
+  // Account lockout check
+  if (isLockedOut(username)) {
+    throw Object.assign(new Error('Conta temporariamente bloqueada. Tente novamente em 15 minutos.'), { status: 429 });
+  }
+
+  let user;
+  if (empresaId) {
+    // Admin/user em {slug}.sua-app.com
+    user = await sql.buscarUsuario(username, empresaId);
+    if (!user) {
+      // Fallback: superadmin pode acessar qualquer empresa
+      user = await sql.buscarUsuarioSuperadmin(username);
+    }
+  } else {
+    // Sem tenant context (localhost/testes): busca qualquer usuário primeiro
+    user = await sql.buscarUsuario(username, undefined);
+    if (!user) {
+      user = await sql.buscarUsuarioSuperadmin(username);
+    }
+  }
+
+  // Verificar se empresa está deletada
+  if (user && user.empresaId) {
+    const empresa = await sql.buscarEmpresa(user.empresaId);
+    if (empresa && empresa.deletedAt) {
+      throw Object.assign(new Error('Empresa inativa'), { status: 403 });
+    }
+  }
+
   if (!user) {
     auditService.audit({
       ...base,
@@ -25,6 +80,7 @@ async function login(username, password, ip, userAgent, ctx = {}) {
       severity: 'warning',
       reason: 'usuario_nao_encontrado',
     });
+    recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
@@ -41,11 +97,23 @@ async function login(username, password, ip, userAgent, ctx = {}) {
       severity: 'warning',
       reason: 'senha_incorreta',
     });
+    recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
-  const payload = { id: user.id, username: user.username, role: user.role, empresaId: 1, lojaNome: user.lojaNome };
+  // Clear failed attempts on successful login
+  clearFailedAttempts(username);
+
+  // Superadmin sempre empresaId null (acesso global)
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    empresaId: user.role === 'superadmin' ? null : user.empresaId,
+    lojaNome: user.lojaNome || null,
+  };
   const token = tokenService.gerarToken(payload);
+  const refreshToken = tokenService.gerarRefreshToken(payload);
 
   auditService.audit({
     ...base,
@@ -57,11 +125,11 @@ async function login(username, password, ip, userAgent, ctx = {}) {
     actorRole: user.role,
   });
 
-  return { token, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
+  return { token, refreshToken, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
 }
 
 async function criarUsuario(data, ctx = {}) {
-  const existing = await sql.buscarUsuario(data.username);
+  const existing = await sql.buscarUsuario(data.username, data.empresaId);
   if (existing) {
     auditService.audit({
       requestId: ctx.requestId || null,
@@ -79,8 +147,13 @@ async function criarUsuario(data, ctx = {}) {
     throw Object.assign(new Error('Usuário já existe'), { status: 409 });
   }
 
+  const roleNorm = ROLES_VALIDOS.includes(data.role) ? data.role : 'user';
+  // Password complexity validation
+  if (data.password && data.password.length >= 6 && (!/[A-Z]/.test(data.password) || !/[a-z]/.test(data.password) || !/[0-9]/.test(data.password))) {
+    throw Object.assign(new Error('Senha deve conter maiúscula, minúscula e número'), { status: 400 });
+  }
   const hash = await bcrypt.hash(data.password, SALT_ROUNDS);
-  const user = await sql.criarUsuario({ ...data, passwordHash: hash });
+  const user = await sql.criarUsuario({ ...data, role: roleNorm, passwordHash: hash });
 
   auditService.audit({
     requestId: ctx.requestId || null,
@@ -101,6 +174,7 @@ async function criarUsuario(data, ctx = {}) {
 
 async function alterarSenha(userId, senhaAtual, novaSenha, ctx = {}) {
   const user = await sql.buscarUsuarioPorId(userId);
+  if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 404 });
   const base = {
     requestId: ctx.requestId || null,
     ip: ctx.ip || null,
@@ -136,8 +210,11 @@ async function alterarSenha(userId, senhaAtual, novaSenha, ctx = {}) {
   });
 }
 
-async function criarConta({ username, password, lojaNome }, ctx = {}) {
-  const existing = await sql.buscarUsuario(username);
+async function criarConta({ username, password, lojaNome, empresaId }, ctx = {}) {
+  if (!empresaId) {
+    throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
+  }
+  const existing = await sql.buscarUsuario(username, empresaId);
   if (existing) {
     auditService.audit({
       requestId: ctx.requestId || null,
@@ -158,7 +235,7 @@ async function criarConta({ username, password, lojaNome }, ctx = {}) {
 
   const hash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await sql.criarUsuario({
-    empresaId: 1,
+    empresaId,
     username,
     passwordHash: hash,
     lojaNome: lojaNome || username,

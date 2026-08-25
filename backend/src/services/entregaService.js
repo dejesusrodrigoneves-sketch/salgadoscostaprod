@@ -3,8 +3,8 @@ const logger = require('../config/logger');
 const auditService = require('./auditService');
 const sql = require('../repositories/sqlRepository');
 
-async function listarEntregas(data) {
-  const where = { empresaId: 1 };
+async function listarEntregas(data, empresaId) {
+  const where = { empresaId };
   if (data) {
     const start = new Date(data + 'T00:00:00.000Z');
     const end = new Date(data + 'T23:59:59.999Z');
@@ -17,16 +17,16 @@ async function listarEntregas(data) {
   });
 }
 
-async function registrarEntrega(entregadorId, pedidoId, valor, ctx = {}) {
+async function registrarEntrega(entregadorId, pedidoId, valor, empresaId, ctx = {}) {
   const existente = await prisma.entregaDiaria.findFirst({
-    where: { empresaId: 1, pedidoId },
+    where: { empresaId, pedidoId },
   });
   if (existente) {
     throw Object.assign(new Error('Entrega já registrada para este pedido'), { status: 409 });
   }
   const entrega = await prisma.entregaDiaria.create({
     data: {
-      empresaId: 1,
+      empresaId,
       entregadorId: Number(entregadorId),
       pedidoId,
       valor: valor || 0,
@@ -48,9 +48,9 @@ async function registrarEntrega(entregadorId, pedidoId, valor, ctx = {}) {
   return entrega;
 }
 
-async function removerEntrega(pedidoId, ctx = {}) {
+async function removerEntrega(pedidoId, empresaId, ctx = {}) {
   const entrega = await prisma.entregaDiaria.findFirst({
-    where: { empresaId: 1, pedidoId },
+    where: { empresaId, pedidoId },
   });
   if (!entrega) {
     throw Object.assign(new Error('Entrega não encontrada'), { status: 404 });
@@ -85,13 +85,13 @@ function agruparPorEntregador(entregas) {
   return Object.values(map);
 }
 
-async function resumoDiario(data) {
+async function resumoDiario(data, empresaId) {
   const dataInicio = data ? new Date(data + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
   const dataFim = new Date(dataInicio);
   dataFim.setUTCHours(23, 59, 59, 999);
 
   const entregas = await prisma.entregaDiaria.findMany({
-    where: { empresaId: 1, data: { gte: dataInicio, lte: dataFim } },
+    where: { empresaId, data: { gte: dataInicio, lte: dataFim } },
     include: { entregador: true },
   });
 
@@ -106,8 +106,6 @@ async function resumoDiario(data) {
   };
 }
 
-// Helper puro+injetado: recebe entregas ja consultadas e uma fn buscarPedido(id) -> Promise<pedido>.
-// Nao depende de prisma diretamente — testavel via vitest sem DB.
 async function montarResumoPeriodo(entregas, buscarPedidoFn) {
   if (!entregas.length) return { totalEntregas: 0, totalValor: 0, totalPedidos: 0, entregadores: [] };
 
@@ -162,9 +160,9 @@ async function montarResumoPeriodo(entregas, buscarPedidoFn) {
   };
 }
 
-async function resumoPorPeriodo(inicio, fim, entregadorId, ctx = {}) {
+async function resumoPorPeriodo(inicio, fim, entregadorId, empresaId, ctx = {}) {
   const where = {
-    empresaId: 1,
+    empresaId,
     entregadorId: entregadorId ? Number(entregadorId) : undefined,
     data: { gte: new Date(inicio + 'T00:00:00.000Z'), lte: new Date(fim + 'T23:59:59.999Z') },
   };

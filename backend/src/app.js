@@ -7,6 +7,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { authenticate } = require('./middleware/auth');
 const contextMiddleware = require('./middleware/context');
+const resolveEmpresa = require('./middleware/resolveEmpresa').resolveEmpresa;
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
@@ -26,13 +27,53 @@ const entregaRoutes = require('./routes/entregaRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const { paymentRouter } = require('./routes/paymentRoutes');
 const { webhookRouter } = require('./routes/webhookRoutes');
+const settlementRoutes = require('./routes/settlementRoutes');
+const paymentSetupRoutes = require('./routes/paymentSetupRoutes');
 
 const app = express();
 
+// HTTPS enforcement in production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https' && !req.path.startsWith('/health')) {
+      return res.redirect(301, 'https://' + req.headers.host + req.url);
+    }
+    next();
+  });
+}
+
+app.use(resolveEmpresa);
 app.use(contextMiddleware);
 app.use(compression({ threshold: 1024 }));
-app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://cdn.tailwindcss.com"], scriptSrcAttr: ["'unsafe-inline'"], styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"], fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"], imgSrc: ["'self'", "data:", "https:"] } } }));
-var corsOrigin = process.env.CORS_ORIGIN || '*';
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://cdn.tailwindcss.com"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  crossOriginEmbedderPolicy: false,
+}));
+var corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin) {
+  // Production: require explicit CORS_ORIGIN env var
+  if (process.env.NODE_ENV === 'production') {
+    console.error('CORS_ORIGIN must be set in production');
+    corsOrigin = 'https://placeholder.example.com';
+  } else {
+    corsOrigin = '*';
+  }
+}
 if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
   corsOrigin = corsOrigin.split(',').map(function(s) { return s.trim(); });
 }
@@ -58,6 +99,8 @@ app.use('/api/entregas', entregaRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/payment', paymentRouter);
 app.use('/webhooks', webhookRouter);
+app.use('/api/empresa/settlement', settlementRoutes);
+app.use('/api/empresa/payment', paymentSetupRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));

@@ -9,6 +9,10 @@ const fetchers = {
 
 function requireOwnership(resourceType, idParam = 'id') {
   return async (req, res, next) => {
+    // Superadmin acessa qualquer empresa
+    if (req.user && req.user.role === 'superadmin') {
+      return next();
+    }
     const fetcher = fetchers[resourceType];
     if (!fetcher) return res.status(500).json({ error: 'Tipo de recurso inválido' });
 

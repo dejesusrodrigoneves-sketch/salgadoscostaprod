@@ -12,6 +12,26 @@ async function ensureColumns(prisma) {
   await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "pedidos" ADD COLUMN IF NOT EXISTS "payment_method" TEXT');
   await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "pedidos" ADD COLUMN IF NOT EXISTS "payment_id" INTEGER');
   await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "clientes" ADD COLUMN IF NOT EXISTS "asaas_customer_id" TEXT');
+
+  // Settlement transfer scheduling columns
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "transfer_scheduled_at" TIMESTAMPTZ');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "transfer_amount" DECIMAL(10,2)');
+
+  // Asaas Split Payment columns on empresas
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "asaas_subconta_id" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "asaas_wallet_id" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "asaas_api_key" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "asaas_onboarded" BOOLEAN NOT NULL DEFAULT false');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "asaas_created_at" TIMESTAMPTZ');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "pix_key" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "empresas" ADD COLUMN IF NOT EXISTS "pix_key_type" TEXT');
+
+  // WeeklySettlement split/transfer columns
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "split_status" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "transfer_id" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "transfer_status" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "asaas_transfer_id" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "split_error" TEXT');
 }
 
 module.exports = ensureColumns;

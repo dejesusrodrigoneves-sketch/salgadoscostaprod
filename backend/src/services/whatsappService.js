@@ -7,13 +7,13 @@ function normalizarNumero(numero) {
   return telefone.startsWith('55') ? telefone : `55${telefone}`;
 }
 
-async function enviarMensagem(numero, mensagem) {
+async function enviarMensagem(numero, mensagem, empresaId) {
   if (!config.evolutionUrl || !config.evolutionApiKey) {
     console.warn('WhatsApp: EVOLUTION_URL ou EVOLUTION_API_KEY não configurados');
     return null;
   }
 
-  const instancia = await sql.buscarInstanciaAtiva();
+  const instancia = await sql.buscarInstanciaAtiva(empresaId);
   if (!instancia) {
     console.warn('WhatsApp: Nenhuma instância ativa');
     return null;
@@ -56,7 +56,7 @@ async function enviarMensagemDireta(instanceId, numero, mensagem) {
 }
 
 async function notificarStatus(pedido, status) {
-  const { clienteNome, clienteWhatsapp: telefone, id: pedidoId } = pedido;
+  const { clienteNome, clienteWhatsapp: telefone, id: pedidoId, empresaId } = pedido;
   if (!telefone) return;
 
   const mensagens = {
@@ -67,7 +67,7 @@ async function notificarStatus(pedido, status) {
   };
 
   const msg = mensagens[status];
-  if (msg) await enviarMensagem(telefone, msg);
+  if (msg) await enviarMensagem(telefone, msg, empresaId);
 }
 
 module.exports = { enviarMensagem, enviarMensagemDireta, notificarStatus };

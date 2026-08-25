@@ -27,9 +27,9 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
-  const { username, password, lojaNome, role } = req.body;
+  const { username, password, lojaNome, role, empresaId } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'username e password obrigatórios' });
-  const user = await userService.criar({ username, password, lojaNome, role }, ctxFrom(req));
+  const user = await userService.criar({ username, password, lojaNome, role, empresaId: empresaId || req.ctx?.empresaId || null }, ctxFrom(req));
   res.status(201).json(user);
 }));
 

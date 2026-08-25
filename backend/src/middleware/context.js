@@ -54,6 +54,8 @@ function getCtx(req) {
     actorId: actor.actorId,
     actorUsername: actor.actorUsername,
     actorRole: actor.actorRole,
+    empresaId: req.ctx?.empresaId || req.user?.empresaId || null,
+    role: req.user?.role || null,
   };
 }
 

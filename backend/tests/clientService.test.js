@@ -21,7 +21,7 @@ function deps() {
 describe('listarClientes', () => {
   it('remove passwordHash da resposta', async () => {
     const d = deps();
-    const result = await listarClientes(d);
+    const result = await listarClientes(1, d);
     expect(result).toHaveLength(1);
     expect(result[0].passwordHash).toBeUndefined();
   });
