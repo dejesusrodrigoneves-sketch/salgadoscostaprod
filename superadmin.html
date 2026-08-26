@@ -239,13 +239,13 @@
 var host = window.location.hostname;
 var isLocal = host === 'localhost' || /^\d+(\.\d+){3}$/.test(host);
 var isSuperadminDomain = isLocal || host.split('.')[0] === 'admin';
-if (!isSuperadminDomain) {
+var isVercel = host.endsWith('.vercel.app') || host.endsWith('.now.sh');
+if (!isSuperadminDomain && !isVercel) {
   var labels = host.split('.');
   // Só redireciona quando há subdomínio de tenant real (ex: salgadoscosta.sua-app.com)
   if (labels.length >= 3) {
     window.location.href = 'https://admin.' + labels.slice(1).join('.');
   }
-  // domínio raiz / 2 labels (ex: sua-app.com, vercel.app): não redireciona — admin acessa no próprio domínio
 }
 if(!authGuard()) throw new Error('Redirect');
 function api(path, opts) {
