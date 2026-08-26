@@ -46,21 +46,8 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
     throw Object.assign(new Error('Conta temporariamente bloqueada. Tente novamente em 15 minutos.'), { status: 429 });
   }
 
-  let user;
-  if (empresaId) {
-    // Admin/user em {slug}.sua-app.com
-    user = await sql.buscarUsuario(username, empresaId);
-    if (!user) {
-      // Fallback: superadmin pode acessar qualquer empresa
-      user = await sql.buscarUsuarioSuperadmin(username);
-    }
-  } else {
-    // Sem tenant context (localhost/testes): busca qualquer usuário primeiro
-    user = await sql.buscarUsuario(username, undefined);
-    if (!user) {
-      user = await sql.buscarUsuarioSuperadmin(username);
-    }
-  }
+  let user = await sql.buscarUsuario(username, undefined);
+  if (!user) user = await sql.buscarUsuarioSuperadmin(username);
 
   // Verificar se empresa está deletada
   if (user && user.empresaId) {
@@ -214,7 +201,7 @@ async function criarConta({ username, password, lojaNome, empresaId }, ctx = {})
   if (!empresaId) {
     throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
   }
-  const existing = await sql.buscarUsuario(username, empresaId);
+  const existing = await sql.buscarUsuario(username, undefined);
   if (existing) {
     auditService.audit({
       requestId: ctx.requestId || null,

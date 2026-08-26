@@ -82,7 +82,7 @@ model Usuario {
   createdAt    DateTime @default(now()) @map("criado_em")
   empresa      Empresa  @relation(fields: [empresaId], references: [id])
 
-  @@unique([empresaId, username])
+  @@unique([username])
   @@map("usuarios")
 }
 

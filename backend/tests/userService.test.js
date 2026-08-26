@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import prisma from '../src/config/prisma.js';
 import bcrypt from 'bcryptjs';
 import auditService from '../src/services/auditService.js';
-import { deletar, resetarSenha } from '../src/services/userService.js';
+import { deletar, resetarSenha, criar } from '../src/services/userService.js';
 
 const CTX = {
   requestId: 'req-1',
@@ -23,6 +23,7 @@ beforeEach(() => {
       throw Object.assign(new Error('empresaId inválido'), { status: 400 });
     return where.id === 1 ? USER_ROW : null;
   });
+  vi.spyOn(prisma.usuario, 'create').mockResolvedValue({ id: 100, username: 'novo', role: 'user', lojaNome: 'novo' });
   vi.spyOn(prisma.usuario, 'delete').mockResolvedValue({});
   vi.spyOn(prisma.usuario, 'update').mockResolvedValue({});
   vi.spyOn(bcrypt, 'hash').mockResolvedValue('HASHED:x');
@@ -81,5 +82,35 @@ describe('userService.resetarSenha', () => {
 
   it('lança 400 quando senha é muito curta', async () => {
     await expect(resetarSenha(1, '123', CTX)).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+// ─── criar — username duplicado global ─────────────────────
+describe('userService.criar', () => {
+  it('cria usuário quando username não existe', async () => {
+    prisma.usuario.findFirst.mockResolvedValue(null);
+    prisma.usuario.create.mockResolvedValue({ id: 100, username: 'teste', role: 'user', lojaNome: 'teste' });
+
+    const result = await criar({
+      username: 'teste', password: 'Teste123', lojaNome: 'teste', role: 'user', empresaId: 1,
+    });
+
+    expect(result.username).toBe('teste');
+    expect(prisma.usuario.findFirst).toHaveBeenCalledWith({ where: { username: 'teste' } });
+    expect(prisma.usuario.create).toHaveBeenCalled();
+  });
+
+  it('lança 409 quando username já existe globalmente (outra empresa)', async () => {
+    prisma.usuario.findFirst.mockResolvedValue({ id: 1, username: 'teste', role: 'user', empresaId: 1 });
+
+    await expect(
+      criar({ username: 'teste', password: 'Teste123', lojaNome: 'teste2', role: 'user', empresaId: 2 }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('lança 400 quando empresaId não fornecido', async () => {
+    await expect(
+      criar({ username: 'teste', password: 'Teste123' }),
+    ).rejects.toMatchObject({ status: 400 });
   });
 });

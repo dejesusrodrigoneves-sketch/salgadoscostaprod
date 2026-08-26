@@ -25,7 +25,7 @@ async function listar(empresaId) {
 
 async function criar({ username, password, lojaNome, role, empresaId }, ctx = {}) {
   if (!empresaId) throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
-  const existing = await prisma.usuario.findUnique({ where: { empresaId_username: { empresaId, username } } });
+  const existing = await prisma.usuario.findFirst({ where: { username } });
   if (existing) {
     auditService.audit({
       ...base(ctx),
