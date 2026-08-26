@@ -59,9 +59,9 @@ async function criar({ username, password, lojaNome, role, empresaId }, ctx = {}
   return user;
 }
 
-async function deletar(id, empresaId, ctx = {}) {
+async function deletar(id, ctx = {}) {
   const user = await prisma.usuario.findFirst({
-    where: { id: Number(id), empresaId },
+    where: { id: Number(id) },
     select: { id: true, username: true, role: true },
   });
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 404 });
@@ -82,9 +82,10 @@ async function deletar(id, empresaId, ctx = {}) {
   return { success: true };
 }
 
-async function resetarSenha(id, password, empresaId, ctx = {}) {
+async function resetarSenha(id, password, ctx = {}) {
+  if (!password || String(password).length < 6) throw Object.assign(new Error('Senha deve ter 6+ caracteres'), { status: 400 });
   const user = await prisma.usuario.findFirst({
-    where: { id: Number(id), empresaId },
+    where: { id: Number(id) },
     select: { id: true, username: true, role: true },
   });
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 404 });

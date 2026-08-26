@@ -89,4 +89,5 @@ async function auditQueueFlushSync(entries) {
   }
 }
 
-module.exports = { audit, appLog, maskDeep };
+const exports_ = { audit, appLog, maskDeep };
+module.exports = globalThis.__auditService ??= exports_;
