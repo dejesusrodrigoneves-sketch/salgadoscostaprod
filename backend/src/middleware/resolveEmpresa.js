@@ -1,6 +1,6 @@
 import { getEmpresaFromCache } from '../config/empresaCache.js';
 
-const IGNORED = ['www', 'api', 'admin', 'mail', 'ftp'];
+const IGNORED = ['www', 'api', 'admin', 'mail', 'ftp', 'login-sicia'];
 
 export async function resolveEmpresa(req, res, next) {
   // Fallback: ?slug= parametro (dev/teste local e domínio raiz — fetch não permite Host header custom)

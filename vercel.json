@@ -16,6 +16,7 @@
     { "src": "/health", "dest": "backend/api.js" },
     { "src": "/", "dest": "/index.html" },
     { "src": "/([^/.]+)$", "dest": "/$1.html" },
+    { "src": "/(.*)", "dest": "/login.html", "headers": { "host": "login-sicia.vercel.app" } },
     { "src": "/(.*)", "dest": "/$1" }
   ]
 }
