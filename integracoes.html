@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Integrações Financeiras</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/dashboard-page.css">
+<style>
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+  .integ-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .integ-card { background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .integ-card strong { font-size: 16px; }
+  .integ-card span { font-size: 14px; color: var(--text-muted, #64748b); }
+  .integ-card small { font-size: 12px; color: var(--text-muted, #94a3b8); }
+  .integ-card button { margin-top: 8px; padding: 8px 16px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; }
+  .integ-card button[data-platform] { background: #3b82f6; color: #fff; }
+  .integ-card button[data-platform]:hover { background: #2563eb; }
+  .integ-card button:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+  .integ-loading { text-align: center; padding: 40px; color: var(--text-muted, #64748b); }
+</style>
+</head>
+<body>
+  <div id="integ-loading" class="integ-loading">Carregando integrações...</div>
+  <div id="integ-lista" class="integ-grid"></div>
+
+  <script src="js/integracoes.js"></script>
+  <script>
+    (async function init() {
+      try {
+        await Integracoes.carregar();
+        document.getElementById('integ-loading').style.display = 'none';
+      } catch (e) {
+        document.getElementById('integ-loading').textContent = 'Erro ao carregar integrações.';
+      }
+    })();
+  </script>
+</body>
+</html>

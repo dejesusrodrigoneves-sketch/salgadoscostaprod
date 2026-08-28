@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Central Financeira</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/dashboard-page.css">
+<style>
+  body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
+  .fin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .fin-card { background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; }
+  .fin-card .label { font-size: 12px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .fin-card .value { font-size: 22px; font-weight: 700; }
+  .fin-card.receivable .value { color: #f59e0b; }
+  .fin-card.net .value { color: #10b981; }
+  .fin-section { margin-bottom: 24px; }
+  .fin-section h3 { font-size: 16px; margin-bottom: 12px; }
+  .fin-section ul { list-style: none; padding: 0; }
+  .fin-section li { padding: 8px 0; border-bottom: 1px solid var(--border, #e2e8f0); font-size: 14px; }
+  .fin-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-financeiro { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn-sync { background: #3b82f6; color: #fff; }
+  .btn-sync:hover { background: #2563eb; }
+  .btn-closing { background: #10b981; color: #fff; }
+  .btn-closing:hover { background: #059669; }
+  .btn-financeiro:disabled { opacity: 0.5; cursor: not-allowed; }
+  .fin-loading { text-align: center; padding: 40px; color: var(--text-muted, #64748b); }
+</style>
+</head>
+<body>
+  <div id="fin-loading" class="fin-loading">Carregando dados financeiros...</div>
+
+  <div id="fin-content" style="display:none;">
+    <div class="fin-grid">
+      <div class="fin-card"><div class="label">Bruto</div><div class="value" id="fin-bruto">-</div></div>
+      <div class="fin-card"><div class="label">Descontos</div><div class="value" id="fin-descontos">-</div></div>
+      <div class="fin-card"><div class="label">Taxas</div><div class="value" id="fin-taxas">-</div></div>
+      <div class="fin-card net"><div class="label">Líquido</div><div class="value" id="fin-liquido">-</div></div>
+      <div class="fin-card"><div class="label">Recebido</div><div class="value" id="fin-recebido">-</div></div>
+      <div class="fin-card receivable"><div class="label">A Receber</div><div class="value" id="fin-a-receber">-</div></div>
+    </div>
+
+    <div class="fin-section">
+      <h3>Por Plataforma</h3>
+      <ul id="fin-por-plataforma"></ul>
+    </div>
+
+    <div class="fin-actions">
+      <button class="btn-financeiro btn-sync" onclick="Financeiro.sincronizar()">
+        <i class="fas fa-sync-alt"></i> Sincronizar Dados
+      </button>
+      <button class="btn-financeiro btn-closing" onclick="Financeiro.gerarFechamento()">
+        <i class="fas fa-file-invoice-dollar"></i> Gerar Fechamento
+      </button>
+    </div>
+  </div>
+
+  <script src="js/financeiro.js"></script>
+  <script>
+    (async function init() {
+      try {
+        await Financeiro.carregarBalanco();
+        document.getElementById('fin-loading').style.display = 'none';
+        document.getElementById('fin-content').style.display = 'block';
+      } catch (e) {
+        document.getElementById('fin-loading').textContent = 'Erro ao carregar dados.';
+      }
+    })();
+  </script>
+</body>
+</html>

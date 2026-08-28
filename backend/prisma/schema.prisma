@@ -45,7 +45,14 @@ model Empresa {
   usuarios          Usuario[]
   pagamentos        Pagamento[]
   whatsappInstances WhatsAppInstance[]
-  weeklySettlements WeeklySettlement[]
+  weeklySettlements   WeeklySettlement[]
+  platformConnections PlatformConnection[]
+  financialEntries    FinancialEntry[]
+  settlements         Settlement[]
+  reconciliations     Reconciliation[]
+  dailyClosings       DailyClosing[]
+  webhookEvents       WebhookEvent[]
+  oauthStates         OAuthState[]
   email             String?            @unique
   cpfCnpj           String?            @map("cpf_cnpj")
   pixKey            String?            @map("pix_key")
@@ -404,4 +411,152 @@ model WeeklySettlement {
   @@unique([empresaId, weekStart])
   @@index([empresaId])
   @@index([status])
+}
+
+enum Platform {
+  SAAS
+  IFOOD
+  KEETA
+  NINEFOOD
+}
+
+model PlatformConnection {
+  id                Int       @id @default(autoincrement())
+  empresaId         Int       @map("empresa_id")
+  platform          Platform
+  status            String    @default("NOT_CONNECTED")
+  externalAccountId String?   @map("external_account_id")
+  accessTokenEnc    String?   @map("access_token_enc")
+  refreshTokenEnc   String?   @map("refresh_token_enc")
+  tokenExpiresAt    DateTime? @map("token_expires_at")
+  lastSyncAt        DateTime? @map("last_sync_at")
+  lastError         String?   @map("last_error")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  empresa           Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, platform])
+  @@index([platform])
+  @@index([status])
+  @@map("platform_connections")
+}
+
+model FinancialEntry {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int       @map("empresa_id")
+  source          Platform
+  externalId      String    @map("external_id")
+  type            String    @default("SALE")
+  grossAmount     Decimal   @db.Decimal(10, 2) @map("gross_amount")
+  discountAmount  Decimal   @db.Decimal(10, 2) @default(0) @map("discount_amount")
+  platformFee     Decimal   @db.Decimal(10, 2) @default(0) @map("platform_fee")
+  paymentFee      Decimal   @db.Decimal(10, 2) @default(0) @map("payment_fee")
+  deliveryAmount  Decimal   @db.Decimal(10, 2) @default(0) @map("delivery_amount")
+  otherFees       Decimal   @db.Decimal(10, 2) @default(0) @map("other_fees")
+  netAmount       Decimal   @db.Decimal(10, 2) @map("net_amount")
+  expectedAmount  Decimal?  @db.Decimal(10, 2) @map("expected_amount")
+  receivedAmount  Decimal?  @db.Decimal(10, 2) @map("received_amount")
+  transactionDate DateTime  @map("transaction_date")
+  settlementDate  DateTime? @map("settlement_date")
+  status          String    @default("PENDING")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, source, externalId])
+  @@index([empresaId, source, transactionDate])
+  @@index([empresaId, settlementDate])
+  @@index([empresaId, status])
+  @@map("financial_entries")
+}
+
+model Settlement {
+  id                   Int       @id @default(autoincrement())
+  empresaId            Int       @map("empresa_id")
+  source               Platform
+  externalSettlementId String    @map("external_settlement_id")
+  expectedAmount       Decimal   @db.Decimal(10, 2) @map("expected_amount")
+  actualAmount         Decimal?  @db.Decimal(10, 2) @map("actual_amount")
+  settlementDate       DateTime  @map("settlement_date")
+  status               String    @default("PENDING")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  empresa              Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, source, externalSettlementId])
+  @@index([empresaId, settlementDate])
+  @@map("settlements")
+}
+
+model Reconciliation {
+  id             Int       @id @default(autoincrement())
+  empresaId      Int       @map("empresa_id")
+  source         Platform
+  settlementId   Int?      @map("settlement_id")
+  expectedAmount Decimal   @db.Decimal(10, 2) @map("expected_amount")
+  receivedAmount Decimal   @db.Decimal(10, 2) @map("received_amount")
+  difference     Decimal   @db.Decimal(10, 2) @map("difference")
+  status         String    @default("DIVERGENT")
+  resolvedAt     DateTime? @map("resolved_at")
+  resolvedBy     Int?      @map("resolved_by")
+  reason         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  empresa        Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, source])
+  @@index([empresaId, status])
+  @@map("reconciliations")
+}
+
+model DailyClosing {
+  id               Int      @id @default(autoincrement())
+  empresaId        Int      @map("empresa_id")
+  date             DateTime @db.Date
+  grossAmount      Decimal  @db.Decimal(10, 2) @default(0) @map("gross_amount")
+  discountAmount   Decimal  @db.Decimal(10, 2) @default(0) @map("discount_amount")
+  feesAmount       Decimal  @db.Decimal(10, 2) @default(0) @map("fees_amount")
+  netAmount        Decimal  @db.Decimal(10, 2) @default(0) @map("net_amount")
+  receivedAmount   Decimal  @db.Decimal(10, 2) @default(0) @map("received_amount")
+  receivableAmount Decimal  @db.Decimal(10, 2) @default(0) @map("receivable_amount")
+  divergenceAmount Decimal  @db.Decimal(10, 2) @default(0) @map("divergence_amount")
+  status           String   @default("CLOSED")
+  generatedBy      Int?     @map("generated_by")
+  generatedAt      DateTime @default(now()) @map("generated_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  empresa          Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, date])
+  @@index([empresaId])
+  @@map("daily_closings")
+}
+
+model WebhookEvent {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int       @map("empresa_id")
+  platform        Platform
+  externalEventId String    @map("external_event_id")
+  eventType       String    @map("event_type")
+  receivedAt      DateTime  @default(now()) @map("received_at")
+  processedAt     DateTime? @map("processed_at")
+  status          String    @default("PENDING")
+  error           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([platform, externalEventId])
+  @@index([empresaId, platform])
+  @@map("webhook_events")
+}
+
+model OAuthState {
+  nonce     String    @id
+  empresaId Int       @map("empresa_id")
+  usuarioId Int       @map("usuario_id")
+  platform  Platform
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId])
+  @@map("oauth_states")
 }

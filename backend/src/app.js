@@ -29,6 +29,9 @@ const { paymentRouter } = require('./routes/paymentRoutes');
 const { webhookRouter } = require('./routes/webhookRoutes');
 const settlementRoutes = require('./routes/settlementRoutes');
 const paymentSetupRoutes = require('./routes/paymentSetupRoutes');
+const financeiroRoutes = require('./routes/financeiroRoutes');
+const adminIntegracoesRoutes = require('./routes/adminIntegracoesRoutes');
+const marketplaceWebhookRoutes = require('./routes/marketplaceWebhookRoutes');
 
 const app = express();
 
@@ -41,6 +44,9 @@ if (process.env.NODE_ENV === 'production') {
     next();
   });
 }
+
+const { registerAllProviders } = require('./integrations/index');
+registerAllProviders();
 
 app.use(resolveEmpresa);
 app.use(contextMiddleware);
@@ -101,6 +107,9 @@ app.use('/api/payment', paymentRouter);
 app.use('/webhooks', webhookRouter);
 app.use('/api/empresa/settlement', settlementRoutes);
 app.use('/api/empresa/payment', paymentSetupRoutes);
+app.use('/api/financeiro', financeiroRoutes);
+app.use('/api/admin/integracoes', adminIntegracoesRoutes);
+app.use('/api/webhooks', marketplaceWebhookRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));

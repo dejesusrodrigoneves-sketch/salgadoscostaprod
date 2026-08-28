@@ -22,6 +22,7 @@
   <button class="tab" onclick="switchTab('clientes',this)"><i class="fas fa-user-tie"></i> Clientes</button>
   <button class="tab" onclick="switchTab('empresas',this)"><i class="fas fa-store"></i> Empresas</button>
   <button class="tab" onclick="switchTab('settlements',this)"><i class="fas fa-dollar-sign"></i> Settlements</button>
+  <button class="tab" onclick="switchTab('integracoes',this)"><i class="fas fa-plug"></i> Integrações</button>
 </div>
 
 <!-- Users tab -->
@@ -182,6 +183,14 @@
   </div>
 </div>
 
+<!-- Integrações tab -->
+<div class="tab-content" id="tabIntegracoes">
+  <div class="card">
+    <h2><i class="fas fa-plug"></i> Integrações Marketplace</h2>
+    <div id="super-integ-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;"></div>
+  </div>
+</div>
+
 <!-- Audit logs tab -->
 <div class="tab-content" id="tabRegistros">
   <div class="card">
@@ -264,12 +273,13 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements' };
+  const map = { usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements', integracoes: 'tabIntegracoes' };
   document.getElementById(map[tab]).classList.add('active');
   if (tab === 'registros') superadminAudit.carregarAudit(1);
   if (tab === 'clientes') carregarClientes();
   if (tab === 'empresas') carregarEmpresas();
   if (tab === 'settlements') carregarSettlements();
+  if (tab === 'integracoes') SuperIntegracoes.carregar();
 }
 
 // Load users via API
@@ -632,7 +642,7 @@ async function excluirEmpresa(id) {
 function activarTabPorQuery() {
   const p = new URLSearchParams(window.location.search);
   const tab = p.get('tab');
-  if (tab && ['usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'settlements'].includes(tab)) {
+  if (tab && ['usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'settlements', 'integracoes'].includes(tab)) {
     const btn = Array.from(document.querySelectorAll('.tab')).find(function(b) {
       return b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1;
     });
@@ -668,6 +678,7 @@ async function carregarSettlements() {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 <script src="js/superadmin-audit.js" type="module"></script>
+<script src="js/superadmin-integracoes.js"></script>
 <script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
 </body>
