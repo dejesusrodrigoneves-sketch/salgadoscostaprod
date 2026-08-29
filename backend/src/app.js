@@ -32,6 +32,7 @@ const paymentSetupRoutes = require('./routes/paymentSetupRoutes');
 const financeiroRoutes = require('./routes/financeiroRoutes');
 const adminIntegracoesRoutes = require('./routes/adminIntegracoesRoutes');
 const marketplaceWebhookRoutes = require('./routes/marketplaceWebhookRoutes');
+const superadminDashboardRoutes = require('./routes/superadminDashboardRoutes');
 
 const app = express();
 
@@ -110,6 +111,7 @@ app.use('/api/empresa/payment', paymentSetupRoutes);
 app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/admin/integracoes', adminIntegracoesRoutes);
 app.use('/api/webhooks', marketplaceWebhookRoutes);
+app.use('/api/admin/dashboard', superadminDashboardRoutes);
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));
