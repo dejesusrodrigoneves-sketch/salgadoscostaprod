@@ -1,8 +1,13 @@
 // backend/src/services/superadminDashboardService.js (ESM)
 import prisma from '../config/prisma.js';
 
+// Table names from @@map in schema.prisma
+// Pedido → "pedidos", Empresa → "empresas", FinancialEntry → "financial_entries"
+// Column names: snake_case per @map
+
 export async function getSummary(empresaId = null) {
   if (empresaId) {
+    const id = parseInt(empresaId);
     // Single empresa
     const row = await prisma.$queryRaw`
       SELECT
@@ -12,30 +17,31 @@ export async function getSummary(empresaId = null) {
         COALESCE(p."pedidosMes", 0)::int as "pedidosMes",
         COALESCE(r."recebidoMes", 0)::float as "recebidoMes",
         COALESCE(a."aReceber", 0)::float as "aReceber"
-      FROM "Empresa" e
+      FROM "empresas" e
       LEFT JOIN (
-        SELECT "empresaId", COUNT(*)::int as "pedidosMes"
-        FROM "Pedido"
-        WHERE "criadoEm" >= date_trunc('month', NOW())
-          AND "empresaId" = ${parseInt(empresaId)}
-        GROUP BY "empresaId"
-      ) p ON p."empresaId" = e.id
+        SELECT "empresa_id", COUNT(*)::int as "pedidosMes"
+        FROM "pedidos"
+        WHERE "criado_em" >= date_trunc('month', NOW())
+          AND "empresa_id" = ${id}
+          AND "deleted_em" IS NULL
+        GROUP BY "empresa_id"
+      ) p ON p."empresa_id" = e.id
       LEFT JOIN (
-        SELECT "empresaId", SUM(valor)::float as "recebidoMes"
-        FROM "FinancialEntry"
-        WHERE status = 'paid'
-          AND "paidAt" >= date_trunc('month', NOW())
-          AND "empresaId" = ${parseInt(empresaId)}
-        GROUP BY "empresaId"
-      ) r ON r."empresaId" = e.id
+        SELECT "empresa_id", SUM("received_amount")::float as "recebidoMes"
+        FROM "financial_entries"
+        WHERE status = 'PAID'
+          AND "transaction_date" >= date_trunc('month', NOW())
+          AND "empresa_id" = ${id}
+        GROUP BY "empresa_id"
+      ) r ON r."empresa_id" = e.id
       LEFT JOIN (
-        SELECT "empresaId", SUM(valor)::float as "aReceber"
-        FROM "FinancialEntry"
-        WHERE status IN ('pending', 'overdue')
-          AND "empresaId" = ${parseInt(empresaId)}
-        GROUP BY "empresaId"
-      ) a ON a."empresaId" = e.id
-      WHERE e.id = ${parseInt(empresaId)}
+        SELECT "empresa_id", SUM("expected_amount")::float as "aReceber"
+        FROM "financial_entries"
+        WHERE status IN ('PENDING', 'OVERDUE')
+          AND "empresa_id" = ${id}
+        GROUP BY "empresa_id"
+      ) a ON a."empresa_id" = e.id
+      WHERE e.id = ${id}
     `;
     if (!row.length) return null;
     const r = row[0];
@@ -50,45 +56,27 @@ export async function getSummary(empresaId = null) {
     };
   }
 
-  // Global summary
-  const totalEmpresas = await prisma.empresa.count();
-  const empresasAtivas = await prisma.$queryRaw`
-    SELECT COUNT(DISTINCT p."empresaId")::int as count
-    FROM "Pedido" p
-    WHERE p."criadoEm" > NOW() - INTERVAL '30 days'
+  // Global summary — single query to avoid pool exhaustion
+  const row = await prisma.$queryRaw`
+    SELECT
+      (SELECT COUNT(*)::int FROM "empresas") as "totalEmpresas",
+      (SELECT COUNT(DISTINCT "empresa_id")::int FROM "pedidos" WHERE "criado_em" > NOW() - INTERVAL '30 days' AND "deleted_em" IS NULL) as "empresasAtivas",
+      (SELECT COUNT(*)::int FROM "pedidos" WHERE "criado_em" >= date_trunc('month', NOW()) AND "deleted_em" IS NULL) as "pedidosMes",
+      (SELECT COUNT(*)::int FROM "pedidos" WHERE "criado_em" >= CURRENT_DATE AND "deleted_em" IS NULL) as "pedidosHoje",
+      (SELECT COALESCE(SUM("received_amount"), 0)::float FROM "financial_entries" WHERE status = 'PAID' AND "transaction_date" >= date_trunc('month', NOW())) as "recebidoMes",
+      (SELECT COALESCE(SUM("expected_amount"), 0)::float FROM "financial_entries" WHERE status IN ('PENDING', 'OVERDUE')) as "aReceber"
   `;
-  const pedidosMes = await prisma.$queryRaw`
-    SELECT COUNT(*)::int as count
-    FROM "Pedido"
-    WHERE "criadoEm" >= date_trunc('month', NOW())
-  `;
-  const pedidosHoje = await prisma.$queryRaw`
-    SELECT COUNT(*)::int as count
-    FROM "Pedido"
-    WHERE "criadoEm" >= CURRENT_DATE
-  `;
-  const recebidoMes = await prisma.$queryRaw`
-    SELECT COALESCE(SUM(valor), 0)::float as total
-    FROM "FinancialEntry"
-    WHERE status = 'paid'
-      AND "paidAt" >= date_trunc('month', NOW())
-  `;
-  const aReceber = await prisma.$queryRaw`
-    SELECT COALESCE(SUM(valor), 0)::float as total
-    FROM "FinancialEntry"
-    WHERE status IN ('pending', 'overdue')
-  `;
-
-  const pedidosMesCount = pedidosMes[0]?.count || 0;
-  const recebidoMesVal = recebidoMes[0]?.total || 0;
+  const r = row[0];
+  const pedidosMesCount = r.pedidosMes || 0;
+  const recebidoMesVal = r.recebidoMes || 0;
 
   return {
-    totalEmpresas,
-    empresasAtivas: empresasAtivas[0]?.count || 0,
+    totalEmpresas: r.totalEmpresas,
+    empresasAtivas: r.empresasAtivas || 0,
     pedidosMes: pedidosMesCount,
-    pedidosHoje: pedidosHoje[0]?.count || 0,
+    pedidosHoje: r.pedidosHoje || 0,
     recebidoMes: recebidoMesVal,
-    aReceber: aReceber[0]?.total || 0,
+    aReceber: r.aReceber || 0,
     ticketMedio: pedidosMesCount > 0 ? recebidoMesVal / pedidosMesCount : 0,
   };
 }
@@ -103,27 +91,28 @@ export async function getEmpresas() {
       COALESCE(r."recebidoMes", 0)::float as "recebidoMes",
       COALESCE(a."aReceber", 0)::float as "aReceber",
       CASE WHEN EXISTS (
-        SELECT 1 FROM "Pedido" WHERE "empresaId" = e.id AND "criadoEm" > NOW() - INTERVAL '30 days'
+        SELECT 1 FROM "pedidos" WHERE "empresa_id" = e.id AND "criado_em" > NOW() - INTERVAL '30 days' AND "deleted_em" IS NULL
       ) THEN 'ativa' ELSE 'inativa' END as status
-    FROM "Empresa" e
+    FROM "empresas" e
     LEFT JOIN (
-      SELECT "empresaId", COUNT(*)::int as "pedidosMes"
-      FROM "Pedido"
-      WHERE "criadoEm" >= date_trunc('month', NOW())
-      GROUP BY "empresaId"
-    ) p ON p."empresaId" = e.id
+      SELECT "empresa_id", COUNT(*)::int as "pedidosMes"
+      FROM "pedidos"
+      WHERE "criado_em" >= date_trunc('month', NOW())
+        AND "deleted_em" IS NULL
+      GROUP BY "empresa_id"
+    ) p ON p."empresa_id" = e.id
     LEFT JOIN (
-      SELECT "empresaId", SUM(valor)::float as "recebidoMes"
-      FROM "FinancialEntry"
-      WHERE status = 'paid' AND "paidAt" >= date_trunc('month', NOW())
-      GROUP BY "empresaId"
-    ) r ON r."empresaId" = e.id
+      SELECT "empresa_id", SUM("received_amount")::float as "recebidoMes"
+      FROM "financial_entries"
+      WHERE status = 'PAID' AND "transaction_date" >= date_trunc('month', NOW())
+      GROUP BY "empresa_id"
+    ) r ON r."empresa_id" = e.id
     LEFT JOIN (
-      SELECT "empresaId", SUM(valor)::float as "aReceber"
-      FROM "FinancialEntry"
-      WHERE status IN ('pending', 'overdue')
-      GROUP BY "empresaId"
-    ) a ON a."empresaId" = e.id
+      SELECT "empresa_id", SUM("expected_amount")::float as "aReceber"
+      FROM "financial_entries"
+      WHERE status IN ('PENDING', 'OVERDUE')
+      GROUP BY "empresa_id"
+    ) a ON a."empresa_id" = e.id
     ORDER BY e.nome
   `;
   return rows.map(r => ({
