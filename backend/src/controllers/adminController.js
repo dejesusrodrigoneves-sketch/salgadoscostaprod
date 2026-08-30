@@ -43,6 +43,45 @@ exports.criar = asyncHandler(async (req, res) => {
     throw err;
   }
   try { invalidateEmpresaCache(slugNorm); } catch (e) {}
+  
+  // Auto-create subscription (trial)
+  try {
+    const { createTrialSubscription } = require('../services/subscriptionService.js');
+    await createTrialSubscription(empresa.id);
+  } catch (e) {
+    console.error('[Empresa] Erro ao criar assinatura trial:', e.message);
+  }
+  
+  // Create Asaas customer
+  try {
+    if (empresa.cpf_cnpj && empresa.email) {
+      const asaasResponse = await fetch('https://api-sandbox.asaas.com/v3/customers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': process.env.ASAAS_API_KEY
+        },
+        body: JSON.stringify({
+          name: empresa.nome,
+          cpfCnpj: empresa.cpf_cnpj,
+          email: empresa.email,
+          phone: empresa.telefone
+        })
+      });
+      
+      if (asaasResponse.ok) {
+        const asaasData = await asaasResponse.json();
+        const prisma = require('../config/prisma.js').default;
+        await prisma.empresa.update({
+          where: { id: empresa.id },
+          data: { asaasSubcontaId: asaasData.id }
+        });
+      }
+    }
+  } catch (e) {
+    console.error('[Empresa] Erro ao criar cliente Asaas:', e.message);
+  }
+  
   res.status(201).json(empresa);
 });
 

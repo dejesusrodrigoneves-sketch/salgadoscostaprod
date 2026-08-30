@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Página não encontrada</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <style>
+    body {
+      background: var(--secondary, #0E100F);
+      color: var(--text, #FFFCE1);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    .error-code {
+      font-size: 120px;
+      font-weight: 800;
+      color: var(--primary, #F26D3D);
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+    .error-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .error-message {
+      font-size: 16px;
+      color: var(--text-muted, #7C7C6F);
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    .whatsapp-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 28px;
+      background: #25D366;
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .whatsapp-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
+    }
+    .whatsapp-btn i {
+      font-size: 20px;
+    }
+    .company-name {
+      font-size: 14px;
+      color: var(--text-muted, #7C7C6F);
+      margin-top: 20px;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+  <div class="container">
+    <div class="error-code">404</div>
+    <h1 class="error-title">Página não encontrada</h1>
+    <p class="error-message">
+      Esta página não está disponível no momento.<br>
+      Entre em contato com o suporte para mais informações.
+    </p>
+    <a id="whatsappLink" href="#" class="whatsapp-btn" target="_blank">
+      <i class="fab fa-whatsapp"></i>
+      Contatar Suporte
+    </a>
+    <p id="companyName" class="company-name"></p>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
+    
+    if (slug) {
+      fetch(`/api/public/empresa/${slug}/contact`)
+        .then(r => r.json())
+        .then(data => {
+          const phone = data.telefone || data.supportWhatsApp;
+          if (phone) {
+            const clean = phone.replace(/\D/g, '');
+            document.getElementById('whatsappLink').href = `https://wa.me/55${clean}`;
+            document.getElementById('companyName').textContent = data.nome || '';
+          }
+        })
+        .catch(() => {});
+    }
+  </script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const controller = require('../controllers/publicController');
 const { registerLimiter } = require('../middleware/rateLimit');
+const prisma = require('../config/prisma.js').default;
 
 const router = Router();
 
@@ -18,5 +19,32 @@ router.get('/pedidos', controller.listarPedidosCliente);
 router.post('/pedidos', controller.criarPedido); // authenticatePublic aplicado dentro do controller
 router.get('/pedidos/:id', controller.buscarPedido);
 router.get('/cupons/:codigo', controller.validarCupom);
+
+// Public endpoint for 404 page — get empresa contact info by slug
+router.get('/empresa/:slug/contact', async (req, res) => {
+  try {
+    const empresa = await prisma.empresa.findUnique({
+      where: { slug: req.params.slug },
+      select: { nome: true, telefone: true, whatsappNumber: true }
+    });
+    
+    // Fallback: get platform support WhatsApp from PlatformSettings
+    let supportWhatsApp = null;
+    try {
+      const setting = await prisma.platformSettings.findUnique({
+        where: { key: 'support_whatsapp' }
+      });
+      supportWhatsApp = setting?.value || null;
+    } catch (e) {}
+    
+    res.json({
+      nome: empresa?.nome || null,
+      telefone: empresa?.whatsappNumber || empresa?.telefone || null,
+      supportWhatsApp
+    });
+  } catch (e) {
+    res.json({});
+  }
+});
 
 module.exports = router;

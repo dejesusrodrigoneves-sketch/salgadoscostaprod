@@ -48,7 +48,7 @@
         <div class="spinner"></div>
         <p>Carregando...</p>
       </div>
-      <iframe id="mainFrame" src="admin.html"></iframe>
+      <iframe id="mainFrame"></iframe>
     </div>
   </div>
 </div>
@@ -66,58 +66,14 @@ const mainFrame = document.getElementById('mainFrame');
 const pageLoader = document.getElementById('pageLoader');
 const pageTitle = document.getElementById('pageTitle');
 let notifCount = 0;
-let currentPage = 'admin.html';
 
 const role = authUser.role || 'user';
+let currentPage = role === 'superadmin' ? 'superadmin.html' : 'admin.html';
 
-const menuSections = [
-  {
-    title: 'Principal',
-    items: [
-      { icon: 'fa-box', label: 'Pedidos', page: 'admin.html' },
-      { icon: 'fa-cash-register', label: 'Lançar Pedido', page: 'balcao.html' },
-    ]
-  }
-];
+const menuSections = [];
 
-// Admin+ sections
-if (role === 'admin' || role === 'superadmin') {
-  menuSections.push(
-    {
-      title: 'Financeiro',
-      items: [
-        { icon: 'fa-chart-bar', label: 'Relatórios', page: 'relatorios.html' },
-        { icon: 'fa-wallet', label: 'Controle de Caixa', page: 'caixa.html' },
-        { icon: 'fa-landmark', label: 'Central Financeira', page: 'financeiro.html' },
-      ]
-    },
-    {
-      title: 'Entregas',
-      items: [
-        { icon: 'fa-truck', label: 'Cadastro de Entregadores', page: 'entregador.html' },
-        { icon: 'fa-chart-line', label: 'Relatório de Entregadores', page: 'relatorios-entregadores.html' },
-      ]
-    },
-    {
-      title: 'Painel',
-      items: [
-        { icon: 'fa-store', label: 'Painel Loja', page: 'painelLoja.html' },
-      ]
-    }
-  );
-}
-
-// Todos veem Integrações (WhatsApp)
-menuSections.push({
-  title: 'Integrações',
-  items: [
-    { icon: 'fab fa-whatsapp', label: 'WhatsApp', page: 'whatsapp.html' },
-    { icon: 'fa-plug', label: 'Integrações Financeiras', page: 'integracoes.html' },
-  ]
-});
-
-// Super Admin section
 if (role === 'superadmin') {
+  // Superadmin: only Gerenciamento
   menuSections.push({
     title: 'Administração',
     items: [
@@ -125,6 +81,49 @@ if (role === 'superadmin') {
     ]
   });
 } else {
+  // Lojista/Admin: all operational menus
+  menuSections.push({
+    title: 'Principal',
+    items: [
+      { icon: 'fa-box', label: 'Pedidos', page: 'admin.html' },
+      { icon: 'fa-cash-register', label: 'Lançar Pedido', page: 'balcao.html' },
+    ]
+  });
+
+  if (role === 'admin') {
+    menuSections.push(
+      {
+        title: 'Financeiro',
+        items: [
+          { icon: 'fa-chart-bar', label: 'Relatórios', page: 'relatorios.html' },
+          { icon: 'fa-wallet', label: 'Controle de Caixa', page: 'caixa.html' },
+          { icon: 'fa-landmark', label: 'Central Financeira', page: 'financeiro.html' },
+        ]
+      },
+      {
+        title: 'Entregas',
+        items: [
+          { icon: 'fa-truck', label: 'Cadastro de Entregadores', page: 'entregador.html' },
+          { icon: 'fa-chart-line', label: 'Relatório de Entregadores', page: 'relatorios-entregadores.html' },
+        ]
+      },
+      {
+        title: 'Painel',
+        items: [
+          { icon: 'fa-store', label: 'Painel Loja', page: 'painelLoja.html' },
+        ]
+      }
+    );
+  }
+
+  menuSections.push({
+    title: 'Integrações',
+    items: [
+      { icon: 'fab fa-whatsapp', label: 'WhatsApp', page: 'whatsapp.html' },
+      { icon: 'fa-plug', label: 'Integrações Financeiras', page: 'integracoes.html' },
+    ]
+  });
+
   menuSections.push({
     title: 'Conta',
     items: [
@@ -259,8 +258,20 @@ function showNotification(type, message, action) {
 }
 
 async function carregarNomeLoja() {
+  const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+  const role = authUser.role || 'user';
+
+  // Superadmin: fixed name
+  if (role === 'superadmin') {
+    const titleEl = document.getElementById('dashboardTitle');
+    if (titleEl) titleEl.textContent = 'Dashboard - Super administrador';
+    const sideEl = document.getElementById('sidebarStoreName');
+    if (sideEl) sideEl.innerHTML = 'Super administrador <small>Painel Administrativo</small>';
+    return;
+  }
+
+  // Lojista/Admin: fetch from API
   try {
-    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
     const token = authUser.token;
     if (!token) return;
     const res = await fetch('/api/loja/settings-admin', {
@@ -279,7 +290,10 @@ async function carregarNomeLoja() {
 }
 carregarNomeLoja();
 renderMenu();
+// Set initial iframe src based on role
+mainFrame.src = currentPage;
 </script>
 <script src="js/theme.js" defer></script>
+<script src="js/subscriptionOverlay.js"></script>
 </body>
 </html>

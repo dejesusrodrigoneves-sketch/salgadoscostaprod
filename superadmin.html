@@ -40,6 +40,10 @@
   .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
   .status-active { background: rgba(16,185,129,0.15); color: #10B981; }
   .status-inactive { background: rgba(124,124,111,0.15); color: #7C7C6F; }
+  .status-trial { background: rgba(59,130,246,0.15); color: #3B82F6; }
+  .status-past_due { background: rgba(245,158,11,0.15); color: #F59E0B; }
+  .status-suspended { background: rgba(239,68,68,0.15); color: #EF4444; }
+  .status-canceled { background: rgba(124,124,111,0.15); color: #7C7C6F; }
   .amount-positive { color: #10B981; font-weight: 600; }
   .amount-pending { color: #F59E0B; font-weight: 600; }
   @media (max-width: 1024px) { .dash-cards { grid-template-columns: repeat(2, 1fr); } }
@@ -59,6 +63,7 @@
   <button class="tab" onclick="switchTab('empresas',this)"><i class="fas fa-store"></i> Empresas</button>
   <button class="tab" onclick="switchTab('settlements',this)"><i class="fas fa-dollar-sign"></i> Settlements</button>
   <button class="tab" onclick="switchTab('integracoes',this)"><i class="fas fa-plug"></i> Integrações</button>
+  <button class="tab" onclick="switchTab('billing',this)"><i class="fas fa-credit-card"></i> Billing</button>
 </div>
 
 <!-- Dashboard tab -->
@@ -300,6 +305,51 @@
   </div>
 </div>
 
+<!-- Billing tab -->
+<div class="tab-content" id="tabBilling">
+  <div class="dash-cards" id="billingCards"></div>
+  <div class="dash-table-card">
+    <h3><i class="fas fa-credit-card"></i> Assinaturas</h3>
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Status</th>
+          <th>Próximo Vencimento</th>
+          <th>Último Pagamento</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="billingTableBody"></tbody>
+    </table>
+  </div>
+  <div class="dash-table-card" style="margin-top: 24px;">
+    <h3><i class="fas fa-dollar-sign"></i> Configurar Mensalidade</h3>
+    <div style="display: flex; gap: 16px; align-items: end;">
+      <div>
+        <label style="font-size: 12px; color: #7C7C6F;">Valor (R$)</label>
+        <input type="number" id="pricingValue" value="100" step="0.01" style="
+          padding: 10px; border: 1px solid #333; border-radius: 8px;
+          background: #111; color: #FFFCE1; font-size: 14px; width: 150px;
+        ">
+      </div>
+      <div>
+        <label style="font-size: 12px; color: #7C7C6F;">Data de Efetivação</label>
+        <input type="date" id="pricingDate" style="
+          padding: 10px; border: 1px solid #333; border-radius: 8px;
+          background: #111; color: #FFFCE1; font-size: 14px;
+        ">
+      </div>
+      <button onclick="savePricing()" style="
+        padding: 10px 20px; background: #F26D3D; color: white;
+        border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+      ">
+        Salvar Alterações
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="js/utils.js"></script>
@@ -332,11 +382,12 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { dashboard: 'tabDashboard', usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements', integracoes: 'tabIntegracoes' };
+  const map = { dashboard: 'tabDashboard', usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements', integracoes: 'tabIntegracoes', billing: 'tabBilling' };
   document.getElementById(map[tab]).classList.add('active');
   if (tab === 'registros') superadminAudit.carregarAudit(1);
   if (tab === 'clientes') carregarClientes();
   if (tab === 'empresas') carregarEmpresas();
+  if (tab === 'billing') loadBillingDashboard();
   if (tab === 'settlements') carregarSettlements();
   if (tab === 'integracoes') SuperIntegracoes.carregar();
 }
@@ -701,7 +752,7 @@ async function excluirEmpresa(id) {
 function activarTabPorQuery() {
   const p = new URLSearchParams(window.location.search);
   const tab = p.get('tab');
-  if (tab && ['dashboard', 'usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'settlements', 'integracoes'].includes(tab)) {
+  if (tab && ['dashboard', 'usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'settlements', 'integracoes', 'billing'].includes(tab)) {
     const btn = Array.from(document.querySelectorAll('.tab')).find(function(b) {
       return b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1;
     });
@@ -741,5 +792,6 @@ async function carregarSettlements() {
 <script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
 <script src="js/superadminDashboard.js"></script>
+<script src="js/superadminBilling.js"></script>
 </body>
 </html>
