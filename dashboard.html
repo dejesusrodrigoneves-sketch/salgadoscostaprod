@@ -26,6 +26,9 @@
     <nav class="sidebar-nav" id="sidebarNav">
       <!-- Sections rendered by JS -->
     </nav>
+    <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Recolher menu">
+      <i class="fas fa-angles-left"></i>
+    </button>
   </aside>
 
   <!-- MAIN -->
@@ -134,10 +137,20 @@ if (role === 'superadmin') {
 
 function renderMenu() {
   sidebarNav.innerHTML = '';
-  menuSections.forEach(section => {
+  const collapsedSections = JSON.parse(localStorage.getItem('sidebarCollapsedSections') || '[]');
+
+  menuSections.forEach((section, idx) => {
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'nav-section';
-    sectionDiv.innerHTML = `<div class="nav-section-title">${section.title}</div>`;
+    sectionDiv.dataset.section = idx;
+
+    // Check if this section has the active page
+    const hasActive = section.items.some(item => item.page === currentPage);
+    const isCollapsed = !hasActive && collapsedSections.includes(idx);
+
+    if (isCollapsed) sectionDiv.classList.add('collapsed');
+
+    sectionDiv.innerHTML = `<div class="nav-section-title">${section.title}<i class="fas fa-chevron-down chevron"></i></div>`;
     section.items.forEach(item => {
       const isActive = item.page === currentPage;
       const div = document.createElement('div');
@@ -150,8 +163,34 @@ function renderMenu() {
       div.addEventListener('click', () => navigate(item.page, div));
       sectionDiv.appendChild(div);
     });
+
+    // Accordion toggle on section title click
+    sectionDiv.querySelector('.nav-section-title').addEventListener('click', () => {
+      sectionDiv.classList.toggle('collapsed');
+      saveSectionState();
+    });
+
     sidebarNav.appendChild(sectionDiv);
   });
+}
+
+function saveSectionState() {
+  const collapsed = [];
+  document.querySelectorAll('.nav-section.collapsed').forEach(el => {
+    collapsed.push(parseInt(el.dataset.section));
+  });
+  localStorage.setItem('sidebarCollapsedSections', JSON.stringify(collapsed));
+}
+
+function toggleSidebarCollapse() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('collapsed');
+  localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+}
+
+// Restore sidebar collapsed state on load
+if (localStorage.getItem('sidebarCollapsed') === 'true') {
+  document.getElementById('sidebar').classList.add('collapsed');
 }
 
 function navigate(page, element) {
