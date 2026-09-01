@@ -27,11 +27,20 @@ function initFirebase() {
 
   if (projectId && privateKey && clientEmail) {
     try {
+      // Reconstruct proper PEM format: strip all newlines, re-wrap at 64 chars
+      const keyBody = privateKey
+        .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+        .replace(/-----END PRIVATE KEY-----/g, '')
+        .replace(/\n/g, '')
+        .replace(/\r/g, '')
+        .replace(/\s/g, '');
+      const formattedKey = `-----BEGIN PRIVATE KEY-----\n${keyBody.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+
       const serviceAccount = {
         type: 'service_account',
         project_id: projectId,
         private_key_id: '',
-        private_key: privateKey.replace(/\\n/g, '\n'),
+        private_key: formattedKey,
         client_email: clientEmail,
         client_id: '',
         auth_uri: 'https://accounts.google.com/o/oauth2/auth',
@@ -42,7 +51,7 @@ function initFirebase() {
       };
 
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+        credential: admin.cert(serviceAccount),
       });
       firebaseInitialized = true;
       console.log('[FCM] Firebase initialized from environment variables');
