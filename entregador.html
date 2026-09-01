@@ -26,6 +26,32 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- Modal Redefinir Senha -->
+<div id="modalResetSenha" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:24px; width:90%; max-width:400px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <h3 style="margin:0 0 16px; font-size:18px;"><i class="fas fa-key"></i> Redefinir Senha</h3>
+    <p style="margin:0 0 12px; font-size:14px; color:#64748b;">Entregador: <strong id="modalResetNome"></strong></p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Nova senha</label>
+      <input type="password" id="modalResetPassword" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;" placeholder="Mín. 6 caracteres, maiúscula, minúscula e número">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Confirmar senha</label>
+      <input type="password" id="modalResetPasswordConfirm" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;" placeholder="Repita a senha">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" id="modalResetSendWhatsApp" checked>
+        Enviar via WhatsApp
+      </label>
+    </div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="fecharModalReset()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarResetSenha()"><i class="fas fa-check"></i> Redefinir</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
   <!-- Sidebar - Gerenciamento de Entregadores -->
   <aside class="sidebar">
@@ -147,6 +173,50 @@ async function excluirEntregador(id) {
   toast('Entregador removido', 'danger');
 }
 
+let resetEntregadorId = null;
+
+function abrirModalReset(id, nome) {
+  resetEntregadorId = id;
+  document.getElementById('modalResetNome').textContent = nome;
+  document.getElementById('modalResetPassword').value = '';
+  document.getElementById('modalResetPasswordConfirm').value = '';
+  document.getElementById('modalResetSendWhatsApp').checked = true;
+  document.getElementById('modalResetSenha').style.display = 'flex';
+}
+
+function fecharModalReset() {
+  document.getElementById('modalResetSenha').style.display = 'none';
+  resetEntregadorId = null;
+}
+
+async function confirmarResetSenha() {
+  const password = document.getElementById('modalResetPassword').value;
+  const passwordConfirm = document.getElementById('modalResetPasswordConfirm').value;
+  const sendWhatsApp = document.getElementById('modalResetSendWhatsApp').checked;
+
+  if (!password) { toast('Digite a nova senha', 'danger'); return; }
+  if (password !== passwordConfirm) { toast('As senhas não conferem', 'danger'); return; }
+  if (password.length < 6) { toast('Senha deve ter no mínimo 6 caracteres', 'danger'); return; }
+  if (!/[A-Z]/.test(password)) { toast('Senha deve conter pelo menos uma maiúscula', 'danger'); return; }
+  if (!/[a-z]/.test(password)) { toast('Senha deve conter pelo menos uma minúscula', 'danger'); return; }
+  if (!/[0-9]/.test(password)) { toast('Senha deve conter pelo menos um número', 'danger'); return; }
+
+  try {
+    const result = await apiRequest('/entregadores/' + resetEntregadorId + '/password', {
+      method: 'PUT',
+      body: JSON.stringify({ password, sendWhatsApp }),
+    });
+    fecharModalReset();
+    if (result.whatsappSent) {
+      toast('Senha redefinida! WhatsApp enviado ✅');
+    } else {
+      toast('Senha redefinida! WhatsApp não enviado ❌');
+    }
+  } catch (e) {
+    toast(e.message || 'Erro ao redefinir senha', 'danger');
+  }
+}
+
 async function carregarEntregadores() {
   const list = document.getElementById('driverList');
   let entregadores = [];
@@ -177,6 +247,7 @@ async function carregarEntregadores() {
           <button class="btn btn-sm ${ativo ? 'btn-ghost' : 'btn-success'}" onclick="toggleAtivo('${id}', ${!ativo})">
             ${ativo ? 'Desativar' : 'Ativar'}
           </button>
+          <button class="btn btn-sm btn-ghost" aria-label="Redefinir senha" onclick="abrirModalReset('${id}', '${nome.replace(/'/g, "\\'")}')" title="Redefinir senha"><i class="fas fa-key"></i></button>
           <button class="btn btn-sm btn-danger" aria-label="Excluir entregador" onclick="excluirEntregador('${id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>`;
