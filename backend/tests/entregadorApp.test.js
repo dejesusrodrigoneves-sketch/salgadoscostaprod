@@ -162,3 +162,218 @@ describe('Offline Support', () => {
     expect(confirmation.synced).toBe(false);
   });
 });
+
+describe('WhatsApp fallback on driver creation', () => {
+  it('should return whatsappSent true when WhatsApp succeeds', async () => {
+    const whatsappService = require('../src/services/whatsappService');
+    const original = whatsappService.enviarMensagem;
+    whatsappService.enviarMensagem = async () => ({ status: 200 });
+
+    const prisma = require('../src/config/prisma');
+    const mockEntregador = { id: 999, nome: 'Teste', telefone: '11999999999', whatsapp: '11999999999', ativo: true };
+    const mockUsuario = { id: 999, username: '11999999999', role: 'entregador' };
+
+    prisma.entregador = {
+      create: async () => mockEntregador,
+      update: async () => mockEntregador,
+      findFirst: async () => null,
+    };
+    prisma.usuario = {
+      create: async () => mockUsuario,
+    };
+
+    const driverController = require('../src/controllers/driverController');
+
+    const req = {
+      body: { nome: 'Teste', telefone: '11999999999', whatsapp: '11999999999' },
+      ctx: { empresaId: 1 },
+      user: { empresaId: 1 },
+    };
+    let responseData;
+    const res = {
+      status: () => ({ json: (data) => { responseData = data; } }),
+    };
+
+    await driverController.criar(req, res);
+
+    expect(responseData).toHaveProperty('provisionalPassword');
+    expect(responseData.provisionalPassword).toMatch(/^SIC-[A-Z0-9]{4}$/);
+    expect(responseData.whatsappSent).toBe(true);
+
+    whatsappService.enviarMensagem = original;
+  });
+
+  it('should return whatsappSent false when WhatsApp fails', async () => {
+    const whatsappService = require('../src/services/whatsappService');
+    const original = whatsappService.enviarMensagem;
+    whatsappService.enviarMensagem = async () => { throw new Error('Evolution API not configured'); };
+
+    const prisma = require('../src/config/prisma');
+    const mockEntregador = { id: 998, nome: 'Teste2', telefone: '11888888888', whatsapp: '11888888888', ativo: true };
+    const mockUsuario = { id: 998, username: '11888888888', role: 'entregador' };
+
+    prisma.entregador = {
+      create: async () => mockEntregador,
+      update: async () => mockEntregador,
+      findFirst: async () => null,
+    };
+    prisma.usuario = {
+      create: async () => mockUsuario,
+    };
+
+    const driverController = require('../src/controllers/driverController');
+
+    const req = {
+      body: { nome: 'Teste2', telefone: '11888888888', whatsapp: '11888888888' },
+      ctx: { empresaId: 1 },
+      user: { empresaId: 1 },
+    };
+    let responseData;
+    const res = {
+      status: () => ({ json: (data) => { responseData = data; } }),
+    };
+
+    await driverController.criar(req, res);
+
+    expect(responseData).toHaveProperty('provisionalPassword');
+    expect(responseData.whatsappSent).toBe(false);
+
+    whatsappService.enviarMensagem = original;
+  });
+});
+
+describe('Admin password reset for entregador', () => {
+  it('should set custom password and return whatsappSent true', async () => {
+    const whatsappService = require('../src/services/whatsappService');
+    const original = whatsappService.enviarMensagem;
+    whatsappService.enviarMensagem = async () => ({ status: 200 });
+
+    const prisma = require('../src/config/prisma');
+    const mockEntregador = {
+      id: 888, nome: 'Entregador Teste', telefone: '11777777777',
+      whatsapp: '11777777777', ativo: true, usuarioId: 888,
+    };
+
+    prisma.entregador = {
+      findFirst: async () => mockEntregador,
+      update: async () => mockEntregador,
+    };
+    prisma.usuario = {
+      update: async () => ({ id: 888 }),
+    };
+
+    const driverController = require('../src/controllers/driverController');
+
+    const req = {
+      params: { id: '888' },
+      body: { password: 'MinhaSenh4', sendWhatsApp: true },
+      ctx: { empresaId: 1 },
+      user: { empresaId: 1 },
+    };
+    let responseData;
+    const res = {
+      json: (data) => { responseData = data; },
+    };
+
+    await driverController.resetarSenha(req, res);
+
+    expect(responseData.success).toBe(true);
+    expect(responseData.whatsappSent).toBe(true);
+
+    whatsappService.enviarMensagem = original;
+  });
+
+  it('should skip WhatsApp when sendWhatsApp is false', async () => {
+    const whatsappService = require('../src/services/whatsappService');
+    const original = whatsappService.enviarMensagem;
+    let whatsappCalled = false;
+    whatsappService.enviarMensagem = async () => { whatsappCalled = true; };
+
+    const prisma = require('../src/config/prisma');
+    const mockEntregador = {
+      id: 887, nome: 'Entregador Teste2', telefone: '11666666666',
+      whatsapp: '11666666666', ativo: true, usuarioId: 887,
+    };
+
+    prisma.entregador = {
+      findFirst: async () => mockEntregador,
+      update: async () => mockEntregador,
+    };
+    prisma.usuario = {
+      update: async () => ({ id: 887 }),
+    };
+
+    const driverController = require('../src/controllers/driverController');
+
+    const req = {
+      params: { id: '887' },
+      body: { password: 'OutraSenh4', sendWhatsApp: false },
+      ctx: { empresaId: 1 },
+      user: { empresaId: 1 },
+    };
+    let responseData;
+    const res = {
+      json: (data) => { responseData = data; },
+    };
+
+    await driverController.resetarSenha(req, res);
+
+    expect(responseData.success).toBe(true);
+    expect(responseData.whatsappSent).toBe(false);
+    expect(whatsappCalled).toBe(false);
+
+    whatsappService.enviarMensagem = original;
+  });
+
+  it('should reject weak password', async () => {
+    const prisma = require('../src/config/prisma');
+    prisma.entregador = {
+      findFirst: async () => ({ id: 886, nome: 'Teste', telefone: '11555555555' }),
+    };
+
+    const driverController = require('../src/controllers/driverController');
+
+    const req = {
+      params: { id: '886' },
+      body: { password: '123', sendWhatsApp: false },
+      ctx: { empresaId: 1 },
+      user: { empresaId: 1 },
+    };
+    let statusCode;
+    let responseData;
+    const res = {
+      status: (code) => ({ json: (data) => { statusCode = code; responseData = data; } }),
+    };
+
+    await driverController.resetarSenha(req, res);
+
+    expect(statusCode).toBe(400);
+    expect(responseData.error).toMatch(/mínimo 6 caracteres/);
+  });
+
+  it('should return 404 for non-existent entregador', async () => {
+    const prisma = require('../src/config/prisma');
+    prisma.entregador = {
+      findFirst: async () => null,
+    };
+
+    const driverController = require('../src/controllers/driverController');
+
+    const req = {
+      params: { id: '99999' },
+      body: { password: 'SenhaValid4', sendWhatsApp: false },
+      ctx: { empresaId: 1 },
+      user: { empresaId: 1 },
+    };
+    let statusCode;
+    let responseData;
+    const res = {
+      status: (code) => ({ json: (data) => { statusCode = code; responseData = data; } }),
+    };
+
+    await driverController.resetarSenha(req, res);
+
+    expect(statusCode).toBe(404);
+    expect(responseData.error).toBe('Entregador não encontrado');
+  });
+});
