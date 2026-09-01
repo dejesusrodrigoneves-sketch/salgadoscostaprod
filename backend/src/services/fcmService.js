@@ -20,9 +20,44 @@ let firebaseInitialized = false;
 function initFirebase() {
   if (firebaseInitialized) return true;
 
+  // Method 1: Individual env vars (recommended for Vercel/cloud)
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+
+  if (projectId && privateKey && clientEmail) {
+    try {
+      const serviceAccount = {
+        type: 'service_account',
+        project_id: projectId,
+        private_key_id: '',
+        private_key: privateKey.replace(/\\n/g, '\n'),
+        client_email: clientEmail,
+        client_id: '',
+        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: 'https://oauth2.googleapis.com/token',
+        auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+        client_x509_cert_url: '',
+        universe_domain: 'googleapis.com',
+      };
+
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      firebaseInitialized = true;
+      console.log('[FCM] Firebase initialized from environment variables');
+      return true;
+    } catch (err) {
+      console.error('[FCM] Failed to initialize from env vars:', err.message);
+      return false;
+    }
+  }
+
+  // Method 2: JSON file (legacy/local fallback)
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
   if (!serviceAccountPath) {
-    console.warn('[FCM] FIREBASE_SERVICE_ACCOUNT_PATH not set — push notifications disabled');
+    console.warn('[FCM] Firebase credentials not configured — push notifications disabled');
+    console.warn('[FCM] Set FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL in .env');
     return false;
   }
 
@@ -38,10 +73,10 @@ function initFirebase() {
       credential: admin.credential.cert(serviceAccount),
     });
     firebaseInitialized = true;
-    console.log('[FCM] Firebase initialized successfully');
+    console.log('[FCM] Firebase initialized from service account file');
     return true;
   } catch (err) {
-    console.error('[FCM] Failed to initialize Firebase:', err.message);
+    console.error('[FCM] Failed to initialize from file:', err.message);
     return false;
   }
 }
