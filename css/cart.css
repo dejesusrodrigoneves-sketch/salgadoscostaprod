@@ -43,11 +43,14 @@ body {
   background: #1FA58D;
   color: #fff;
   border: none;
-  padding: 4px 8px;
+  padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
   transition: background 0.3s;
+  min-width: 40px;
+  min-height: 40px;
+  font-size: 16px;
 }
 
 .counter button:hover {
@@ -807,4 +810,49 @@ img {
 .combo-sabores .btn-editar-combo:hover {
   background: #1FA58D;
   color: #fff;
+}
+
+/* ─── RESPONSIVIDADE ─── */
+
+@media (max-width: 768px) {
+  .counter button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 320px) {
+  .boxSabores {
+    padding: 10px;
+    margin: 6px;
+    border-radius: 6px;
+  }
+
+  .saborItem {
+    padding: 6px 0;
+  }
+
+  .saborItem span {
+    font-size: 13px;
+  }
+
+  .counter button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 18px;
+  }
+
+  .counter span {
+    font-size: 14px;
+    min-width: 28px;
+  }
+
+  .combo-sabores .btn-editar-combo {
+    min-height: 44px;
+    padding: 12px;
+    font-size: 14px;
+  }
 }

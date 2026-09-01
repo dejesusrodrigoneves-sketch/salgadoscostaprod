@@ -1,9 +1,10 @@
 // backend/src/services/subscriptionService.js (ESM)
 import prisma from '../config/prisma.js';
 import { enviarWhatsApp, getEmpresaWhatsApp } from './whatsappNotifyService.js';
+import asaasClient from './asaasClient.js';
 
 const TRIAL_DAYS = 14;
-const INTEREST_RATE_DAILY = 0.0002; // 0.02%
+const INTEREST_RATE_DAILY = 0.01; // 1% ao dia
 const READ_ONLY_AFTER_DAYS = 5;
 const BLOCK_AFTER_DAYS = 10;
 
@@ -39,6 +40,29 @@ export async function updateSubscriptionStatus(empresaId, status) {
 export async function processPayment(empresaId) {
   const subscription = await getSubscriptionByEmpresaId(empresaId);
   if (!subscription) return null;
+  
+  // Criar assinatura recorrente no Asaas (se ainda não existe)
+  if (!subscription.asaasSubscriptionId) {
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+    if (empresa?.asaasSubcontaId) {
+      try {
+        const nextDueDate = new Date();
+        nextDueDate.setDate(nextDueDate.getDate() + 30);
+        const asaas = await asaasClient.criarSubscription({
+          customerId: empresa.asaasSubcontaId,
+          valor: Number(subscription.value),
+          descricao: `Assinatura ${empresa.nome}`,
+          nextDueDate: nextDueDate.toISOString().slice(0, 10),
+        });
+        await prisma.subscription.update({
+          where: { empresaId },
+          data: { asaasSubscriptionId: asaas.subscriptionId },
+        });
+      } catch (e) {
+        console.error('[Subscription] Erro ao criar Asaas subscription:', e.message);
+      }
+    }
+  }
   
   const nextDueDate = new Date();
   nextDueDate.setDate(nextDueDate.getDate() + 30);

@@ -1,6 +1,10 @@
 (function guard(){
-  const u = localStorage.getItem('authUser');
-  if(!u) window.location.replace('login.html');
+  if (typeof checkSessionValid === 'function') {
+    checkSessionValid();
+  } else {
+    const u = localStorage.getItem('authUser');
+    if(!u) window.location.replace('login.html');
+  }
 })();
 
 const API_BASE = window.location.origin + '/api';
@@ -416,6 +420,15 @@ function listenProdutos(){
   produtosTimer = setInterval(carregarProdutosApi, 30000);
 }
 
+// Pause polling when tab hidden
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    if (produtosTimer) { clearInterval(produtosTimer); produtosTimer = null; }
+  } else {
+    listenProdutos();
+  }
+});
+
 function getStatusLabel(p){
   if(p.controlaEstoque){
     if(p.estoqueAtual <= 0) return { text: 'Esgotado', cls: 'pill-estoque' };
@@ -462,13 +475,16 @@ function renderProdutos(){
       </tr>
     `;
   }).join('');
+}
 
-  tbodyProdutos.querySelectorAll('button[data-act]').forEach(btn=>btn.addEventListener('click', onActionProduto));
+tbodyProdutos.addEventListener('click', onActionProduto);
 }
 
 function onActionProduto(e){
-  const act = e.currentTarget.getAttribute('data-act');
-  const id = Number(e.currentTarget.getAttribute('data-id'));
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const act = btn.getAttribute('data-act');
+  const id = Number(btn.getAttribute('data-id'));
   if(isNaN(id)) return;
   if(act==='edit') return carregarNoForm(id);
   if(act==='pause') return pauseResume(id,true);

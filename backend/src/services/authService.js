@@ -5,7 +5,7 @@ const auditService = require('./auditService');
 const prisma = require('../config/prisma');
 
 const SALT_ROUNDS = 10;
-const ROLES_VALIDOS = ['user', 'admin', 'superadmin'];
+const ROLES_VALIDOS = ['user', 'admin', 'superadmin', 'entregador'];
 
 // Account lockout: track failed attempts per username
 const failedAttempts = new Map();
@@ -251,4 +251,117 @@ async function criarConta({ username, password, lojaNome, empresaId }, ctx = {})
   return { token, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
 }
 
-module.exports = { login, criarUsuario, alterarSenha, criarConta };
+async function loginEntregador(telefone, password, empresaId, ip, userAgent, ctx = {}) {
+  const base = {
+    requestId: ctx.requestId || null,
+    ip: ip || ctx.ip || null,
+    userAgent: userAgent || ctx.userAgent || null,
+    metadata: { url: ctx.path || null },
+  };
+
+  // Account lockout check
+  if (isLockedOut(telefone)) {
+    throw Object.assign(new Error('Conta temporariamente bloqueada. Tente novamente em 15 minutos.'), { status: 429 });
+  }
+
+  const prisma = require('../config/prisma');
+  const entregador = await prisma.entregador.findFirst({
+    where: { telefone, empresaId, ativo: true },
+    include: { usuario: true },
+  });
+
+  if (!entregador || !entregador.passwordHash) {
+    auditService.audit({
+      ...base,
+      action: 'auth.login_entregador_failed',
+      module: 'auth',
+      actorType: 'anon',
+      actorUsername: telefone,
+      severity: 'warning',
+      reason: 'entregador_nao_encontrado',
+    });
+    recordFailedAttempt(telefone);
+    throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
+  }
+
+  const match = await bcrypt.compare(password, entregador.passwordHash);
+  if (!match) {
+    auditService.audit({
+      ...base,
+      action: 'auth.login_entregador_failed',
+      module: 'auth',
+      actorType: 'entregador',
+      actorId: entregador.id,
+      actorUsername: telefone,
+      actorRole: 'entregador',
+      severity: 'warning',
+      reason: 'senha_incorreta',
+    });
+    recordFailedAttempt(telefone);
+    throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
+  }
+
+  clearFailedAttempts(telefone);
+
+  const payload = {
+    id: entregador.id,
+    username: telefone,
+    role: 'entregador',
+    empresaId: entregador.empresaId,
+    lojaNome: entregador.nome,
+  };
+  const token = tokenService.gerarToken(payload);
+  const refreshToken = tokenService.gerarRefreshToken(payload);
+
+  auditService.audit({
+    ...base,
+    action: 'auth.login_entregador',
+    module: 'auth',
+    actorType: 'entregador',
+    actorId: entregador.id,
+    actorUsername: telefone,
+    actorRole: 'entregador',
+  });
+
+  return {
+    token,
+    refreshToken,
+    user: { id: entregador.id, nome: entregador.nome, role: 'entregador' },
+    mustChangePassword: entregador.mustChangePassword,
+  };
+}
+
+async function changePasswordEntregador(entregadorId, currentPassword, newPassword, ctx = {}) {
+  const prisma = require('../config/prisma');
+  const entregador = await prisma.entregador.findUnique({ where: { id: entregadorId } });
+  if (!entregador) throw Object.assign(new Error('Entregador não encontrado'), { status: 404 });
+
+  const match = await bcrypt.compare(currentPassword, entregador.passwordHash);
+  if (!match) {
+    throw Object.assign(new Error('Senha atual incorreta'), { status: 400 });
+  }
+
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await prisma.entregador.update({
+    where: { id: entregadorId },
+    data: { passwordHash: hash, mustChangePassword: false },
+  });
+
+  auditService.audit({
+    requestId: ctx.requestId || null,
+    ip: ctx.ip || null,
+    userAgent: ctx.userAgent || null,
+    action: 'auth.change_password_entregador',
+    module: 'auth',
+    actorType: 'entregador',
+    actorId: entregador.id,
+    actorUsername: entregador.telefone,
+    actorRole: 'entregador',
+    targetType: 'entregador',
+    targetId: entregador.id,
+    changedFields: ['passwordHash', 'mustChangePassword'],
+    metadata: { url: ctx.path || null },
+  });
+}
+
+module.exports = { login, criarUsuario, alterarSenha, criarConta, loginEntregador, changePasswordEntregador };

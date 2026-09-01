@@ -628,6 +628,47 @@ body {
   100% { background-position: -200% 0; }
 }
 
+.skeleton-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  padding: var(--s-16);
+  margin-bottom: var(--s-12);
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  margin-bottom: var(--s-16);
+}
+
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.skeleton-line-sm { width: 60px; }
+.skeleton-line-md { width: 120px; }
+.skeleton-line-lg { width: 100%; }
+
+.skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.skeleton-row {
+  display: flex;
+  gap: var(--s-12);
+}
+
 /* ─── EMPTY STATE ─── */
 
 .empty-state {
@@ -648,6 +689,31 @@ body {
   font-weight: 500;
 }
 
+.empty-state-action {
+  margin-top: var(--s-16);
+  padding: var(--s-8) var(--s-20);
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: var(--font);
+}
+
+.empty-state-action:hover {
+  background: var(--primary-hover);
+}
+
+/* ─── TOAST ANIMATION ─── */
+
+@keyframes slideInRight {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
 /* ─── RESPONSIVE ─── */
 
 @media (max-width: 768px) {
@@ -657,4 +723,22 @@ body {
   .order-header { flex-direction: column; align-items: flex-start; }
   .order-actions { flex-direction: column; }
   .btn { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 320px) {
+  body { padding: var(--s-8); }
+  .page-header h1 { font-size: 20px; }
+  .order-header { padding: var(--s-8); }
+  .order-name { font-size: 13px; }
+  .order-code { font-size: 11px; }
+  .order-total { font-size: 14px; }
+  .order-info-grid { grid-template-columns: 1fr; gap: var(--s-4); }
+  .order-actions { gap: var(--s-4); }
+  .btn { padding: 10px var(--s-8); font-size: 12px; min-height: 44px; }
+  .empty-state { padding: var(--s-20) var(--s-8); }
+  .empty-state i { font-size: 36px; }
+  .empty-state p { font-size: 13px; }
+  .skeleton-card { padding: var(--s-8); }
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tab { min-height: 44px; padding: var(--s-8) var(--s-12); font-size: 12px; white-space: nowrap; }
 }

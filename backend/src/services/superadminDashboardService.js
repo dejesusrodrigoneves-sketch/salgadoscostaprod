@@ -5,6 +5,20 @@ import prisma from '../config/prisma.js';
 // Pedido → "pedidos", Empresa → "empresas", FinancialEntry → "financial_entries"
 // Column names: snake_case per @map
 
+// In-memory cache with TTL
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+let summaryCache = null;
+let summaryCacheTime = 0;
+let empresasCache = null;
+let empresasCacheTime = 0;
+
+export function invalidateDashboardCache() {
+  summaryCache = null;
+  summaryCacheTime = 0;
+  empresasCache = null;
+  empresasCacheTime = 0;
+}
+
 export async function getSummary(empresaId = null) {
   if (empresaId) {
     const id = parseInt(empresaId);
@@ -57,6 +71,10 @@ export async function getSummary(empresaId = null) {
   }
 
   // Global summary — single query to avoid pool exhaustion
+  if (!empresaId && summaryCache && Date.now() - summaryCacheTime < CACHE_TTL) {
+    return summaryCache;
+  }
+
   const row = await prisma.$queryRaw`
     SELECT
       (SELECT COUNT(*)::int FROM "empresas") as "totalEmpresas",
@@ -70,7 +88,7 @@ export async function getSummary(empresaId = null) {
   const pedidosMesCount = r.pedidosMes || 0;
   const recebidoMesVal = r.recebidoMes || 0;
 
-  return {
+  const result = {
     totalEmpresas: r.totalEmpresas,
     empresasAtivas: r.empresasAtivas || 0,
     pedidosMes: pedidosMesCount,
@@ -79,9 +97,20 @@ export async function getSummary(empresaId = null) {
     aReceber: r.aReceber || 0,
     ticketMedio: pedidosMesCount > 0 ? recebidoMesVal / pedidosMesCount : 0,
   };
+
+  if (!empresaId) {
+    summaryCache = result;
+    summaryCacheTime = Date.now();
+  }
+
+  return result;
 }
 
 export async function getEmpresas() {
+  if (empresasCache && Date.now() - empresasCacheTime < CACHE_TTL) {
+    return empresasCache;
+  }
+
   const rows = await prisma.$queryRaw`
     SELECT
       e.id,
@@ -115,7 +144,7 @@ export async function getEmpresas() {
     ) a ON a."empresa_id" = e.id
     ORDER BY e.nome
   `;
-  return rows.map(r => ({
+  const result = rows.map(r => ({
     id: r.id,
     nome: r.nome,
     slug: r.slug,
@@ -124,4 +153,9 @@ export async function getEmpresas() {
     aReceber: r.aReceber,
     status: r.status,
   }));
+
+  empresasCache = result;
+  empresasCacheTime = Date.now();
+
+  return result;
 }

@@ -85,14 +85,15 @@ model Categoria {
 }
 
 model Usuario {
-  id           Int      @id @default(autoincrement())
-  empresaId    Int      @map("empresa_id")
+  id           Int          @id @default(autoincrement())
+  empresaId    Int          @map("empresa_id")
   username     String
-  passwordHash String   @map("password_hash")
-  lojaNome     String?  @map("loja_nome")
-  role         String   @default("user")
-  createdAt    DateTime @default(now()) @map("criado_em")
-  empresa      Empresa  @relation(fields: [empresaId], references: [id])
+  passwordHash String       @map("password_hash")
+  lojaNome     String?      @map("loja_nome")
+  role         String       @default("user")
+  createdAt    DateTime     @default(now()) @map("criado_em")
+  empresa      Empresa      @relation(fields: [empresaId], references: [id])
+  entregador   Entregador?  @relation(fields: [id], references: [usuarioId])
 
   @@unique([username])
   @@map("usuarios")
@@ -213,17 +214,24 @@ model ProcessedWebhook {
 }
 
 model Entregador {
-  id        Int             @id @default(autoincrement())
-  empresaId Int             @map("empresa_id")
-  nome      String
-  endereco  String?
-  whatsapp  String?
-  chavePix  String?         @map("chave_pix")
-  ativo     Boolean         @default(true)
-  createdAt DateTime        @default(now()) @map("criado_em")
-  empresa   Empresa         @relation(fields: [empresaId], references: [id])
-  entregas  EntregaDiaria[]
+  id                  Int             @id @default(autoincrement())
+  empresaId           Int             @map("empresa_id")
+  nome                String
+  telefone            String?
+  endereco            String?
+  whatsapp            String?
+  chavePix            String?         @map("chave_pix")
+  ativo               Boolean         @default(true)
+  usuarioId           Int?            @unique @map("usuario_id")
+  passwordHash        String?         @map("password_hash")
+  mustChangePassword  Boolean         @default(true) @map("must_change_password")
+  fcmToken            String?         @map("fcm_token")
+  createdAt           DateTime        @default(now()) @map("criado_em")
+  empresa             Empresa         @relation(fields: [empresaId], references: [id])
+  entregas            EntregaDiaria[]
+  usuario             Usuario?        @relation(fields: [usuarioId], references: [id])
 
+  @@unique([empresaId, telefone])
   @@map("entregadores")
 }
 
@@ -234,6 +242,10 @@ model EntregaDiaria {
   entregadorId Int        @map("entregador_id")
   pedidoId     String     @map("pedido_id")
   valor        Decimal?   @db.Decimal(10, 2)
+  valorCobrado Decimal?   @db.Decimal(10, 2)
+  status       String     @default("entregue")
+  confirmadoEm DateTime?  @map("confirmado_em")
+  observacao   String?
   createdAt    DateTime   @default(now()) @map("criado_em")
   empresa      Empresa    @relation(fields: [empresaId], references: [id])
   entregador   Entregador @relation(fields: [entregadorId], references: [id])

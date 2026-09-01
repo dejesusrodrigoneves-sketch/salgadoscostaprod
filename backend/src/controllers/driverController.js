@@ -2,6 +2,7 @@ const sql = require('../repositories/sqlRepository');
 const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
 const { asyncHandler } = require('../middleware/errorHandler');
+const bcrypt = require('bcryptjs');
 
 function empresaId(req) {
   return req.ctx?.empresaId || req.user?.empresaId;
@@ -19,7 +20,44 @@ exports.listar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
-  const entregador = await sql.criarEntregador({ ...req.body, empresaId: empresaId(req) });
+  const prisma = require('../config/prisma');
+  const { nome, telefone, whatsapp, endereco, chavePix } = req.body;
+  const eId = empresaId(req);
+
+  // Generate provisional password (format: SIC-XXXX)
+  const provisionalPassword = 'SIC-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+  const passwordHash = await bcrypt.hash(provisionalPassword, 10);
+
+  // Create Entregador
+  const entregador = await prisma.entregador.create({
+    data: {
+      nome,
+      telefone,
+      whatsapp,
+      endereco,
+      chavePix,
+      empresaId: eId,
+      passwordHash,
+      mustChangePassword: true,
+    },
+  });
+
+  // Auto-create Usuario with role 'entregador'
+  const usuario = await prisma.usuario.create({
+    data: {
+      username: telefone,
+      passwordHash,
+      role: 'entregador',
+      lojaNome: nome,
+      empresaId: eId,
+    },
+  });
+
+  // Link entregador to usuario
+  await prisma.entregador.update({
+    where: { id: entregador.id },
+    data: { usuarioId: usuario.id },
+  });
 
   auditService.audit({
     ...getCtx(req),
@@ -31,7 +69,8 @@ exports.criar = asyncHandler(async (req, res) => {
     changedFields: ['nome', 'whatsapp', 'ativo'],
   });
 
-  res.status(201).json(entregador);
+  // Return entregador with provisional password (for admin to share via WhatsApp)
+  res.status(201).json({ ...entregador, provisionalPassword });
 });
 
 exports.atualizar = asyncHandler(async (req, res) => {

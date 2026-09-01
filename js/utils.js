@@ -66,21 +66,62 @@ function authGuard() {
   try {
     var user = JSON.parse(u);
     if (!user.username) { window.location.replace('login.html'); return false; }
-    // Expiração de sessão (24h)
+    // Expiração de sessão (30 min)
     if (user._expiry && Date.now() > user._expiry) {
       localStorage.removeItem('authUser');
       window.location.replace('login.html');
       return false;
     }
-    // Renova expiry a cada acesso
-    user._expiry = Date.now() + 86400000;
-    localStorage.setItem('authUser', JSON.stringify(user));
     return true;
   } catch (e) {
     window.location.replace('login.html');
     return false;
   }
 }
+
+// Session validation helper (returns boolean, redirects if invalid)
+window.checkSessionValid = function() {
+  try {
+    var raw = localStorage.getItem('authUser');
+    if (!raw) return false;
+    var data = JSON.parse(raw);
+    if (!data || !data.token) return false;
+    if (data._expiry && Date.now() > data._expiry) {
+      localStorage.removeItem('authUser');
+      window.location.href = 'login.html';
+      return false;
+    }
+    return true;
+  } catch (e) {
+    localStorage.removeItem('authUser');
+    window.location.href = 'login.html';
+    return false;
+  }
+};
+
+// Idle timeout: auto-logout after 30 minutes of inactivity
+var _idleTimer = null;
+var IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+window.startIdleTimer = function() {
+  function resetTimer() {
+    clearTimeout(_idleTimer);
+    _idleTimer = setTimeout(function() {
+      localStorage.removeItem('authUser');
+      window.location.href = 'login.html';
+    }, IDLE_TIMEOUT);
+  }
+  ['mousedown','mousemove','keydown','scroll','touchstart'].forEach(function(evt) {
+    document.addEventListener(evt, resetTimer, { passive: true });
+  });
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      if (typeof checkSessionValid === 'function') checkSessionValid();
+      resetTimer();
+    }
+  });
+  resetTimer();
+};
 
 // Get current auth user
 function getAuthUser() {

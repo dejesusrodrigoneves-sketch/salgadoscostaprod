@@ -288,7 +288,7 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
   const pedidos = await prisma.pedido.findMany({
     where: { empresaId: empId, clienteWhatsapp: req.cliente.telefone },
     orderBy: { createdAt: 'desc' },
-    include: { itens: { include: { produto: true } } },
+    include: { itens: { select: { id: true, produtoId: true, quantidade: true, precoUnitario: true, sabores: true, produto: { select: { id: true, name: true, price: true, img: true } } } } },
   });
   res.json(pedidos);
 })];

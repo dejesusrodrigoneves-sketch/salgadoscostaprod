@@ -13,7 +13,8 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "backend/api.js" },
     { "src": "/health", "dest": "backend/api.js" },
-    { "src": "/(.*\\.(?:css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|html|json))$", "dest": "/$1" },
+    { "src": "/(.*\\.(?:css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot))$", "headers": { "Cache-Control": "public, max-age=31536000, immutable" }, "dest": "/$1" },
+    { "src": "/(.*\\.html)$", "headers": { "Cache-Control": "no-cache" }, "dest": "/$1" },
     { "src": "/", "dest": "/login.html", "has": [{ "type": "host", "value": "login-sicia.vercel.app" }] },
     { "src": "/", "dest": "/superadmin.html", "has": [{ "type": "host", "value": "admin-sicia.vercel.app" }] },
     { "src": "/([^/.]+)$", "dest": "/$1.html" },

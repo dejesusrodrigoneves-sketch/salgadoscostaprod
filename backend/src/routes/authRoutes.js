@@ -10,5 +10,6 @@ router.post('/register', authenticate, authorize('superadmin'), controller.criar
 router.post('/register-public', authLimiter, controller.criarConta);
 router.put('/change-password', authenticate, controller.alterarSenha);
 router.post('/refresh', controller.refreshToken);
+router.post('/logout', authenticate, controller.logout);
 
 module.exports = router;

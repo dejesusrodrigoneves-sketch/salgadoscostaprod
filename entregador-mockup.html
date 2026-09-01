@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup v2 — App Entregador</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Plus Jakarta Sans', sans-serif; background: #E5E5E5; color: #1A1A1A; padding: 40px 20px; }
+
+.mockup-title { text-align: center; font-size: 28px; font-weight: 800; margin-bottom: 8px; color: #F26D3D; }
+.mockup-subtitle { text-align: center; font-size: 14px; color: #666; margin-bottom: 12px; }
+.mockup-note { text-align: center; font-size: 12px; color: #999; margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+.section-title { font-size: 18px; font-weight: 700; color: #F26D3D; margin: 40px 0 16px; border-left: 4px solid #F26D3D; padding-left: 12px; }
+
+.phone-grid { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; margin-bottom: 40px; }
+
+/* ===== PHONE FRAME ===== */
+.phone { width: 320px; background: #FAFAFA; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.15); border: 2px solid #E5E5E5; }
+.phone-header { background: linear-gradient(135deg, #F26D3D, #E85D2C); padding: 20px 16px; text-align: center; }
+.phone-header h3 { color: #fff; font-size: 17px; font-weight: 700; }
+.phone-header p { color: rgba(255,255,255,0.75); font-size: 12px; margin-top: 2px; }
+.phone-body { padding: 16px; min-height: 420px; background: #FAFAFA; }
+.phone-footer { padding: 8px 0; background: #fff; border-top: 1px solid #E5E5E5; display: flex; justify-content: space-around; position: sticky; bottom: 0; }
+.phone-footer .tab { color: #999; font-size: 10px; text-align: center; cursor: pointer; padding: 6px 12px; min-width: 64px; transition: color 0.2s; }
+.phone-footer .tab.active { color: #F26D3D; font-weight: 600; }
+.phone-footer .tab i { display: block; font-size: 20px; margin-bottom: 2px; }
+
+/* ===== DARK MODE PHONE ===== */
+.phone.dark { background: #18181B; border-color: #27272A; }
+.phone.dark .phone-body { background: #18181B; }
+.phone.dark .phone-footer { background: #27272A; border-color: #3F3F46; }
+.phone.dark .phone-footer .tab { color: #71717A; }
+.phone.dark .phone-footer .tab.active { color: #F26D3D; }
+
+/* ===== LOGIN ===== */
+.login-logo { width: 72px; height: 72px; background: linear-gradient(135deg, #F26D3D, #E85D2C); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 32px; color: #fff; }
+.login-title { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.login-sub { text-align: center; font-size: 13px; color: #71717A; margin-bottom: 24px; }
+.input-group { margin-bottom: 16px; }
+.input-group label { display: block; font-size: 12px; font-weight: 600; color: #52525B; margin-bottom: 6px; }
+.input-group input { width: 100%; padding: 14px 16px; background: #fff; border: 1.5px solid #D4D4D8; border-radius: 12px; color: #1A1A1A; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.2s; }
+.input-group input:focus { border-color: #F26D3D; box-shadow: 0 0 0 3px rgba(242,109,61,0.15); }
+.input-group input::placeholder { color: #A1A1AA; }
+.btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, #F26D3D, #E85D2C); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.1s, box-shadow 0.2s; min-height: 52px; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:hover { box-shadow: 0 4px 16px rgba(242,109,61,0.3); }
+
+/* ===== STATUS BADGES ===== */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-rota { background: #FEF3C7; color: #D97706; }
+.badge-entregue { background: #D1FAE5; color: #059669; }
+.badge-pendente { background: #E0E7FF; color: #4F46E5; }
+.badge-falha { background: #FEE2E2; color: #DC2626; }
+.phone.dark .badge-rota { background: #422006; color: #FCD34D; }
+.phone.dark .badge-entregue { background: #052E16; color: #6EE7B7; }
+.phone.dark .badge-pendente { background: #1E1B4B; color: #A5B4FC; }
+
+/* ===== ORDER CARD ===== */
+.order-card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; border: 1.5px solid #E5E5E5; position: relative; overflow: hidden; transition: box-shadow 0.2s; }
+.order-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.phone.dark .order-card { background: #27272A; border-color: #3F3F46; }
+
+.order-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.order-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #F26D3D; background: rgba(242,109,61,0.1); padding: 3px 8px; border-radius: 6px; }
+.order-card .client-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+.phone.dark .order-card .client-name { color: #FAFAFA; }
+.order-card .address { font-size: 13px; color: #71717A; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 6px; }
+.phone.dark .order-card .address { color: #A1A1AA; }
+.order-card .address i { margin-top: 2px; flex-shrink: 0; }
+.order-card .items { font-size: 13px; color: #52525B; margin-bottom: 12px; line-height: 1.5; }
+.phone.dark .order-card .items { color: #D4D4D8; }
+
+.payment-info { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #71717A; margin-bottom: 12px; padding: 8px 10px; background: #F4F4F5; border-radius: 8px; }
+.phone.dark .payment-info { background: #3F3F46; color: #A1A1AA; }
+.payment-info i { font-size: 14px; }
+
+.order-actions { display: flex; gap: 8px; }
+.order-actions .btn-action { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; transition: transform 0.1s; }
+.order-actions .btn-action:active { transform: scale(0.97); }
+.btn-mapa { background: #EFF6FF; color: #2563EB; }
+.btn-whatsapp { background: #ECFDF5; color: #059669; }
+.phone.dark .btn-mapa { background: #1E3A5F; color: #60A5FA; }
+.phone.dark .btn-whatsapp { background: #064E3B; color: #34D399; }
+.btn-entregar { background: linear-gradient(135deg, #16A34A, #15803D); color: #fff; flex: 1.5; }
+.btn-entregar:hover { box-shadow: 0 4px 12px rgba(22,163,74,0.3); }
+
+/* ===== CONFIRMATION MODAL (FULL SCREEN) ===== */
+.modal-full { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #FAFAFA; z-index: 100; display: flex; flex-direction: column; }
+.modal-full .modal-header { background: linear-gradient(135deg, #F26D3D, #E85D2C); padding: 16px; display: flex; align-items: center; gap: 12px; }
+.modal-full .modal-header .btn-back { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 40px; height: 40px; border-radius: 10px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.modal-full .modal-header h3 { color: #fff; font-size: 17px; font-weight: 700; }
+.modal-full .modal-body { flex: 1; padding: 20px; overflow-y: auto; }
+.modal-full .modal-footer { padding: 16px; background: #fff; border-top: 1px solid #E5E5E5; }
+
+.modal-client { text-align: center; margin-bottom: 24px; }
+.modal-client .avatar { width: 56px; height: 56px; background: #F4F4F5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 24px; color: #71717A; }
+.modal-client .name { font-size: 18px; font-weight: 700; }
+.modal-client .addr { font-size: 13px; color: #71717A; margin-top: 2px; }
+
+.modal-order-summary { background: #F4F4F5; border-radius: 12px; padding: 14px; margin-bottom: 20px; }
+.phone.dark .modal-order-summary { background: #27272A; }
+.modal-order-summary .row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; }
+.modal-order-summary .row .label { color: #71717A; }
+.modal-order-summary .row .value { font-weight: 600; }
+.modal-order-summary .row.total { border-top: 1px solid #D4D4D8; margin-top: 4px; padding-top: 8px; }
+.modal-order-summary .row.total .value { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #059669; }
+
+.modal-value-input { margin-bottom: 16px; }
+.modal-value-input label { display: block; font-size: 12px; font-weight: 600; color: #52525B; margin-bottom: 6px; }
+.modal-value-input .value-field { width: 100%; padding: 16px; background: #fff; border: 2px solid #D4D4D8; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: #1A1A1A; text-align: center; outline: none; transition: border-color 0.2s; }
+.modal-value-input .value-field:focus { border-color: #16A34A; box-shadow: 0 0 0 3px rgba(22,163,74,0.15); }
+.phone.dark .modal-value-input .value-field { background: #27272A; color: #FAFAFA; border-color: #3F3F46; }
+
+.modal-observacao { margin-bottom: 20px; }
+.modal-observacao label { display: block; font-size: 12px; font-weight: 600; color: #52525B; margin-bottom: 6px; }
+.modal-observacao textarea { width: 100%; padding: 12px; background: #fff; border: 1.5px solid #D4D4D8; border-radius: 10px; font-family: inherit; font-size: 14px; color: #1A1A1A; resize: none; height: 80px; outline: none; }
+.modal-observacao textarea:focus { border-color: #F26D3D; }
+.phone.dark .modal-observacao textarea { background: #27272A; color: #FAFAFA; border-color: #3F3F46; }
+
+.btn-confirm-full { width: 100%; padding: 16px; background: linear-gradient(135deg, #16A34A, #15803D); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; }
+.btn-cancel-full { width: 100%; padding: 14px; background: #F4F4F5; color: #52525B; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 10px; }
+.btn-cancel-full:hover { background: #E4E4E7; }
+
+/* ===== EMPTY STATE ===== */
+.empty-state { text-align: center; padding: 40px 20px; }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state .title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.empty-state .desc { font-size: 13px; color: #71717A; }
+
+/* ===== LOADING SKELETON ===== */
+.skeleton { background: linear-gradient(90deg, #F4F4F5 25%, #E4E4E7 50%, #F4F4F5 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.skeleton-card { height: 180px; border-radius: 16px; margin-bottom: 12px; }
+
+/* ===== HISTORICO ===== */
+.periodo-picker { display: flex; gap: 8px; margin-bottom: 16px; }
+.periodo-picker .date-input { flex: 1; padding: 12px; background: #fff; border: 1.5px solid #D4D4D8; border-radius: 10px; font-size: 13px; font-family: inherit; color: #1A1A1A; text-align: center; }
+.phone.dark .periodo-picker .date-input { background: #27272A; color: #FAFAFA; border-color: #3F3F46; }
+
+.historico-day { margin-bottom: 16px; }
+.historico-day-header { font-size: 13px; font-weight: 600; color: #71717A; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.historico-day-header i { font-size: 14px; }
+.historico-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #fff; border-radius: 12px; margin-bottom: 6px; border: 1px solid #F4F4F5; }
+.phone.dark .historico-item { background: #27272A; border-color: #3F3F46; }
+.historico-item .info { flex: 1; }
+.historico-item .client { font-size: 14px; font-weight: 600; }
+.phone.dark .historico-item .client { color: #FAFAFA; }
+.historico-item .time { font-size: 12px; color: #71717A; margin-top: 2px; }
+.historico-item .valor { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #059669; }
+
+.historico-total { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: linear-gradient(135deg, #059669, #047857); border-radius: 14px; margin-top: 12px; }
+.historico-total .label { font-size: 12px; color: rgba(255,255,255,0.7); }
+.historico-total .value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 800; color: #fff; }
+
+/* ===== PERFIL ===== */
+.profile-header { text-align: center; margin-bottom: 24px; }
+.profile-avatar { width: 72px; height: 72px; background: linear-gradient(135deg, #F26D3D, #E85D2C); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 30px; color: #fff; }
+.profile-name { font-size: 18px; font-weight: 700; }
+.profile-phone { font-size: 13px; color: #71717A; margin-top: 2px; }
+.phone.dark .profile-name { color: #FAFAFA; }
+.phone.dark .profile-phone { color: #A1A1AA; }
+
+.profile-section { margin-bottom: 20px; }
+.profile-section-title { font-size: 11px; font-weight: 600; color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+.theme-switch { display: flex; align-items: center; justify-content: space-between; padding: 14px; background: #fff; border-radius: 12px; border: 1px solid #E5E5E5; }
+.phone.dark .theme-switch { background: #27272A; border-color: #3F3F46; }
+.theme-switch .label { font-size: 14px; font-weight: 500; }
+.phone.dark .theme-switch .label { color: #FAFAFA; }
+.toggle { width: 48px; height: 28px; background: #D4D4D8; border-radius: 14px; position: relative; cursor: pointer; transition: background 0.2s; }
+.toggle.on { background: #F26D3D; }
+.toggle .knob { width: 22px; height: 22px; background: #fff; border-radius: 50%; position: absolute; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.toggle.on .knob { transform: translateX(20px); }
+
+.btn-logout { width: 100%; padding: 14px; background: #FEE2E2; color: #DC2626; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; }
+.phone.dark .btn-logout { background: #450A0A; color: #FCA5A5; }
+
+.app-version { text-align: center; font-size: 11px; color: #A1A1AA; margin-top: 16px; }
+
+/* ===== OFFLINE INDICATOR ===== */
+.offline-bar { background: #FEF3C7; color: #92400E; padding: 6px 12px; font-size: 11px; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.phone.dark .offline-bar { background: #422006; color: #FCD34D; }
+
+/* ===== HEADER BAR ===== */
+.header-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fff; border-bottom: 1px solid #E5E5E5; }
+.phone.dark .header-bar { background: #27272A; border-color: #3F3F46; }
+.header-bar .user-info { font-size: 13px; font-weight: 600; }
+.phone.dark .header-bar .user-info { color: #FAFAFA; }
+.header-bar .actions { display: flex; gap: 12px; }
+.header-bar .actions i { font-size: 20px; cursor: pointer; color: #71717A; }
+.header-bar .actions i:hover { color: #F26D3D; }
+
+/* ===== NOTIFICATION ===== */
+.push-notif { background: #fff; border: 1px solid #E5E5E5; border-radius: 14px; padding: 14px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+.phone.dark .push-notif { background: #27272A; border-color: #3F3F46; }
+.push-notif .app-name { font-size: 10px; color: #F26D3D; font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.push-notif .notif-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.phone.dark .push-notif .notif-title { color: #FAFAFA; }
+.push-notif .notif-body { font-size: 12px; color: #71717A; }
+
+/* ===== SEPARATOR ===== */
+.label-section { font-size: 12px; color: #71717A; text-transform: uppercase; letter-spacing: 1px; margin: 50px 0 10px; text-align: center; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1 class="mockup-title">📦 App Entregador — Mockup v2</h1>
+<p class="mockup-subtitle">PWA para Android • Login por telefone+senha • Dark/Light mode</p>
+<p class="mockup-note">Versão revisada: fundo claro para uso externo, cards simplificados, modal de confirmação full-screen, touch targets 48px+, estados vazios e loading.</p>
+
+<!-- ========================================== -->
+<!-- LIGHT MODE -->
+<!-- ========================================== -->
+<p class="label-section">☀️ MODO CLARO</p>
+
+<!-- 1. LOGIN -->
+<div class="section-title">1. Login</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:520px;">
+      <div class="login-logo"><i class="bi bi-box-seam"></i></div>
+      <div class="login-title">Entregador</div>
+      <div class="login-sub">Acesse seus pedidos</div>
+      <div style="width:100%;max-width:260px;">
+        <div class="input-group">
+          <label>Telefone</label>
+          <input type="text" placeholder="(00) 00000-0000" value="(11) 98765-4321">
+        </div>
+        <div class="input-group">
+          <label>Senha</label>
+          <input type="password" placeholder="Sua senha" value="••••••••">
+        </div>
+        <button class="btn-primary">Entrar <i class="bi bi-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. TROCA DE SENHA -->
+<div class="section-title">2. Troca de Senha (Primeiro Acesso)</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-header">
+      <h3>Alterar Senha</h3>
+      <p>Primeiro acesso — defina sua senha</p>
+    </div>
+    <div class="phone-body" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div style="width:56px;height:56px;background:#F4F4F5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:24px;color:#F26D3D;"><i class="bi bi-shield-lock"></i></div>
+      <div style="width:100%;">
+        <div class="input-group">
+          <label>Senha provisória</label>
+          <input type="password" value="••••••••" style="opacity:0.5;" readonly>
+        </div>
+        <div class="input-group">
+          <label>Nova senha</label>
+          <input type="password" placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="input-group">
+          <label>Confirmar nova senha</label>
+          <input type="password" placeholder="Repita a senha">
+        </div>
+        <button class="btn-primary">Salvar Senha <i class="bi bi-check-lg"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. PEDIDOS -->
+<div class="section-title">3. Pedidos Atribuídos</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-header">
+      <h3>Olá, João 👋</h3>
+      <p>2 pedidos para entregar</p>
+    </div>
+    <div class="phone-body">
+      <!-- Card 1: Em rota -->
+      <div class="order-card">
+        <div class="order-card-top">
+          <span class="order-id">#A3F2C8</span>
+          <span class="badge badge-rota"><i class="bi bi-truck"></i> Em rota</span>
+        </div>
+        <div class="client-name">Maria Silva</div>
+        <div class="address"><i class="bi bi-geo-alt"></i> Rua das Flores, 123 — Jardim Primavera</div>
+        <div class="items">2x Coxinha de Frango • 1x Pastel de Carne • 1x Refri 600ml</div>
+        <div class="payment-info"><i class="bi bi-cash-stack"></i> Dinheiro • Troco para R$ 50,00</div>
+        <div class="order-actions">
+          <button class="btn-action btn-mapa"><i class="bi bi-map"></i> Mapa</button>
+          <button class="btn-action btn-whatsapp"><i class="bi bi-whatsapp"></i> WhatsApp</button>
+          <button class="btn-action btn-entregar"><i class="bi bi-check-circle"></i> Entregar</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Em rota -->
+      <div class="order-card">
+        <div class="order-card-top">
+          <span class="order-id">#B7D1E5</span>
+          <span class="badge badge-rota"><i class="bi bi-truck"></i> Em rota</span>
+        </div>
+        <div class="client-name">Carlos Souza</div>
+        <div class="address"><i class="bi bi-geo-alt"></i> Av. Brasil, 456 — Centro</div>
+        <div class="items">3x Coxinha de Frango • 2x Kibbeh</div>
+        <div class="payment-info"><i class="bi bi-qr-code"></i> PIX</div>
+        <div class="order-actions">
+          <button class="btn-action btn-mapa"><i class="bi bi-map"></i> Mapa</button>
+          <button class="btn-action btn-whatsapp"><i class="bi bi-whatsapp"></i> WhatsApp</button>
+          <button class="btn-action btn-entregar"><i class="bi bi-check-circle"></i> Entregar</button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab active"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. MODAL CONFIRMAÇÃO -->
+<div class="section-title">4. Confirmação de Entrega (Full-Screen)</div>
+<div class="phone-grid">
+  <div class="phone" style="padding:0;overflow:hidden;">
+    <div class="modal-full" style="position:relative;height:520px;">
+      <div class="modal-header">
+        <button class="btn-back"><i class="bi bi-arrow-left"></i></button>
+        <h3>Confirmar Entrega</h3>
+      </div>
+      <div class="modal-body">
+        <div class="modal-client">
+          <div class="avatar"><i class="bi bi-person"></i></div>
+          <div class="name">Maria Silva</div>
+          <div class="addr">Rua das Flores, 123</div>
+        </div>
+        <div class="modal-order-summary">
+          <div class="row"><span class="label">2x Coxinha de Frango</span><span class="value">R$ 25,80</span></div>
+          <div class="row"><span class="label">1x Pastel de Carne</span><span class="value">R$ 12,00</span></div>
+          <div class="row"><span class="label">1x Refri 600ml</span><span class="value">R$ 8,10</span></div>
+        </div>
+        <div style="background:#D1FAE5;border-radius:10px;padding:12px;margin-bottom:16px;text-align:center;">
+          <div style="font-size:11px;color:#059669;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Sua taxa de entrega</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;color:#059669;">R$ 5,00</div>
+          <div style="font-size:11px;color:#059669;">seu ganho nesta entrega</div>
+        </div>
+        <div class="modal-value-input">
+          <label>Quanto o cliente pagou?</label>
+          <input type="text" class="value-field" placeholder="R$ 0,00">
+        </div>
+        <div class="modal-observacao">
+          <label>Observação (opcional)</label>
+          <textarea placeholder="Ex: Cliente não estava em casa, deixou com vizinho..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-confirm-full"><i class="bi bi-check-circle"></i> Confirmar Entrega</button>
+        <button class="btn-cancel-full">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. HISTÓRICO -->
+<div class="section-title">5. Histórico de Entregas</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-header">
+      <h3>Histórico</h3>
+      <p>Seus últimos pagamentos</p>
+    </div>
+    <div class="phone-body">
+      <div class="periodo-picker">
+        <input type="text" class="date-input" value="01/08/2026">
+        <input type="text" class="date-input" value="31/08/2026">
+      </div>
+
+      <div class="historico-day">
+        <div class="historico-day-header"><i class="bi bi-calendar3"></i> 04/08/2026 — 6 entregas</div>
+        <div class="historico-item">
+          <div class="info"><div class="client">Maria Silva</div><div class="time">14:30 • Dinheiro</div></div>
+          <div class="valor">R$ 5,00</div>
+        </div>
+        <div class="historico-item">
+          <div class="info"><div class="client">Carlos Souza</div><div class="time">15:10 • PIX</div></div>
+          <div class="valor">R$ 5,00</div>
+        </div>
+        <div class="historico-item">
+          <div class="info"><div class="client">Ana Oliveira</div><div class="time">16:45 • Dinheiro</div></div>
+          <div class="valor">R$ 5,00</div>
+        </div>
+      </div>
+
+      <div class="historico-day">
+        <div class="historico-day-header"><i class="bi bi-calendar3"></i> 03/08/2026 — 10 entregas</div>
+        <div class="historico-item">
+          <div class="info"><div class="client">Pedro Santos</div><div class="time">12:00 • PIX</div></div>
+          <div class="valor">R$ 5,00</div>
+        </div>
+        <div class="historico-item">
+          <div class="info"><div class="client">Lucia Ferreira</div><div class="time">13:20 • Dinheiro</div></div>
+          <div class="valor">R$ 5,00</div>
+        </div>
+      </div>
+
+      <div class="historico-total">
+        <div><div class="label">Total no período</div><div class="value">R$ 80,00</div></div>
+        <div style="text-align:right;"><div class="label">Entregas</div><div class="value">16</div></div>
+      </div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab active"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. PERFIL -->
+<div class="section-title">6. Perfil</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-header">
+      <h3>Meu Perfil</h3>
+      <p>Gerencie seus dados</p>
+    </div>
+    <div class="phone-body">
+      <div class="profile-header">
+        <div class="profile-avatar"><i class="bi bi-person"></i></div>
+        <div class="profile-name">João Silva</div>
+        <div class="profile-phone">📱 (11) 98765-4321</div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Dados Pessoais</div>
+        <div class="input-group">
+          <label>WhatsApp</label>
+          <input type="text" value="(11) 98888-7777">
+        </div>
+        <div class="input-group">
+          <label>Chave PIX</label>
+          <input type="text" value="joao@email.com">
+        </div>
+        <button class="btn-primary" style="font-size:14px;"><i class="bi bi-check2"></i> Salvar Alterações</button>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-title">Aparência</div>
+        <div class="theme-switch">
+          <span class="label">🌙 Modo escuro</span>
+          <div class="toggle"><div class="knob"></div></div>
+        </div>
+      </div>
+
+      <button class="btn-logout"><i class="bi bi-box-arrow-right"></i> Sair</button>
+      <div class="app-version">SIC.ia Entregador v1.0.0</div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab active"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+<!-- 7. ESTADO VAZIO -->
+<div class="section-title">7. Estado Vazio</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-header">
+      <h3>Olá, João 👋</h3>
+      <p>Nenhum pedido atribuído</p>
+    </div>
+    <div class="phone-body" style="display:flex;align-items:center;justify-content:center;">
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <div class="title">Nenhum pedido hoje</div>
+        <div class="desc">Quando um pedido for atribuído a você, ele aparecerá aqui.</div>
+      </div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab active"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+<!-- 8. LOADING -->
+<div class="section-title">8. Estado de Carregamento</div>
+<div class="phone-grid">
+  <div class="phone">
+    <div class="phone-header">
+      <h3>Olá, João 👋</h3>
+      <p>Carregando pedidos...</p>
+    </div>
+    <div class="phone-body">
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card" style="height:140px;"></div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab active"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================================== -->
+<!-- DARK MODE -->
+<!-- ========================================== -->
+<p class="label-section" style="margin-top:60px;">🌙 MODO ESCURO</p>
+
+<div class="section-title">Dark — Pedidos</div>
+<div class="phone-grid">
+  <div class="phone dark">
+    <div class="phone-header">
+      <h3>Olá, João 👋</h3>
+      <p>2 pedidos para entregar</p>
+    </div>
+    <div class="phone-body">
+      <div class="order-card">
+        <div class="order-card-top">
+          <span class="order-id">#A3F2C8</span>
+          <span class="badge badge-rota"><i class="bi bi-truck"></i> Em rota</span>
+        </div>
+        <div class="client-name">Maria Silva</div>
+        <div class="address"><i class="bi bi-geo-alt"></i> Rua das Flores, 123 — Jardim Primavera</div>
+        <div class="items">2x Coxinha de Frango • 1x Pastel de Carne • 1x Refri 600ml</div>
+        <div class="payment-info"><i class="bi bi-cash-stack"></i> Dinheiro • Troco para R$ 50,00</div>
+        <div class="order-actions">
+          <button class="btn-action btn-mapa"><i class="bi bi-map"></i> Mapa</button>
+          <button class="btn-action btn-whatsapp"><i class="bi bi-whatsapp"></i> WhatsApp</button>
+          <button class="btn-action btn-entregar"><i class="bi bi-check-circle"></i> Entregar</button>
+        </div>
+      </div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab active"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Dark — Confirmação</div>
+<div class="phone-grid">
+  <div class="phone dark" style="padding:0;overflow:hidden;">
+    <div class="modal-full" style="position:relative;height:520px;background:#18181B;">
+      <div class="modal-header">
+        <button class="btn-back"><i class="bi bi-arrow-left"></i></button>
+        <h3>Confirmar Entrega</h3>
+      </div>
+      <div class="modal-body">
+        <div class="modal-client">
+          <div class="avatar" style="background:#3F3F46;color:#A1A1AA;"><i class="bi bi-person"></i></div>
+          <div class="name" style="color:#FAFAFA;">Maria Silva</div>
+          <div class="addr">Rua das Flores, 123</div>
+        </div>
+        <div class="modal-order-summary">
+          <div class="row"><span class="label">2x Coxinha de Frango</span><span class="value">R$ 25,80</span></div>
+          <div class="row"><span class="label">1x Pastel de Carne</span><span class="value">R$ 12,00</span></div>
+          <div class="row"><span class="label">1x Refri 600ml</span><span class="value">R$ 8,10</span></div>
+        </div>
+        <div style="background:#052E16;border-radius:10px;padding:12px;margin-bottom:16px;text-align:center;">
+          <div style="font-size:11px;color:#6EE7B7;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Sua taxa de entrega</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:800;color:#6EE7B7;">R$ 5,00</div>
+          <div style="font-size:11px;color:#6EE7B7;">seu ganho nesta entrega</div>
+        </div>
+        <div class="modal-value-input">
+          <label style="color:#A1A1AA;">Quanto o cliente pagou?</label>
+          <input type="text" class="value-field" placeholder="R$ 0,00">
+        </div>
+        <div class="modal-observacao">
+          <label style="color:#A1A1AA;">Observação (opcional)</label>
+          <textarea placeholder="Ex: Cliente não estava em casa..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="background:#27272A;border-color:#3F3F46;">
+        <button class="btn-confirm-full"><i class="bi bi-check-circle"></i> Confirmar Entrega</button>
+        <button class="btn-cancel-full" style="background:#3F3F46;color:#A1A1AA;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Dark — Push Notification</div>
+<div class="phone-grid">
+  <div class="phone dark">
+    <div class="phone-body" style="display:flex;align-items:flex-start;padding-top:16px;">
+      <div class="push-notif" style="width:100%;">
+        <div class="app-name">📦 SIC.ia Entregador</div>
+        <div class="notif-title">Novo pedido atribuído</div>
+        <div class="notif-body">Pedido #A3F2C8 — Maria Silva — Taxa: R$ 5,00</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Dark — Histórico</div>
+<div class="phone-grid">
+  <div class="phone dark">
+    <div class="phone-header">
+      <h3>Histórico</h3>
+      <p>Seus últimos pagamentos</p>
+    </div>
+    <div class="phone-body">
+      <div class="periodo-picker">
+        <input type="text" class="date-input" value="01/08/2026">
+        <input type="text" class="date-input" value="31/08/2026">
+      </div>
+      <div class="historico-item">
+        <div class="info"><div class="client">Maria Silva</div><div class="time">14:30 • Dinheiro</div></div>
+        <div class="valor">R$ 5,00</div>
+      </div>
+      <div class="historico-item">
+        <div class="info"><div class="client">Carlos Souza</div><div class="time">15:10 • PIX</div></div>
+        <div class="valor">R$ 5,00</div>
+      </div>
+      <div class="historico-total">
+        <div><div class="label">Total no período</div><div class="value">R$ 80,00</div></div>
+        <div style="text-align:right;"><div class="label">Entregas</div><div class="value">16</div></div>
+      </div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab active"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+<div class="section-title">Dark — Perfil</div>
+<div class="phone-grid">
+  <div class="phone dark">
+    <div class="phone-header">
+      <h3>Meu Perfil</h3>
+      <p>Gerencie seus dados</p>
+    </div>
+    <div class="phone-body">
+      <div class="profile-header">
+        <div class="profile-avatar"><i class="bi bi-person"></i></div>
+        <div class="profile-name">João Silva</div>
+        <div class="profile-phone">📱 (11) 98765-4321</div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title" style="color:#71717A;">Dados Pessoais</div>
+        <div class="input-group">
+          <label style="color:#A1A1AA;">WhatsApp</label>
+          <input type="text" value="(11) 98888-7777">
+        </div>
+        <div class="input-group">
+          <label style="color:#A1A1AA;">Chave PIX</label>
+          <input type="text" value="joao@email.com">
+        </div>
+        <button class="btn-primary" style="font-size:14px;"><i class="bi bi-check2"></i> Salvar Alterações</button>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-title" style="color:#71717A;">Aparência</div>
+        <div class="theme-switch">
+          <span class="label">🌙 Modo escuro</span>
+          <div class="toggle on"><div class="knob"></div></div>
+        </div>
+      </div>
+      <button class="btn-logout"><i class="bi bi-box-arrow-right"></i> Sair</button>
+      <div class="app-version">SIC.ia Entregador v1.0.0</div>
+    </div>
+    <div class="phone-footer">
+      <div class="tab"><i class="bi bi-box-seam"></i>Pedidos</div>
+      <div class="tab"><i class="bi bi-clock-history"></i>Histórico</div>
+      <div class="tab active"><i class="bi bi-person"></i>Perfil</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

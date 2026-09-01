@@ -3,6 +3,7 @@ const path = require('path');
 const compression = require('compression');
 const cors = require('cors');
 const helmet = require('helmet');
+const prisma = require('./config/prisma');
 const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { authenticate } = require('./middleware/auth');
@@ -35,6 +36,8 @@ const marketplaceWebhookRoutes = require('./routes/marketplaceWebhookRoutes');
 const superadminDashboardRoutes = require('./routes/superadminDashboardRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const pricingRoutes = require('./routes/pricingRoutes');
+const entregadorAuthRoutes = require('./routes/entregadorAuthRoutes');
+const entregadorAppRoutes = require('./routes/entregadorAppRoutes');
 
 const app = express();
 
@@ -116,8 +119,21 @@ app.use('/api/webhooks', marketplaceWebhookRoutes);
 app.use('/api/admin/dashboard', superadminDashboardRoutes);
 app.use('/api', subscriptionRoutes);
 app.use('/api', pricingRoutes);
+app.use('/api/entregador/auth', entregadorAuthRoutes);
+app.use('/api/entregador', authenticate, authorize('entregador'), entregadorAppRoutes);
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', async (req, res) => {
+  try {
+    const metrics = await prisma.$metrics.json();
+    const pool = metrics.find(m => m.key === 'prisma_pool_connections_open');
+    res.json({
+      status: 'ok',
+      pool: pool ? { active: pool.labels?.value || 'unknown' } : null,
+    });
+  } catch (e) {
+    res.json({ status: 'ok' });
+  }
+});
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));
 app.get('/api/config', authenticate, (req, res) => {
   res.set('Cache-Control', 'public, max-age=300, s-maxage=300');
@@ -129,7 +145,19 @@ app.get('/api/config', authenticate, (req, res) => {
 
 if (!process.env.VERCEL) {
   app.use(express.static(path.join(__dirname, '..', '..', 'public'), { maxAge: '1d', index: false }));
-  app.use(express.static(path.join(__dirname, '..', '..'), { index: false, extensions: ['html'] }));
+  app.use(express.static(path.join(__dirname, '..', '..'), {
+    index: false,
+    extensions: ['html'],
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.set('Cache-Control', 'no-cache');
+      } else if (filePath.match(/\.[a-f0-9]{8,}\./)) {
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+      } else {
+        res.set('Cache-Control', 'public, max-age=604800');
+      }
+    }
+  }));
 }
 
 app.use(errorHandler);

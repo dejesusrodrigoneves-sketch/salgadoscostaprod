@@ -274,8 +274,8 @@ body {
 }
 
 .controle-qtd button {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: var(--primary, #F26D3D);
   color: white;
@@ -288,6 +288,8 @@ body {
   justify-content: center;
   transition: 0.2s;
   line-height: 1;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .controle-qtd button:hover {
@@ -829,5 +831,105 @@ hr {
   .filtro-btn {
     font-size: 12px;
     padding: 6px 14px;
+  }
+}
+
+@media (max-width: 320px) {
+  .produtos-area {
+    padding: 10px;
+  }
+
+  .grid-produtos {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 6px;
+  }
+
+  .produto {
+    padding: 8px 6px;
+  }
+
+  .produto img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .produto h4 {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .produto span {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+
+  .search {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .top-bar {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .checkout {
+    padding: 12px;
+    min-width: 100%;
+  }
+
+  .checkout h3 {
+    font-size: 15px;
+  }
+
+  .controle-qtd button {
+    width: 32px;
+    height: 32px;
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 16px;
+  }
+
+  .controle-qtd span {
+    font-size: 14px;
+  }
+
+  .btn-carrinho {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .botao-pagar {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .entrega-opcoes label {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  .pagamento-box label {
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  #nomeCliente, #whatsappCliente, #cepCliente,
+  #enderecoCliente, #numeroCasa, #bairroCliente,
+  #referenciaCliente {
+    min-height: 44px;
+    font-size: 14px;
+    padding: 12px 14px;
+  }
+
+  .total-final {
+    font-size: 18px;
+  }
+
+  .filtro-btn {
+    min-height: 44px;
+    padding: 10px 14px;
   }
 }

@@ -56,6 +56,18 @@ async function criarPix({ customerId, valor, descricao, dueDate, splits }) {
   };
 }
 
+async function criarSubscription({ customerId, valor, descricao, nextDueDate }) {
+  const { data } = await axios.post(`${BASE}/subscriptions`, {
+    customer: customerId,
+    billingType: 'PIX',
+    value: valor,
+    cycle: 'MONTHLY',
+    nextDueDate,
+    description: descricao,
+  }, { headers: headers() });
+  return { subscriptionId: data.id, status: data.status };
+}
+
 async function consultarPayment(paymentId) {
   const { data } = await axios.get(`${BASE}/payments/${paymentId}`, { headers: headers() });
   return data;
@@ -96,4 +108,4 @@ function verificarAutenticacao(headerToken) {
   return crypto.timingSafeEqual(a, b);
 }
 
-export default { criarCustomer, criarSubconta, criarPix, consultarPayment, reembolsar, agendarTransferencia, consultarSaldo, verificarAutenticacao };
+export default { criarCustomer, criarSubconta, criarPix, criarSubscription, consultarPayment, reembolsar, agendarTransferencia, consultarSaldo, verificarAutenticacao };

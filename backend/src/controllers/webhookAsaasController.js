@@ -14,6 +14,17 @@ async function webhookAsaasController(req, res) {
       });
       
       if (subscription) {
+        // Validar se o valor pago bate com o valor esperado (valor + juros)
+        const valorPago = Number(payment.value);
+        const daysOverdue = subscriptionService.getDaysOverdue(subscription.nextDueDate);
+        const interest = subscriptionService.calculateInterest(subscription.value, daysOverdue);
+        const valorEsperado = Number(subscription.value) + interest;
+        
+        if (Math.abs(valorPago - valorEsperado) > 0.01) {
+          console.log(`[Asaas Webhook] Valor divergente: pago R$${valorPago}, esperado R$${valorEsperado}`);
+          return res.status(200).json({ received: true, ignored: 'valor_divergente' });
+        }
+        
         await subscriptionService.processPayment(subscription.empresaId);
         console.log('[Asaas Webhook] Pagamento processado para empresa:', subscription.empresaId);
       }

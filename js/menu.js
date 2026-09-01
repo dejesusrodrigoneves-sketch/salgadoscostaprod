@@ -70,9 +70,9 @@ const checkIfHaveItem = html => {
     else menu.innerHTML = html;
 }
 
-const addItemToArray = prod => {
+const addItemToArray = (prod, cartCache) => {
     let price = Number(prod.price).toFixed(2).replace('.', ',');
-    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const cart = cartCache || JSON.parse(localStorage.getItem('cart')) || [];
     const inCart = cart.find(i => i.id === prod.id);
     const qtd = inCart ? inCart.qtd || 1 : 0;
     const isCombo = ComboConfig && ComboConfig.tipoDe(prod.config);
@@ -102,6 +102,7 @@ const showProducts = catId => {
     itemsHTML = '';
 
     let filteredProducts = [];
+    const cartCache = JSON.parse(localStorage.getItem('cart')) || [];
 
     if(catId === 0){
         filteredProducts = products.filter(prod => !prod.lastPrice || prod.lastPrice === 0);
@@ -109,7 +110,7 @@ const showProducts = catId => {
         filteredProducts = products.filter(prod => prod.categoryId === catId && (!prod.lastPrice || prod.lastPrice === 0));
     }
 
-    filteredProducts.forEach(prod => addItemToArray(prod));
+    filteredProducts.forEach(prod => addItemToArray(prod, cartCache));
 
     checkIfHaveItem(itemsHTML);
     removeClasses();
@@ -121,12 +122,12 @@ const showProducts = catId => {
 const allPromotions = () => {
     clearItems('promotions');
     let promoItems = '';
+    const cartCache = JSON.parse(localStorage.getItem('cart')) || [];
     products.forEach(prod=>{
         if(prod.lastPrice && prod.lastPrice!=0){
             let price=Number(prod.price).toFixed(2).replace('.', ',');
             let lastPrice=Number(prod.lastPrice).toFixed(2).replace('.', ',');
-            const cart = JSON.parse(localStorage.getItem('cart')) || [];
-            const inCart = cart.find(i => i.id === prod.id);
+            const inCart = cartCache.find(i => i.id === prod.id);
             const qtd = inCart ? inCart.qtd || 1 : 0;
             const btnHTML = qtd > 0
               ? '<button class="btn btn-minus" onclick="removeFromCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:minus"></span></button><span class="cart-qty">' + qtd + '</span><button class="btn btn-plus" onclick="addToCart(' + prod.id + ',event)"><span class="iconify-inline" data-icon="mdi:plus"></span></button>'
@@ -238,7 +239,17 @@ async function atualizarStatusBar(){
     }
 }
 atualizarStatusBar();
-setInterval(atualizarStatusBar,300000);
+var _statusBarTimer = setInterval(atualizarStatusBar,300000);
+
+// Pause status bar polling when tab hidden
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    if (_statusBarTimer) { clearInterval(_statusBarTimer); _statusBarTimer = null; }
+  } else {
+    if (!_statusBarTimer) _statusBarTimer = setInterval(atualizarStatusBar, 300000);
+    atualizarStatusBar();
+  }
+});
 
 // Search filter
 document.addEventListener('DOMContentLoaded', function() {

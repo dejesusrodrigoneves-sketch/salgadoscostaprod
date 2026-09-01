@@ -99,7 +99,7 @@
               ${daysOverdue} dias de atraso
             </div>
             <div style="color: #7C7C6F; font-size: 12px; margin-top: 4px;">
-              Juros: R$ ${interest.toFixed(2)} (0,02%/dia)
+              Juros: R$ ${interest.toFixed(2)} (1%/dia)
             </div>
             <div style="color: #FFFCE1; font-weight: 700; font-size: 16px; margin-top: 8px;">
               Total: R$ ${totalDue.toFixed(2)}

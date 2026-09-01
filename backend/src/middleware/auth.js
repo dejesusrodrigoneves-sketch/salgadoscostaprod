@@ -2,6 +2,33 @@ const tokenService = require('../services/tokenService');
 const auditService = require('../services/auditService');
 const sql = require('../repositories/sqlRepository');
 
+// Lazy-load ESM cache module
+let empresaCache = null;
+async function getEmpresaCache() {
+  if (!empresaCache) {
+    empresaCache = await import('../config/empresaCache.js');
+  }
+  return empresaCache;
+}
+
+// JWT decode cache — avoids repeated verify for same token within TTL
+const TOKEN_CACHE_TTL = 60 * 1000; // 1 minute
+const tokenDecodeCache = new Map();
+
+function cachedVerify(token) {
+  const entry = tokenDecodeCache.get(token);
+  if (entry && Date.now() - entry.ts < TOKEN_CACHE_TTL) {
+    return entry.decoded;
+  }
+  const decoded = tokenService.verificarToken(token);
+  // Evict if cache grows too large (>500 entries)
+  if (tokenDecodeCache.size > 500) {
+    tokenDecodeCache.clear();
+  }
+  tokenDecodeCache.set(token, { decoded, ts: Date.now() });
+  return decoded;
+}
+
 async function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -9,8 +36,8 @@ async function authenticate(req, res, next) {
   }
   try {
     const token = authHeader.split(' ')[1];
-    const decoded = tokenService.verificarToken(token);
-    if (!decoded.role || !['superadmin', 'admin', 'user'].includes(decoded.role)) {
+    const decoded = cachedVerify(token);
+    if (!decoded.role || !['superadmin', 'admin', 'user', 'entregador'].includes(decoded.role)) {
       return res.status(401).json({ error: 'Token inválido' });
     }
     if (!decoded.id) {
@@ -35,9 +62,10 @@ async function authenticate(req, res, next) {
 
     req.user = decoded;
 
-    // Verificar se empresa está deletada
+    // Verificar se empresa está deletada (usando cache)
     if (decoded.empresaId) {
-      const empresa = await sql.buscarEmpresa(decoded.empresaId);
+      const cache = await getEmpresaCache();
+      const empresa = await cache.getEmpresaFromIdCache(decoded.empresaId);
       if (empresa && empresa.deletedAt) {
         return res.status(403).json({ error: 'Empresa inativa' });
       }

@@ -74,16 +74,39 @@ async function payController(req, res) {
       return res.status(400).json({ error: 'Cliente Asaas não cadastrado' });
     }
     
-    // Build Asaas checkout URL
-    const asaasUrl = process.env.ASAAS_API_KEY?.includes('production')
-      ? 'https://app.asaas.com'
-      : 'https://sandbox.asaas.com';
+    const subscription = await subscriptionService.getSubscriptionByEmpresaId(empresaId);
+    if (!subscription) return res.status(404).json({ error: 'Assinatura não encontrada' });
+    
+    // Calcular valor total com juros
+    const daysOverdue = subscriptionService.getDaysOverdue(subscription.nextDueDate);
+    const interest = subscriptionService.calculateInterest(subscription.value, daysOverdue);
+    const totalDue = Number(subscription.value) + interest;
+    
+    // Criar pagamento PIX com valor fixo (valor + juros)
+    const asaasClient = require('../services/asaasClient.js').default;
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+    
+    const pix = await asaasClient.criarPix({
+      customerId: empresa.asaasSubcontaId,
+      valor: totalDue,
+      descricao: daysOverdue > 0 
+        ? `Assinatura ${empresa.nome} (${daysOverdue} dias atraso + juros)`
+        : `Assinatura ${empresa.nome}`,
+      dueDate: dueDate.toISOString().slice(0, 10),
+    });
     
     res.json({ 
-      url: `${asaasUrl}/#/customer/${empresa.asaasSubcontaId}/payment`,
-      message: 'Link de pagamento gerado',
-      empresaId,
-      asaasCustomerId: empresa.asaasSubcontaId
+      pixCode: pix.pixCode,
+      pixQrCode: pix.pixQrCode,
+      expiresAt: pix.expiresAt,
+      value: Number(subscription.value),
+      interest,
+      totalDue,
+      daysOverdue,
+      message: daysOverdue > 0 
+        ? `QR Code gerado com R$ ${totalDue.toFixed(2)} (valor + ${daysOverdue} dias de juros)`
+        : 'QR Code PIX gerado',
     });
   } catch (e) {
     console.error('Subscription pay error:', e);

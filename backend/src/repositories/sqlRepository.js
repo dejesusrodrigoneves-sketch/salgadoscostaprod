@@ -1,10 +1,22 @@
 const prisma = require('../config/prisma');
+const pedidoRepository = require('./pedidoRepository');
+const empresaRepository = require('./empresaRepository');
 
 const sql = {
   // ---- Produtos ----
-  async listarProdutos(empresaId) {
+  async listarProdutos(empresaId, filtros = {}) {
     const where = {};
     if (empresaId) where.empresaId = empresaId;
+    if (filtros?.page) {
+      const page = Number(filtros.page) || 1;
+      const limit = Math.min(Number(filtros.limit) || 50, 100);
+      const skip = (page - 1) * limit;
+      const [items, total] = await Promise.all([
+        prisma.produto.findMany({ where, include: { category: true }, orderBy: { name: 'asc' }, skip, take: limit }),
+        prisma.produto.count({ where }),
+      ]);
+      return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    }
     return prisma.produto.findMany({ where, include: { category: true } });
   },
   async buscarProduto(id, empresaId) {
@@ -38,90 +50,19 @@ const sql = {
     return prisma.produto.delete({ where: { id: Number(id) } });
   },
 
-  // ---- Pedidos ----
-  async listarPedidos(empresaId, filtros = {}) {
-    const where = { deletedAt: null };
-    if (empresaId) where.empresaId = empresaId;
-    if (filtros?.status) where.status = filtros.status;
-    return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true } });
-  },
-  async listarPedidosFiltrados(empresaId, filtros = {}) {
-    const where = { deletedAt: null };
-    if (empresaId) where.empresaId = empresaId;
-
-    if (filtros?.status?.trim()) {
-      const statusList = filtros.status.split(',').map(s => s.trim()).filter(Boolean);
-      if (statusList.length === 1) where.status = statusList[0];
-      else if (statusList.length > 1) where.status = { in: statusList };
-    }
-
-    if (filtros?.paymentStatus?.trim()) {
-      const psList = filtros.paymentStatus.split(',').map(s => s.trim()).filter(Boolean);
-      if (psList.length === 1) where.paymentStatus = psList[0];
-      else if (psList.length > 1) where.paymentStatus = { in: psList };
-    }
-
-    const hasValidFrom = filtros?.createdAtFrom && !isNaN(Date.parse(filtros.createdAtFrom));
-    const hasValidTo = filtros?.createdAtTo && !isNaN(Date.parse(filtros.createdAtTo));
-
-    if (hasValidFrom || hasValidTo) {
-      where.createdAt = {};
-      if (hasValidFrom) where.createdAt.gte = new Date(filtros.createdAtFrom);
-      if (hasValidTo) where.createdAt.lte = new Date(filtros.createdAtTo);
-    }
-
-    const order = (filtros?.order === 'asc') ? 'asc' : 'desc';
-    return prisma.pedido.findMany({ where, orderBy: { createdAt: order }, include: { itens: true } });
-  },
-  async buscarPedido(id, empresaId) {
-    const where = { id, deletedAt: null };
-    if (empresaId) where.empresaId = empresaId;
-    return prisma.pedido.findUnique({ where, include: { itens: true } });
-  },
-  async buscarPedidoComItens(id, empresaId) {
-    const where = { id, deletedAt: null };
-    if (empresaId) where.empresaId = empresaId;
-    return prisma.pedido.findUnique({
-      where,
-      include: { itens: { include: { produto: { select: { name: true } } } } }
-    });
-  },
-  async listarPedidosPorIds(ids) {
-    return prisma.pedido.findMany({
-      where: { id: { in: ids }, deletedAt: null },
-      include: { itens: { include: { produto: { select: { name: true } } } } },
-    });
-  },
-  async criarPedido(data) {
-    const payload = { ...data };
-    if (Array.isArray(data.itens)) {
-      const produtoIds = data.itens.map(i => Number(i.produtoId));
-      const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds } } });
-      const produtoMap = new Map(produtos.map(p => [p.id, p]));
-
-      let valoresItens = 0;
-      payload.itens = { create: [] };
-      for (const item of data.itens) {
-        const produto = produtoMap.get(Number(item.produtoId));
-        const preco = Number(produto ? produto.price : 0);
-        const qtd = Number(item.quantidade) || 1;
-        valoresItens += preco * qtd;
-        payload.itens.create.push({
-          produtoId: Number(item.produtoId),
-          quantidade: qtd,
-          precoUnitario: preco,
-          sabores: item.sabores || null,
-        });
-      }
-      if (data.valoresItens === undefined || data.valoresItens === null) {
-        payload.valoresItens = valoresItens;
-      }
-    }
-    return prisma.pedido.create({ data: payload, include: { itens: true } });
-  },
-  async atualizarPedido(id, data) {
-    return prisma.pedido.update({ where: { id }, data });
-  },
+  // ---- Pedidos (delegated to pedidoRepository) ----
+  async listarPedidos(empresaId, filtros) { return pedidoRepository.listarPedidos(empresaId, filtros); },
+  async listarPedidosFiltrados(empresaId, filtros) { return pedidoRepository.listarPedidosFiltrados(empresaId, filtros); },
+  async buscarPedido(id, empresaId) { return pedidoRepository.buscarPedido(id, empresaId); },
+  async buscarPedidoComItens(id, empresaId) { return pedidoRepository.buscarPedidoComItens(id, empresaId); },
+  async listarPedidosPorIds(ids) { return pedidoRepository.listarPedidosPorIds(ids); },
+  async criarPedido(data) { return pedidoRepository.criarPedido(data); },
+  async atualizarPedido(id, data) { return pedidoRepository.atualizarPedido(id, data); },
+  async listarNaoConcluidos(empresaId, filtros) { return pedidoRepository.listarNaoConcluidos(empresaId, filtros); },
+  async hardDeletePedidos(ids) { return pedidoRepository.hardDeletePedidos(ids); },
+  async listarParaLimpeza(dias) { return pedidoRepository.listarParaLimpeza(dias); },
+  async marcarPedidosArquivados(empresaId, weekStart, weekEnd) { return pedidoRepository.marcarPedidosArquivados(empresaId, weekStart, weekEnd); },
+  async buscarPedidosPagosNoPeriodo(empresaId, weekStart, weekEnd) { return pedidoRepository.buscarPedidosPagosNoPeriodo(empresaId, weekStart, weekEnd); },
 
   // ---- Webhooks / Pagamentos ----
   async buscarEventoWebhook(eventId) {
@@ -141,9 +82,19 @@ const sql = {
   },
 
   // ---- Entregadores ----
-  async listarEntregadores(empresaId) {
+  async listarEntregadores(empresaId, filtros = {}) {
     const where = {};
     if (empresaId) where.empresaId = empresaId;
+    if (filtros?.page) {
+      const page = Number(filtros.page) || 1;
+      const limit = Math.min(Number(filtros.limit) || 50, 100);
+      const skip = (page - 1) * limit;
+      const [items, total] = await Promise.all([
+        prisma.entregador.findMany({ where, skip, take: limit }),
+        prisma.entregador.count({ where }),
+      ]);
+      return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    }
     return prisma.entregador.findMany({ where });
   },
   async buscarEntregador(id) {
@@ -284,9 +235,19 @@ const sql = {
   },
 
   // ---- Clientes ----
-  async listarClientes(empresaId) {
+  async listarClientes(empresaId, filtros = {}) {
     const where = {};
     if (empresaId) where.empresaId = empresaId;
+    if (filtros?.page) {
+      const page = Number(filtros.page) || 1;
+      const limit = Math.min(Number(filtros.limit) || 50, 100);
+      const skip = (page - 1) * limit;
+      const [items, total] = await Promise.all([
+        prisma.cliente.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+        prisma.cliente.count({ where }),
+      ]);
+      return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    }
     return prisma.cliente.findMany({ where, orderBy: { createdAt: 'desc' } });
   },
   async buscarCliente(telefone, empresaId) {
@@ -326,47 +287,17 @@ const sql = {
     return prisma.cupom.update({ where: { codigo }, data });
   },
 
-  // ---- Empresas ----
-  async listarEmpresas() {
-    return prisma.empresa.findMany({ include: { _count: { select: { usuarios: true, produtos: true, pedidos: true } } } });
-  },
-  async buscarEmpresa(id) {
-    return prisma.empresa.findUnique({ where: { id } });
-  },
-  async buscarEmpresaPorSlug(slug) {
-    return prisma.empresa.findUnique({ where: { slug } });
-  },
-  async buscarEmpresaByEmail(email) {
-    return prisma.empresa.findFirst({ where: { email } });
-  },
-  async atualizarEmpresa(id, data) {
-    return prisma.empresa.update({ where: { id }, data });
-  },
-  async criarEmpresa(data) {
-    return prisma.empresa.create({ data });
-  },
-  async deletarEmpresa(id) {
-    return prisma.empresa.delete({ where: { id } });
-  },
-
-  // ---- Pedidos (soft-delete helpers) ----
-  async listarNaoConcluidos(empresaId, filtros = {}) {
-    const where = { paymentStatus: { in: ['expirado', 'rejeitado'] }, deletedAt: null };
-    if (empresaId) where.empresaId = empresaId;
-    if (filtros?.status) where.status = filtros.status;
-    return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true, pagamentos: true } });
-  },
-  async hardDeletePedidos(ids) {
-    return prisma.$transaction(ids.map(id => prisma.pedido.delete({ where: { id } })));
-  },
-  async listarParaLimpeza(dias = 30) {
-    const cutoff = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
-    return prisma.pedido.findMany({
-      where: { deletedAt: { lt: cutoff } },
-      select: { id: true, paymentStatus: true, deletedAt: true, total: true, clienteNome: true },
-      orderBy: { deletedAt: 'asc' }
-    });
-  },
+  // ---- Empresas (delegated to empresaRepository) ----
+  async listarEmpresas() { return empresaRepository.listarEmpresas(); },
+  async buscarEmpresa(id) { return empresaRepository.buscarEmpresa(id); },
+  async buscarEmpresaPorSlug(slug) { return empresaRepository.buscarEmpresaPorSlug(slug); },
+  async buscarEmpresaByEmail(email) { return empresaRepository.buscarEmpresaByEmail(email); },
+  async atualizarEmpresa(id, data) { return empresaRepository.atualizarEmpresa(id, data); },
+  async criarEmpresa(data) { return empresaRepository.criarEmpresa(data); },
+  async deletarEmpresa(id) { return empresaRepository.deletarEmpresa(id); },
+  async softDeleteEmpresa(id) { return empresaRepository.softDeleteEmpresa(id); },
+  async hardDeleteEmpresa(id) { return empresaRepository.hardDeleteEmpresa(id); },
+  async listarEmpresasAtivas() { return empresaRepository.listarEmpresasAtivas(); },
 
   // ---- Settlements ----
   async criarSettlement(data) {
@@ -404,60 +335,8 @@ const sql = {
       where: { empresaId, status: { in: ['processando', 'pendente'] } },
     });
   },
-  async marcarPedidosArquivados(empresaId, weekStart, weekEnd) {
-    return prisma.pedido.updateMany({
-      where: {
-        empresaId,
-        status: 'pago',
-        semanaNoAcervo: false,
-        createdAt: { gte: weekStart, lte: weekEnd },
-      },
-      data: { semanaNoAcervo: true },
-    });
-  },
-  async buscarPedidosPagosNoPeriodo(empresaId, weekStart, weekEnd) {
-    return prisma.pedido.findMany({
-      where: {
-        empresaId,
-        status: 'pago',
-        createdAt: { gte: weekStart, lte: weekEnd },
-      },
-      select: { id: true, total: true, createdAt: true },
-    });
-  },
-  // ---- Empresa soft/hard delete ----
-  async softDeleteEmpresa(id) {
-    return prisma.empresa.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-  },
-  async hardDeleteEmpresa(id) {
-    const empresaId = Number(id);
-    await prisma.$transaction([
-      prisma.loginLog.deleteMany({ where: { usuario: { empresaId } } }),
-      prisma.auditLog.deleteMany({ where: { actorId: empresaId } }),
-      prisma.processedWebhook.deleteMany({ where: {} }),
-      prisma.whatsAppInstance.deleteMany({ where: { empresaId } }),
-      prisma.entregaDiaria.deleteMany({ where: { pedido: { empresaId } } }),
-      prisma.itensPedido.deleteMany({ where: { pedido: { empresaId } } }),
-      prisma.pagamento.deleteMany({ where: { pedido: { empresaId } } }),
-      prisma.pedido.deleteMany({ where: { empresaId } }),
-      prisma.weeklySettlement.deleteMany({ where: { empresaId } }),
-      prisma.caixaDiario.deleteMany({ where: { empresaId } }),
-      prisma.horario.deleteMany({ where: { empresaId } }),
-      prisma.cupom.deleteMany({ where: { empresaId } }),
-      prisma.produto.deleteMany({ where: { empresaId } }),
-      prisma.categoria.deleteMany({ where: { empresaId } }),
-      prisma.usuario.deleteMany({ where: { empresaId } }),
-      prisma.cliente.deleteMany({ where: { empresaId } }),
-      prisma.counter.deleteMany({ where: { empresaId } }),
-      prisma.empresa.delete({ where: { id: empresaId } }),
-    ]);
-  },
-  async listarEmpresasAtivas() {
-    return prisma.empresa.findMany({ where: { deletedAt: null } });
-  },
 };
 
+sql.pedidoRepository = pedidoRepository;
+sql.empresaRepository = empresaRepository;
 module.exports = sql;

@@ -79,3 +79,21 @@ exports.refreshToken = asyncHandler(async (req, res) => {
   const newRefreshToken = tokenService.gerarRefreshToken(payload);
   res.json({ token: newToken, refreshToken: newRefreshToken });
 });
+
+exports.logout = asyncHandler(async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const { refreshToken } = req.body;
+
+  // Revoke access token
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    tokenService.revogarToken(token);
+  }
+
+  // Revoke refresh token
+  if (refreshToken) {
+    tokenService.revogarRefreshToken(refreshToken);
+  }
+
+  res.json({ success: true });
+});

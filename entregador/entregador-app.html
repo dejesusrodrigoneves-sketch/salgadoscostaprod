@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F26D3D">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Entregador</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/entregador.css">
+</head>
+<body>
+  <div class="app-container" id="app">
+    <!-- Offline bar -->
+    <div class="offline-bar" id="offlineBar">
+      <i class="bi bi-wifi-off"></i> Sem conexão — dados podem estar desatualizados
+    </div>
+
+    <!-- Header -->
+    <div class="app-header" id="appHeader">
+      <h1 id="headerTitle">Carregando...</h1>
+      <p id="headerSub"></p>
+    </div>
+
+    <!-- Content -->
+    <div class="app-content" id="appContent">
+      <!-- Loading skeleton -->
+      <div id="loadingView">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card" style="height:140px;"></div>
+      </div>
+
+      <!-- Pedidos view -->
+      <div id="pedidosView" class="hidden"></div>
+
+      <!-- Historico view -->
+      <div id="historicoView" class="hidden"></div>
+
+      <!-- Perfil view -->
+      <div id="perfilView" class="hidden"></div>
+
+      <!-- Change password view -->
+      <div id="senhaView" class="hidden"></div>
+
+      <!-- Empty state -->
+      <div id="emptyState" class="empty-state">
+        <div class="icon">📭</div>
+        <div class="title">Nenhum pedido hoje</div>
+        <div class="desc">Quando um pedido for atribuído a você, ele aparecerá aqui.</div>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <div class="bottom-nav" id="bottomNav">
+      <button class="nav-tab active" data-screen="pedidos"><i class="bi bi-box-seam"></i>Pedidos</button>
+      <button class="nav-tab" data-screen="historico"><i class="bi bi-clock-history"></i>Histórico</button>
+      <button class="nav-tab" data-screen="perfil"><i class="bi bi-person"></i>Perfil</button>
+    </div>
+
+    <!-- Confirmation modal (full screen) -->
+    <div class="modal-full" id="confirmModal">
+      <div class="modal-header">
+        <button class="btn-back" id="confirmBack"><i class="bi bi-arrow-left"></i></button>
+        <h2>Confirmar Entrega</h2>
+      </div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="confirmBtn" style="margin-bottom:10px;">
+          <i class="bi bi-check-circle"></i> Confirmar Entrega
+        </button>
+        <button class="btn-secondary" id="confirmCancel">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/orders.js"></script>
+  <script src="js/confirm.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/push.js"></script>
+  <script src="js/offline.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

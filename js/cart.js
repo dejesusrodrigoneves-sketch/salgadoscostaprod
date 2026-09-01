@@ -842,11 +842,6 @@ async function generateOrder() {
   btnGenerateOrder.disabled = true;
   btnGenerateOrder.textContent = "Gerando...";
 
-  function getProductsMap() {
-    var map = {};
-    (window.products || []).forEach(function(p) { map[String(p.id)] = p; });
-    return map;
-  }
   const productsMap = getProductsMap();
 
   function typeToText(type) {

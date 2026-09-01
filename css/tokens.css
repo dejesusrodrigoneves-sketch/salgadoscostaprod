@@ -47,6 +47,13 @@
   --radius-sm:   6px;
   --radius:      8px;
   --radius-lg:   16px;
+  --radius-xl:   24px;
+
+  /* Component Radius */
+  --r-pill:   100px;
+  --r-card:   var(--radius);
+  --r-btn:    var(--radius);
+  --r-tab:    var(--radius);
 
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
@@ -54,4 +61,33 @@
 
   /* Layout */
   --max-w: 1280px;
+}
+
+/* ─── ACCESSIBILITY: Focus Visible ─── */
+
+:focus-visible {
+  outline: 2px solid var(--primary, #F26D3D);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip to content link (hidden until focused) */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: var(--primary, #F26D3D);
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 9999;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 0 0 8px 0;
+}
+
+.skip-link:focus {
+  top: 0;
 }

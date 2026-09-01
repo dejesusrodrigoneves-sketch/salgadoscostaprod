@@ -2,8 +2,14 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
 <title id="dashboardTitle">Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -26,8 +32,8 @@
     <nav class="sidebar-nav" id="sidebarNav">
       <!-- Sections rendered by JS -->
     </nav>
-    <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Recolher menu">
-      <i class="fas fa-angles-left"></i>
+    <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Recolher menu" aria-label="Recolher menu lateral">
+      <i class="fas fa-angles-left" aria-hidden="true"></i>
     </button>
   </aside>
 
@@ -42,7 +48,7 @@
       </div>
       <div class="topbar-right">
         <span class="user-info" id="userInfo"><i class="fas fa-user-circle"></i> Admin</span>
-        <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        <button class="btn-logout" onclick="logout()" aria-label="Sair do sistema"><i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sair</button>
       </div>
     </header>
 
@@ -59,6 +65,7 @@
 <!-- Notification container -->
 <div class="notif-container" id="notifContainer"></div>
 
+<script src="js/utils.js"></script>
 <script>
 // Auth guard
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
@@ -250,7 +257,20 @@ function logout() {
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.querySelector('#confirmLogout').onclick = () => {
+  overlay.querySelector('#confirmLogout').onclick = async () => {
+    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (authUser.token || ''),
+        },
+        body: JSON.stringify({ refreshToken: authUser.refreshToken || '' }),
+      });
+    } catch (e) {
+      // Logout even if API call fails
+    }
     localStorage.clear();
     window.location.href = 'login.html';
   };
@@ -331,6 +351,9 @@ carregarNomeLoja();
 renderMenu();
 // Set initial iframe src based on role
 mainFrame.src = currentPage;
+
+// Start idle timeout
+if (typeof startIdleTimer === 'function') startIdleTimer();
 </script>
 <script src="js/theme.js" defer></script>
 <script src="js/subscriptionOverlay.js"></script>
