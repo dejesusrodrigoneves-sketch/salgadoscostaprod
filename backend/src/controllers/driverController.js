@@ -3,6 +3,7 @@ const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
 const { asyncHandler } = require('../middleware/errorHandler');
 const bcrypt = require('bcryptjs');
+const whatsappService = require('../services/whatsappService');
 
 function empresaId(req) {
   return req.ctx?.empresaId || req.user?.empresaId;
@@ -69,8 +70,31 @@ exports.criar = asyncHandler(async (req, res) => {
     changedFields: ['nome', 'whatsapp', 'ativo'],
   });
 
+  // Send password via WhatsApp (best-effort, don't fail the request)
+  let whatsappSent = false;
+  const destino = whatsapp || telefone;
+  if (destino) {
+    try {
+      const msg = [
+        `Olá ${nome}! 👋`,
+        ``,
+        `Seu acesso ao app de entregas foi criado:`,
+        ``,
+        `📱 Login: ${telefone}`,
+        `🔑 Senha provisória: *${provisionalPassword}*`,
+        ``,
+        `Abra o app e troque sua senha no primeiro acesso.`,
+        `Link: ${process.env.FRONTEND_URL || 'https://salgadoscosta.com'}/entregador`,
+      ].join('\n');
+      await whatsappService.enviarMensagem(destino, msg, eId);
+      whatsappSent = true;
+    } catch (err) {
+      console.error(`[driver] WhatsApp send failed for ${destino}:`, err.message);
+    }
+  }
+
   // Return entregador with provisional password (for admin to share via WhatsApp)
-  res.status(201).json({ ...entregador, provisionalPassword });
+  res.status(201).json({ ...entregador, provisionalPassword, whatsappSent });
 });
 
 exports.atualizar = asyncHandler(async (req, res) => {
