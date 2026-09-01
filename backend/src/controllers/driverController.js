@@ -165,3 +165,72 @@ exports.deletar = asyncHandler(async (req, res) => {
   await sql.deletarEntregador(req.params.id);
   res.json({ success: true });
 });
+
+exports.resetarSenha = asyncHandler(async (req, res) => {
+  const prisma = require('../config/prisma');
+  const eId = empresaId(req);
+  const { password, sendWhatsApp } = req.body;
+
+  // Validate password
+  if (!password) return res.status(400).json({ error: 'Senha obrigatória' });
+  if (password.length < 6) return res.status(400).json({ error: 'Senha deve ter no mínimo 6 caracteres' });
+  if (!/[A-Z]/.test(password)) return res.status(400).json({ error: 'Senha deve conter pelo menos uma letra maiúscula' });
+  if (!/[a-z]/.test(password)) return res.status(400).json({ error: 'Senha deve conter pelo menos uma letra minúscula' });
+  if (!/[0-9]/.test(password)) return res.status(400).json({ error: 'Senha deve conter pelo menos um número' });
+
+  const entregador = await prisma.entregador.findFirst({
+    where: { id: Number(req.params.id), empresaId: eId },
+  });
+  if (!entregador) return res.status(404).json({ error: 'Entregador não encontrado' });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // Update entregador + linked usuario
+  await prisma.entregador.update({
+    where: { id: entregador.id },
+    data: { passwordHash, mustChangePassword: true },
+  });
+  if (entregador.usuarioId) {
+    await prisma.usuario.update({
+      where: { id: entregador.usuarioId },
+      data: { passwordHash },
+    });
+  }
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'entregador.password_reset',
+    module: 'entregadores',
+    targetType: 'entregador',
+    targetId: entregador.id,
+    after: { nome: entregador.nome },
+    changedFields: ['passwordHash', 'mustChangePassword'],
+  });
+
+  // Send via WhatsApp (best-effort, only if sendWhatsApp is true)
+  let whatsappSent = false;
+  if (sendWhatsApp !== false) {
+    const destino = entregador.whatsapp || entregador.telefone;
+    if (destino) {
+      try {
+        const msg = [
+          `Olá ${entregador.nome}! 🔑`,
+          ``,
+          `Sua senha foi redefinida pelo administrador:`,
+          ``,
+          `📱 Login: ${entregador.telefone}`,
+          `🔑 Nova senha: *${password}*`,
+          ``,
+          `Abra o app e troque sua senha no próximo acesso.`,
+          `Link: ${process.env.FRONTEND_URL || 'https://salgadoscosta.com'}/entregador`,
+        ].join('\n');
+        await whatsappService.enviarMensagem(destino, msg, eId);
+        whatsappSent = true;
+      } catch (err) {
+        console.error(`[driver] WhatsApp send failed for ${destino}:`, err.message);
+      }
+    }
+  }
+
+  res.json({ success: true, whatsappSent });
+});
