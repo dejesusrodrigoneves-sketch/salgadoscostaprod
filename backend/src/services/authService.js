@@ -251,7 +251,7 @@ async function criarConta({ username, password, lojaNome, empresaId }, ctx = {})
   return { token, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
 }
 
-async function loginEntregador(telefone, password, empresaId, ip, userAgent, ctx = {}) {
+async function loginEntregador(username, password, empresaId, ip, userAgent, ctx = {}) {
   const base = {
     requestId: ctx.requestId || null,
     ip: ip || ctx.ip || null,
@@ -260,15 +260,19 @@ async function loginEntregador(telefone, password, empresaId, ip, userAgent, ctx
   };
 
   // Account lockout check
-  if (isLockedOut(telefone)) {
+  if (isLockedOut(username)) {
     throw Object.assign(new Error('Conta temporariamente bloqueada. Tente novamente em 15 minutos.'), { status: 429 });
   }
 
   const prisma = require('../config/prisma');
-  const entregador = await prisma.entregador.findFirst({
-    where: { telefone, empresaId, ativo: true },
-    include: { usuario: true },
+
+  // Find entregador by Usuario.username
+  const usuario = await prisma.usuario.findFirst({
+    where: { username, role: 'entregador' },
+    include: { entregador: true },
   });
+
+  const entregador = usuario?.entregador;
 
   if (!entregador || !entregador.passwordHash) {
     auditService.audit({
@@ -276,11 +280,11 @@ async function loginEntregador(telefone, password, empresaId, ip, userAgent, ctx
       action: 'auth.login_entregador_failed',
       module: 'auth',
       actorType: 'anon',
-      actorUsername: telefone,
+      actorUsername: username,
       severity: 'warning',
       reason: 'entregador_nao_encontrado',
     });
-    recordFailedAttempt(telefone);
+    recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
@@ -292,20 +296,20 @@ async function loginEntregador(telefone, password, empresaId, ip, userAgent, ctx
       module: 'auth',
       actorType: 'entregador',
       actorId: entregador.id,
-      actorUsername: telefone,
+      actorUsername: username,
       actorRole: 'entregador',
       severity: 'warning',
       reason: 'senha_incorreta',
     });
-    recordFailedAttempt(telefone);
+    recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
-  clearFailedAttempts(telefone);
+  clearFailedAttempts(username);
 
   const payload = {
     id: entregador.id,
-    username: telefone,
+    username,
     role: 'entregador',
     empresaId: entregador.empresaId,
     lojaNome: entregador.nome,
@@ -319,7 +323,7 @@ async function loginEntregador(telefone, password, empresaId, ip, userAgent, ctx
     module: 'auth',
     actorType: 'entregador',
     actorId: entregador.id,
-    actorUsername: telefone,
+    actorUsername: username,
     actorRole: 'entregador',
   });
 

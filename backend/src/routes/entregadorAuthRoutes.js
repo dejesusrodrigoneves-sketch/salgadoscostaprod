@@ -6,15 +6,15 @@ const { asyncHandler } = require('../middleware/errorHandler');
 
 const router = Router();
 
-// Login for entregador (phone + password)
+// Login for entregador (username + password)
 router.post('/login', authLimiter, asyncHandler(async (req, res) => {
-  const { telefone, password } = req.body;
-  if (!telefone || !password) {
-    return res.status(400).json({ error: 'telefone e password obrigatórios' });
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username e password obrigatórios' });
   }
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'];
-  const result = await authService.loginEntregador(telefone, password, req.ctx?.empresaId, ip, userAgent, {
+  const result = await authService.loginEntregador(username, password, req.ctx?.empresaId, ip, userAgent, {
     requestId: req.context?.requestId,
     ip: req.context?.ip,
     userAgent: req.context?.userAgent,
