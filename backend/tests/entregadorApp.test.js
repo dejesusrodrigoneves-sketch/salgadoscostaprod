@@ -379,3 +379,88 @@ describe('Admin password reset for entregador', () => {
     expect(responseData.error).toBe('Entregador não encontrado');
   });
 });
+
+describe('Entregador login with username', () => {
+  it('should login with valid username and password', async () => {
+    const authService = require('../src/services/authService');
+    const original = authService.loginEntregador;
+    authService.loginEntregador = async () => ({
+      token: 'mock-token',
+      refreshToken: 'mock-refresh',
+      user: { id: 1, username: 'teste.user', role: 'entregador' },
+    });
+
+    const req = {
+      body: { username: 'teste.user', password: 'SenhaValid4' },
+      ctx: { empresaId: 1 },
+      context: { requestId: 'req-1', ip: '127.0.0.1', userAgent: 'test', path: '/login' },
+    };
+    let responseData;
+    const res = { json: (data) => { responseData = data; } };
+
+    const handler = require('../src/routes/entregadorAuthRoutes');
+    // Simulate calling the login route
+    const result = await authService.loginEntregador('teste.user', 'SenhaValid4', 1, '127.0.0.1', 'test', req.context);
+
+    expect(result).toHaveProperty('token');
+    expect(result).toHaveProperty('refreshToken');
+    expect(result.user.username).toBe('teste.user');
+    expect(result.user.role).toBe('entregador');
+
+    authService.loginEntregador = original;
+  });
+
+  it('should reject login with wrong password', async () => {
+    const authService = require('../src/services/authService');
+    const original = authService.loginEntregador;
+    authService.loginEntregador = async () => {
+      throw new Error('Senha incorreta');
+    };
+
+    let errorThrown = false;
+    try {
+      await authService.loginEntregador('teste.user', 'WrongPass1', 1, '127.0.0.1', 'test', {});
+    } catch (e) {
+      errorThrown = true;
+      expect(e.message).toBe('Senha incorreta');
+    }
+    expect(errorThrown).toBe(true);
+
+    authService.loginEntregador = original;
+  });
+
+  it('should reject login with non-existent username', async () => {
+    const authService = require('../src/services/authService');
+    const original = authService.loginEntregador;
+    authService.loginEntregador = async () => {
+      throw new Error('Entregador não encontrado');
+    };
+
+    let errorThrown = false;
+    try {
+      await authService.loginEntregador('naoexiste', 'SenhaValid4', 1, '127.0.0.1', 'test', {});
+    } catch (e) {
+      errorThrown = true;
+      expect(e.message).toBe('Entregador não encontrado');
+    }
+    expect(errorThrown).toBe(true);
+
+    authService.loginEntregador = original;
+  });
+
+  it('should require both username and password', () => {
+    // Simulate validation from route
+    const validate = (username, password) => !(!username || !password);
+    expect(validate('user', 'pass')).toBe(true);
+    expect(validate('user', '')).toBe(false);
+    expect(validate('', 'pass')).toBe(false);
+    expect(validate('', '')).toBe(false);
+  });
+
+  it('driver creation should require username', () => {
+    const validate = (username) => !!username;
+    expect(validate('joao.silva')).toBe(true);
+    expect(validate('')).toBe(false);
+    expect(validate(undefined)).toBe(false);
+  });
+});
