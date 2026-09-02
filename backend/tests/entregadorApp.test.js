@@ -171,7 +171,7 @@ describe('WhatsApp fallback on driver creation', () => {
 
     const prisma = require('../src/config/prisma');
     const mockEntregador = { id: 999, nome: 'Teste', telefone: '11999999999', whatsapp: '11999999999', ativo: true };
-    const mockUsuario = { id: 999, username: '11999999999', role: 'entregador' };
+    const mockUsuario = { id: 999, username: 'teste.user', role: 'entregador' };
 
     prisma.entregador = {
       create: async () => mockEntregador,
@@ -180,12 +180,13 @@ describe('WhatsApp fallback on driver creation', () => {
     };
     prisma.usuario = {
       create: async () => mockUsuario,
+      findUnique: async () => null,
     };
 
     const driverController = require('../src/controllers/driverController');
 
     const req = {
-      body: { nome: 'Teste', telefone: '11999999999', whatsapp: '11999999999' },
+      body: { nome: 'Teste', username: 'teste.user', telefone: '11999999999', whatsapp: '11999999999' },
       ctx: { empresaId: 1 },
       user: { empresaId: 1 },
     };
@@ -210,7 +211,7 @@ describe('WhatsApp fallback on driver creation', () => {
 
     const prisma = require('../src/config/prisma');
     const mockEntregador = { id: 998, nome: 'Teste2', telefone: '11888888888', whatsapp: '11888888888', ativo: true };
-    const mockUsuario = { id: 998, username: '11888888888', role: 'entregador' };
+    const mockUsuario = { id: 998, username: 'teste2.user', role: 'entregador' };
 
     prisma.entregador = {
       create: async () => mockEntregador,
@@ -219,12 +220,13 @@ describe('WhatsApp fallback on driver creation', () => {
     };
     prisma.usuario = {
       create: async () => mockUsuario,
+      findUnique: async () => null,
     };
 
     const driverController = require('../src/controllers/driverController');
 
     const req = {
-      body: { nome: 'Teste2', telefone: '11888888888', whatsapp: '11888888888' },
+      body: { nome: 'Teste2', username: 'teste2.user', telefone: '11888888888', whatsapp: '11888888888' },
       ctx: { empresaId: 1 },
       user: { empresaId: 1 },
     };

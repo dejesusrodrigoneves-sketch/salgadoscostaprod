@@ -22,8 +22,17 @@ exports.listar = asyncHandler(async (req, res) => {
 
 exports.criar = asyncHandler(async (req, res) => {
   const prisma = require('../config/prisma');
-  const { nome, telefone, whatsapp, endereco, chavePix } = req.body;
+  const { nome, telefone, whatsapp, endereco, chavePix, username } = req.body;
   const eId = empresaId(req);
+
+  // Validate username
+  if (!username) return res.status(400).json({ error: 'Username obrigatório' });
+  if (username.length < 3) return res.status(400).json({ error: 'Username deve ter no mínimo 3 caracteres' });
+  if (/\s/.test(username)) return res.status(400).json({ error: 'Username não pode conter espaços' });
+
+  // Check if username already exists
+  const existingUser = await prisma.usuario.findUnique({ where: { username } });
+  if (existingUser) return res.status(409).json({ error: 'Username já existe' });
 
   // Generate provisional password (format: SIC-XXXX)
   const provisionalPassword = 'SIC-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -33,6 +42,7 @@ exports.criar = asyncHandler(async (req, res) => {
   const entregador = await prisma.entregador.create({
     data: {
       nome,
+      username,
       telefone,
       whatsapp,
       endereco,
@@ -46,7 +56,7 @@ exports.criar = asyncHandler(async (req, res) => {
   // Auto-create Usuario with role 'entregador'
   const usuario = await prisma.usuario.create({
     data: {
-      username: telefone,
+      username,
       passwordHash,
       role: 'entregador',
       lojaNome: nome,
@@ -80,7 +90,7 @@ exports.criar = asyncHandler(async (req, res) => {
         ``,
         `Seu acesso ao app de entregas foi criado:`,
         ``,
-        `📱 Login: ${telefone}`,
+        `📱 Login: ${username}`,
         `🔑 Senha provisória: *${provisionalPassword}*`,
         ``,
         `Abra o app e troque sua senha no primeiro acesso.`,
