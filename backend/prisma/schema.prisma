@@ -217,6 +217,7 @@ model Entregador {
   id                  Int             @id @default(autoincrement())
   empresaId           Int             @map("empresa_id")
   nome                String
+  username            String?         @unique
   telefone            String?
   endereco            String?
   whatsapp            String?
