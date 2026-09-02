@@ -72,6 +72,10 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
         <input type="text" id="inpWhatsapp" placeholder="21999999999">
       </div>
       <div class="form-group">
+        <label>Username (login)</label>
+        <input type="text" id="inpUsername" placeholder="Ex: joao.silva">
+      </div>
+      <div class="form-group">
         <label>Chave Pix</label>
         <input type="text" id="inpPix" placeholder="CPF, telefone ou e-mail">
       </div>
@@ -114,21 +118,23 @@ async function salvarEntregador() {
   const nome = document.getElementById('inpNome').value.trim();
   const endereco = document.getElementById('inpEndereco').value.trim();
   const whatsapp = document.getElementById('inpWhatsapp').value.trim();
+  const username = document.getElementById('inpUsername').value.trim();
   const chavePix = document.getElementById('inpPix').value.trim();
 
   if (!nome) { toast('Nome é obrigatório', 'danger'); return; }
+  if (!username) { toast('Username é obrigatório', 'danger'); return; }
 
   try {
     if (editandoEntregadorId) {
       await apiRequest('/entregadores/' + editandoEntregadorId, {
-        method: 'PUT', body: JSON.stringify({ nome, endereco, whatsapp, chavePix, ativo: true })
+        method: 'PUT', body: JSON.stringify({ nome, endereco, whatsapp, username, chavePix, ativo: true })
       });
       toast('Entregador atualizado!');
     } else {
       try {
         await apiRequest('/entregadores', {
           method: 'POST',
-          body: JSON.stringify({ nome, endereco, whatsapp, chavePix, ativo: true })
+          body: JSON.stringify({ nome, endereco, whatsapp, username, chavePix, ativo: true })
         });
       } catch(e) { toast('Erro ao cadastrar entregador', 'danger'); return; }
       toast('Entregador cadastrado!');
@@ -141,15 +147,17 @@ async function salvarEntregador() {
   document.getElementById('inpNome').value = '';
   document.getElementById('inpEndereco').value = '';
   document.getElementById('inpWhatsapp').value = '';
+  document.getElementById('inpUsername').value = '';
   document.getElementById('inpPix').value = '';
   editandoEntregadorId = null;
   document.querySelector('.sidebar h3').textContent = 'Cadastrar Entregador';
 }
 
-function editarEntregador(id, nome, endereco, whatsapp, chavePix) {
+function editarEntregador(id, nome, endereco, whatsapp, username, chavePix) {
   document.getElementById('inpNome').value = nome;
   document.getElementById('inpEndereco').value = endereco || '';
   document.getElementById('inpWhatsapp').value = whatsapp || '';
+  document.getElementById('inpUsername').value = username || '';
   document.getElementById('inpPix').value = chavePix || '';
   editandoEntregadorId = id;
   document.querySelector('.sidebar h3').textContent = 'Editar Entregador';
@@ -238,12 +246,13 @@ async function carregarEntregadores() {
       <div class="driver-card ${ativo ? '' : 'inactive'}">
         <h4>${nome} <span class="badge ${ativo ? 'badge-active' : 'badge-inactive'}">${ativo ? 'Ativo' : 'Inativo'}</span></h4>
         <div class="info">
-          ${d.endereco ? `<span>\ud83d\udccd ${d.endereco}</span>` : ''}
-          ${d.whatsapp ? `<span>\ud83d\udcf1 ${d.whatsapp}</span>` : ''}
-          ${d.chavePix ? `<span>\ud83d\udcb3 Pix: ${d.chavePix}</span>` : ''}
+          ${d.username ? `<span>👤 ${d.username}</span>` : ''}
+          ${d.endereco ? `<span>📍 ${d.endereco}</span>` : ''}
+          ${d.whatsapp ? `<span>📱 ${d.whatsapp}</span>` : ''}
+          ${d.chavePix ? `<span>💳 Pix: ${d.chavePix}</span>` : ''}
         </div>
         <div class="actions">
-          <button class="btn btn-sm btn-ghost" aria-label="Editar entregador" onclick="editarEntregador('${id}', '${nome.replace(/'/g, "\\'")}', '${(d.endereco||'').replace(/'/g, "\\'")}', '${(d.whatsapp||'').replace(/'/g, "\\'")}', '${(d.chavePix||'').replace(/'/g, "\\'")}')"><i class="fas fa-pen"></i></button>
+          <button class="btn btn-sm btn-ghost" aria-label="Editar entregador" onclick="editarEntregador('${id}', '${nome.replace(/'/g, "\\'")}', '${(d.endereco||'').replace(/'/g, "\\'")}', '${(d.whatsapp||'').replace(/'/g, "\\'")}', '${(d.username||'').replace(/'/g, "\\'")}', '${(d.chavePix||'').replace(/'/g, "\\'")}')"><i class="fas fa-pen"></i></button>
           <button class="btn btn-sm ${ativo ? 'btn-ghost' : 'btn-success'}" onclick="toggleAtivo('${id}', ${!ativo})">
             ${ativo ? 'Desativar' : 'Ativar'}
           </button>
