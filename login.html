@@ -40,6 +40,12 @@
           <label for="loginPass">Senha</label>
           <input type="password" id="loginPass" placeholder="Sua senha" required autocomplete="current-password" aria-required="true">
         </div>
+        <div class="form-group" style="margin-top: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer;">
+            <input type="checkbox" id="chkEntregador" style="width: 18px; height: 18px;">
+            Sou entregador
+          </label>
+        </div>
         <button type="submit" class="btn btn-primary" id="btnLogin" aria-label="Entrar no sistema">
           <span class="spinner-btn"></span> Entrar <i class="fas fa-arrow-right" aria-hidden="true"></i>
         </button>
@@ -54,19 +60,18 @@
 </div>
 
 <script>
-// Nota: superadmin é validado via Firestore (coleção 'usuarios')
-// A senha NÃO deve ser hardcoded no frontend — consulte o admin do sistema
-
-function switchTab() { /* no-op: register disabled in multi-tenant mode */ }
+// Handle ?entregador=1 parameter
+const params = new URLSearchParams(window.location.search);
+if (params.get('entregador') === '1') {
+  document.getElementById('chkEntregador').checked = true;
+}
 
 // ========== LOGIN ==========
-// Sistema de login administrativo (coleção 'usuarios' no Firestore).
-// O login de clientes (público) fica em index.html + menu.js (coleção 'users').
-// Futuramente ambos serão unificados via backend API.
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value.trim();
+  const isEntregador = document.getElementById('chkEntregador').checked;
   const error = document.getElementById('loginError');
   const btn = document.getElementById('btnLogin');
 
@@ -78,21 +83,36 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/auth/login', {
+    const endpoint = isEntregador ? '/api/entregador/auth/login' : '/api/auth/login';
+    const body = { username: user, password: pass };
+
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: user, password: pass }),
+      body: JSON.stringify(body),
     });
 
     if (res.ok) {
       const data = await res.json();
-      localStorage.setItem('authUser', JSON.stringify({
-        ...data.user,
-        token: data.token,
-        refreshToken: data.refreshToken,
-        _expiry: Date.now() + 30 * 60 * 1000,  // 30 minutes
-      }));
-      window.location.href = 'dashboard.html';
+      if (isEntregador) {
+        localStorage.setItem('entregador_token', data.token);
+        localStorage.setItem('entregador_refresh', data.refreshToken);
+        localStorage.setItem('entregador_user', JSON.stringify(data.user));
+        localStorage.setItem('entregador_expiry', String(Date.now() + 30 * 60 * 1000));
+        if (data.mustChangePassword) {
+          window.location.href = 'entregador/entregador-app.html#/senha';
+        } else {
+          window.location.href = 'entregador/entregador-app.html';
+        }
+      } else {
+        localStorage.setItem('authUser', JSON.stringify({
+          ...data.user,
+          token: data.token,
+          refreshToken: data.refreshToken,
+          _expiry: Date.now() + 30 * 60 * 1000,
+        }));
+        window.location.href = 'dashboard.html';
+      }
       return;
     }
 
@@ -109,13 +129,20 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   }
 });
 
-// ========== AUTO CHECK FOR SUPER ADMIN SESSION ==========
+// ========== AUTO CHECK FOR SESSION ==========
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 if (authUser) {
-  // Already logged in, redirect
   const target = 'dashboard.html';
   if (window.location.pathname.includes('login.html') || window.location.pathname === '/login') {
     window.location.href = target;
+  }
+}
+
+const entregadorToken = localStorage.getItem('entregador_token');
+const entregadorExpiry = localStorage.getItem('entregador_expiry');
+if (entregadorToken && entregadorExpiry && Date.now() < Number(entregadorExpiry)) {
+  if (window.location.pathname.includes('login.html') || window.location.pathname === '/login') {
+    window.location.href = 'entregador/entregador-app.html';
   }
 }
 </script>
