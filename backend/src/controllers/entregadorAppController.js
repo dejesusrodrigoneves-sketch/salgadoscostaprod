@@ -71,8 +71,9 @@ exports.registrarPushToken = asyncHandler(async (req, res) => {
     return res.status(400).json({ error: 'fcmToken é obrigatório' });
   }
   const prisma = require('../config/prisma');
+  const entregadorId = req.entregador?.id || req.user.id;
   await prisma.entregador.update({
-    where: { id: req.user.id },
+    where: { id: Number(entregadorId) },
     data: { fcmToken },
   });
   res.json({ success: true });
@@ -80,8 +81,9 @@ exports.registrarPushToken = asyncHandler(async (req, res) => {
 
 exports.removerPushToken = asyncHandler(async (req, res) => {
   const prisma = require('../config/prisma');
+  const entregadorId = req.entregador?.id || req.user.id;
   await prisma.entregador.update({
-    where: { id: req.user.id },
+    where: { id: Number(entregadorId) },
     data: { fcmToken: null },
   });
   res.json({ success: true });
