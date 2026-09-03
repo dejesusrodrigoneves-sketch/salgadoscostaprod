@@ -7,6 +7,7 @@ const prisma = require('./config/prisma');
 const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
 const { authenticate, authorize } = require('./middleware/auth');
+const validateEntregadorEmpresa = require('./middleware/validateEntregadorEmpresa');
 const contextMiddleware = require('./middleware/context');
 const resolveEmpresa = require('./middleware/resolveEmpresa').resolveEmpresa;
 
@@ -120,7 +121,7 @@ app.use('/api/admin/dashboard', superadminDashboardRoutes);
 app.use('/api', subscriptionRoutes);
 app.use('/api', pricingRoutes);
 app.use('/api/entregador/auth', entregadorAuthRoutes);
-app.use('/api/entregador', authenticate, authorize('entregador'), entregadorAppRoutes);
+app.use('/api/entregador', authenticate, authorize('entregador'), validateEntregadorEmpresa, entregadorAppRoutes);
 
 app.get('/health', async (req, res) => {
   try {

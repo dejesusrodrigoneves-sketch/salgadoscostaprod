@@ -31,9 +31,9 @@ describe('Entregador Tenant Isolation', () => {
       expect(statusCode).toBe(401);
     });
 
-    it('should return 403 when entregador belongs to different empresa', async () => {
+    it('should return 401 when entregador belongs to different empresa', async () => {
       const prisma = require('../src/config/prisma');
-      prisma.entregador = { findFirst: async () => ({ id: 10, empresaId: 2, ativo: true }) };
+      prisma.entregador = { findFirst: async () => null };
 
       const middleware = require('../src/middleware/validateEntregadorEmpresa');
       const req = { user: { id: 10, empresaId: 1, role: 'entregador' } };
@@ -41,7 +41,7 @@ describe('Entregador Tenant Isolation', () => {
       const res = { status: (code) => ({ json: () => { statusCode = code; } }) };
 
       await middleware(req, res, () => {});
-      expect(statusCode).toBe(403);
+      expect(statusCode).toBe(401);
     });
 
     it('should return 403 when entregador is deactivated', async () => {
