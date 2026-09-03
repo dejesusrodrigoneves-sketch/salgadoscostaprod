@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const prisma = require('./config/prisma');
 const { errorHandler } = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimit');
-const { authenticate } = require('./middleware/auth');
+const { authenticate, authorize } = require('./middleware/auth');
 const contextMiddleware = require('./middleware/context');
 const resolveEmpresa = require('./middleware/resolveEmpresa').resolveEmpresa;
 
