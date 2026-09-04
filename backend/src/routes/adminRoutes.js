@@ -26,4 +26,11 @@ router.delete('/clientes/:id', clientAdminController.deletar);
 
 router.delete('/empresa/:id/payment', adminController.deactivatePayment);
 
+// Rotas de filiais
+router.post('/filiais', adminController.criarFilial);
+router.get('/empresas/:id/filiais', adminController.listarFiliais);
+router.put('/empresas/:id/parent', adminController.atualizarParent);
+router.put('/empresas/:id/theme/pending', adminController.enviarTemaPendente);
+router.put('/empresas/:id/theme/approve', adminController.aprovarTema);
+
 module.exports = router;

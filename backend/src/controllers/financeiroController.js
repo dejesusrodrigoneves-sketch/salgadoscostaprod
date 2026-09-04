@@ -14,6 +14,25 @@ exports.balance = asyncHandler(async (req, res) => {
   res.json(await financialDashboardService.balanco(empId, { desde, ate, plataforma }));
 });
 
+exports.consolidated = asyncHandler(async (req, res) => {
+  const empId = empresaId(req) || (req.user.role === 'superadmin' ? Number(req.query.empresaId) : null);
+  if (!empId) return res.status(400).json({ error: 'empresaId obrigatório' });
+
+  // Verificar se é matriz ou superadmin
+  const prisma = require('../config/prisma.js');
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: Number(empId) },
+    select: { empresaTipo: true },
+  });
+
+  if (req.user.role !== 'superadmin' && empresa?.empresaTipo !== 'matriz') {
+    return res.status(403).json({ error: 'Acesso negado: só matrizes ou superadmin' });
+  }
+
+  const { desde, ate, plataforma } = req.query;
+  res.json(await financialDashboardService.balancoConsolidado(empId, { desde, ate, plataforma }));
+});
+
 exports.entries = asyncHandler(async (req, res) => {
   const empId = empresaId(req);
   if (!empId) return res.status(400).json({ error: 'empresaId obrigatório' });

@@ -68,6 +68,12 @@ model Empresa {
    nextDueDate          DateTime? @map("next_due_date")
    subscription         Subscription?
    deletedAt DateTime?
+   parentEmpresaId         Int?      @map("parent_empresa_id")
+   parentEmpresa           Empresa?  @relation("EmpresaFilial", fields: [parentEmpresaId], references: [id])
+   filiais                 Empresa[] @relation("EmpresaFilial")
+   empresaTipo             String    @default("independente") @map("empresa_tipo")
+   pendingThemeSettings    Json?     @map("pending_theme_settings")
+   themeApproved           Boolean   @default(true) @map("theme_approved")
 
    @@map("empresas")
 }
@@ -93,7 +99,7 @@ model Usuario {
   role         String       @default("user")
   createdAt    DateTime     @default(now()) @map("criado_em")
   empresa      Empresa      @relation(fields: [empresaId], references: [id])
-  entregador   Entregador?  @relation(fields: [id], references: [usuarioId])
+   entregador   Entregador?
 
   @@unique([username])
   @@map("usuarios")

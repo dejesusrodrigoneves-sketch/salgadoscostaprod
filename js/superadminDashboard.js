@@ -113,6 +113,134 @@
     }
   }
 
+  // ---- Filiais ----
+
+  async function carregarFiliais() {
+    var tbody = document.getElementById('filiaisTableBody');
+    if (!tbody) return;
+    
+    try {
+      var empresas = await apiFetch('/api/admin/empresas');
+      var matrizes = empresas.filter(function(e) { return e.empresaTipo === 'matriz' || (e.filiais && e.filiais.length > 0); });
+      
+      tbody.innerHTML = '';
+      if (matrizes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#7C7C6F;">Nenhuma matriz encontrada</td></tr>';
+        return;
+      }
+      
+      for (var i = 0; i < matrizes.length; i++) {
+        var matriz = matrizes[i];
+        var filiais = await apiFetch('/api/admin/empresas/' + matriz.id + '/filiais');
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' +
+          '<div class="empresa-name">' + escapeHtml(matriz.nome) + '</div>' +
+          '<div class="empresa-slug">' + escapeHtml(matriz.slug) + '</div>' +
+          '</td>' +
+          '<td>' + filiais.length + ' filial(is)</td>' +
+          '<td><span class="status-badge status-active">Matriz</span></td>' +
+          '<td><button onclick="expandirFiliais(' + matriz.id + ')" style="padding:4px 8px;border:1px solid #333;border-radius:4px;background:transparent;color:#fff;font-size:12px;"><i class="fas fa-eye"></i> Ver Filiais</button></td>';
+        tbody.appendChild(tr);
+        
+        for (var j = 0; j < filiais.length; j++) {
+          var filial = filiais[j];
+          var trFilial = document.createElement('tr');
+          trFilial.style.background = '#1a1a1a';
+          trFilial.innerHTML = '<td style="padding-left:32px;">' +
+            '<div class="empresa-name"><i class="fas fa-arrow-right" style="color:#7C7C6F;margin-right:8px;"></i>' + escapeHtml(filial.nome) + '</div>' +
+            '<div class="empresa-slug">' + escapeHtml(filial.slug) + '</div>' +
+            '</td>' +
+            '<td>-</td>' +
+            '<td><span class="status-badge status-trial">Filial</span></td>' +
+            '<td><button onclick="desvincularFilial(' + filial.id + ')" style="padding:4px 8px;border:1px solid #EF4444;border-radius:4px;background:transparent;color:#EF4444;font-size:12px;"><i class="fas fa-unlink"></i> Desvincular</button></td>';
+          tbody.appendChild(trFilial);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao carregar filiais:', err);
+    }
+  }
+
+  function abrirModalCriarFilial() {
+    document.getElementById('modalCriarFilial').style.display = 'block';
+    carregarMatrizesDropdown();
+  }
+
+  async function carregarMatrizesDropdown() {
+    var select = document.getElementById('filialMatriz');
+    select.innerHTML = '<option value="">Carregando...</option>';
+    
+    try {
+      var empresas = await apiFetch('/api/admin/empresas');
+      var matrizes = empresas.filter(function(e) { return e.empresaTipo !== 'filial'; });
+      select.innerHTML = '<option value="">Selecionar matriz...</option>';
+      matrizes.forEach(function(m) {
+        select.innerHTML += '<option value="' + m.id + '">' + escapeHtml(m.nome) + '</option>';
+      });
+    } catch (err) {
+      select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+  }
+
+  async function criarFilial() {
+    var nome = document.getElementById('filialNome').value.trim();
+    var slug = document.getElementById('filialSlug').value.trim();
+    var parentEmpresaId = document.getElementById('filialMatriz').value;
+    
+    if (!nome || !slug || !parentEmpresaId) {
+      alert('Preencha todos os campos');
+      return;
+    }
+    
+    try {
+      var token = getToken();
+      var res = await fetch(API_BASE + '/api/admin/empresas/filiais', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ nome: nome, slug: slug, parentEmpresaId: Number(parentEmpresaId) }),
+      });
+      
+      if (!res.ok) {
+        var err = await res.json();
+        throw new Error(err.error || 'Erro ao criar filial');
+      }
+      
+      document.getElementById('modalCriarFilial').style.display = 'none';
+      document.getElementById('filialNome').value = '';
+      document.getElementById('filialSlug').value = '';
+      document.getElementById('filialMatriz').value = '';
+      carregarFiliais();
+      alert('Filial criada com sucesso!');
+    } catch (err) {
+      alert('Erro ao criar filial: ' + err.message);
+    }
+  }
+
+  async function desvincularFilial(empresaId) {
+    if (!confirm('Tem certeza que deseja desvincular esta filial?')) return;
+    
+    try {
+      var token = getToken();
+      var res = await fetch(API_BASE + '/api/admin/empresas/' + empresaId + '/parent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ parentEmpresaId: null }),
+      });
+      
+      if (!res.ok) throw new Error('Erro ao desvincular');
+      
+      carregarFiliais();
+      alert('Filial desvinculada com sucesso!');
+    } catch (err) {
+      alert('Erro ao desvincular: ' + err.message);
+    }
+  }
+
+  window.carregarFiliais = carregarFiliais;
+  window.abrirModalCriarFilial = abrirModalCriarFilial;
+  window.criarFilial = criarFilial;
+  window.desvincularFilial = desvincularFilial;
+
   // Expose globally for superadmin.html onclick
   window.carregarDashboard = carregarDashboard;
   window.onEmpresaChange = function() { carregarDashboard(); };

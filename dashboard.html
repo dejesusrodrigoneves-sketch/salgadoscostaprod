@@ -124,6 +124,17 @@ if (role === 'superadmin') {
         ]
       }
     );
+
+    // Seção Filiais (só para matriz)
+    if (authUser.empresaTipo === 'matriz') {
+      menuSections.push({
+        title: 'Filiais',
+        items: [
+          { icon: 'fa-sitemap', label: 'Gerenciar Filiais', page: 'filiais.html' },
+          { icon: 'fa-chart-pie', label: 'Balanço Consolidado', page: 'financeiro.html?consolidated=1' },
+        ]
+      });
+    }
   }
 
   menuSections.push({

@@ -362,6 +362,18 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 
   <!-- ABA: Personalizacao -->
   <section id="view-personalizacao" class="grid hidden" role="tabpanel">
+    <!-- Alerta tema pendente (filial) -->
+    <div id="themePendingAlert" style="display:none;background:linear-gradient(135deg,#FEF3CD 0%,#FFF8E1 100%);border:1px solid #F59E0B;border-left:4px solid #F59E0B;border-radius:12px;padding:16px 20px;margin-bottom:16px;align-items:flex-start;gap:14px;">
+      <div style="width:40px;height:40px;background:#F59E0B;border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:18px;flex-shrink:0;">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;color:#92400E;margin-bottom:4px;">Alteração de tema pendente de aprovação</div>
+        <div style="font-size:12px;color:#A16207;line-height:1.5;">Suas alterações de personalização foram enviadas para aprovação da loja matriz. Aguarde até que o administrador aprove ou rejeite as mudanças.</div>
+        <div id="themePendingColors" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+
     <div class="card">
       <h3><i class="fas fa-palette" style="color:var(--primary, #F26D3D)"></i> Personalização Visual</h3>
       <p class="tip">Personalize as cores da sua loja. As alterações são visíveis imediatamente no cardápio online.</p>
@@ -506,5 +518,121 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 <script src="js/comboConfig.js"></script>
 <script src="js/painel.js?=2"></script>
 <script src="js/theme.js" defer></script>
+<script>
+// Task 8: Filial — tema pendente de aprovação
+(function() {
+  const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+  if (authUser.empresaTipo !== 'filial') return;
+
+  const alertEl = document.getElementById('themePendingAlert');
+  const colorsEl = document.getElementById('themePendingColors');
+  const saveBtn = document.getElementById('btnSalvarTema');
+
+  // Buscar pendingThemeSettings da empresa
+  async function checkPendingTheme() {
+    try {
+      const token = localStorage.getItem('token');
+      const empresaId = authUser.empresaId || authUser.id;
+      const res = await fetch(`/api/admin/empresas/${empresaId}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const empresa = data.empresa || data;
+
+      if (empresa.pendingThemeSettings) {
+        const pending = typeof empresa.pendingThemeSettings === 'string'
+          ? JSON.parse(empresa.pendingThemeSettings)
+          : empresa.pendingThemeSettings;
+
+        // Mostrar alerta
+        alertEl.style.display = 'flex';
+
+        // Renderizar cores pendentes
+        colorsEl.innerHTML = '';
+        const labels = { primary: 'Primária', background: 'Fundo', surface: 'Superfície', text: 'Texto' };
+        Object.entries(labels).forEach(([key, label]) => {
+          if (pending[key]) {
+            const chip = document.createElement('div');
+            chip.style.cssText = 'display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.7);border:1px solid #FDE68A;border-radius:8px;padding:4px 10px 4px 6px;font-size:11px;color:#92400E;';
+            chip.innerHTML = `<div style="width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,0.1);background:${pending[key]};"></div>${label}`;
+            colorsEl.appendChild(chip);
+          }
+        });
+
+        // Alterar botão
+        if (saveBtn) {
+          saveBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar para Aprovação';
+        }
+      } else {
+        alertEl.style.display = 'none';
+        if (saveBtn) {
+          saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Personalização';
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao verificar tema pendente:', e);
+    }
+  }
+
+  // Verificar ao carregar e ao mudar para aba Personalizar
+  document.addEventListener('DOMContentLoaded', () => {
+    checkPendingTheme();
+
+    // Observar mudança de aba
+    const observer = new MutationObserver(() => {
+      const personalizacaoView = document.getElementById('view-personalizacao');
+      if (personalizacaoView && !personalizacaoView.classList.contains('hidden')) {
+        checkPendingTheme();
+      }
+    });
+    const personalizacaoView = document.getElementById('view-personalizacao');
+    if (personalizacaoView) {
+      observer.observe(personalizacaoView, { attributes: true, attributeFilter: ['class'] });
+    }
+  });
+
+  // Interceptar salvamento para filial — enviar para aprovação
+  if (saveBtn) {
+    saveBtn.addEventListener('click', async function(e) {
+      if (authUser.empresaTipo !== 'filial') return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const themeSettings = {
+        primary: document.getElementById('themePrimary')?.value,
+        background: document.getElementById('themeBackground')?.value,
+        surface: document.getElementById('themeSurface')?.value,
+        text: document.getElementById('themeText')?.value,
+        isDark: document.getElementById('themeIsDark')?.checked || false
+      };
+
+      try {
+        const token = localStorage.getItem('token');
+        const empresaId = authUser.empresaId || authUser.id;
+        const res = await fetch(`/api/admin/empresas/${empresaId}/theme/pending`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ pendingThemeSettings: themeSettings })
+        });
+
+        if (res.ok) {
+          alert('Tema enviado para aprovação da matriz!');
+          checkPendingTheme();
+        } else {
+          const err = await res.json();
+          alert('Erro: ' + (err.error || 'Não foi possível enviar tema'));
+        }
+      } catch (err) {
+        alert('Erro de conexão ao enviar tema');
+      }
+    }, true);
+  }
+})();
+</script>
 </body>
 </html>

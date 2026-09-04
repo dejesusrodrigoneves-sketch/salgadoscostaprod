@@ -299,6 +299,45 @@ const sql = {
   async hardDeleteEmpresa(id) { return empresaRepository.hardDeleteEmpresa(id); },
   async listarEmpresasAtivas() { return empresaRepository.listarEmpresasAtivas(); },
 
+  // ---- Filiais ----
+  async listarFiliais(parentEmpresaId) {
+    return prisma.empresa.findMany({
+      where: { parentEmpresaId: Number(parentEmpresaId) },
+      orderBy: { nome: 'asc' },
+    });
+  },
+  async criarFilial(data) {
+    const { parentEmpresaId, themeSettingsPai } = data;
+    return prisma.empresa.create({
+      data: {
+        nome: data.nome,
+        slug: data.slug,
+        parentEmpresaId: Number(parentEmpresaId),
+        empresaTipo: 'filial',
+        themeSettings: themeSettingsPai || null,
+        themeApproved: true,
+      },
+    });
+  },
+  async atualizarParent(empresaId, parentEmpresaId) {
+    return prisma.empresa.update({
+      where: { id: Number(empresaId) },
+      data: {
+        parentEmpresaId: parentEmpresaId ? Number(parentEmpresaId) : null,
+        empresaTipo: parentEmpresaId ? 'filial' : 'independente',
+      },
+    });
+  },
+  async verificarLoopFilial(empresaId, parentEmpresaId) {
+    // Verifica se parentEmpresaId é uma filial de empresaId (loop)
+    const filiais = await prisma.empresa.findMany({
+      where: { parentEmpresaId: Number(empresaId) },
+      select: { id: true },
+    });
+    const filialIds = filiais.map(f => f.id);
+    return filialIds.includes(Number(parentEmpresaId));
+  },
+
   // ---- Settlements ----
   async criarSettlement(data) {
     return prisma.weeklySettlement.create({ data });

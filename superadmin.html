@@ -67,6 +67,7 @@
   <button class="tab" onclick="switchTab('registros',this)"><i class="fas fa-scroll"></i> Registros</button>
   <button class="tab" onclick="switchTab('clientes',this)"><i class="fas fa-user-tie"></i> Clientes</button>
   <button class="tab" onclick="switchTab('empresas',this)"><i class="fas fa-store"></i> Empresas</button>
+  <button class="tab" onclick="switchTab('filiais',this)"><i class="fas fa-sitemap"></i> Empresas Filiais</button>
   <button class="tab" onclick="switchTab('settlements',this)"><i class="fas fa-dollar-sign"></i> Settlements</button>
   <button class="tab" onclick="switchTab('integracoes',this)"><i class="fas fa-plug"></i> Integrações</button>
   <button class="tab" onclick="switchTab('billing',this)"><i class="fas fa-credit-card"></i> Billing</button>
@@ -241,6 +242,47 @@
   </div>
 </div>
 
+<!-- Filiais tab -->
+<div class="tab-content" id="tabFiliais">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="font-size:16px;font-weight:600;"><i class="fas fa-sitemap"></i> Gerenciar Filiais</h2>
+      <button class="btn btn-primary" onclick="abrirModalCriarFilial()"><i class="fas fa-plus"></i> Criar Filial</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>Matriz</th>
+            <th>Filiais</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="filiaisTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Criar Filial -->
+  <div class="modal-overlay" id="modalCriarFilial" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-plus"></i> Criar Nova Filial</h3>
+      <label>Nome <input type="text" id="filialNome" placeholder="Nome da filial"></label>
+      <label>Slug <input type="text" id="filialSlug" placeholder="Slug (url)"></label>
+      <label>Matriz
+        <select id="filialMatriz">
+          <option value="">Selecionar matriz...</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="fecharModal('modalCriarFilial')">Cancelar</button>
+        <button class="btn btn-primary" onclick="criarFilial()"><i class="fas fa-plus"></i> Criar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="tab-content" id="tabSettlements">
   <div class="card">
     <h2><i class="fas fa-dollar-sign"></i> Settlements Globais</h2>
@@ -388,11 +430,12 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   btn.classList.add('active');
-  const map = { dashboard: 'tabDashboard', usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements', integracoes: 'tabIntegracoes', billing: 'tabBilling' };
+  const map = { dashboard: 'tabDashboard', usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', filiais: 'tabFiliais', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements', integracoes: 'tabIntegracoes', billing: 'tabBilling' };
   document.getElementById(map[tab]).classList.add('active');
   if (tab === 'registros') superadminAudit.carregarAudit(1);
   if (tab === 'clientes') carregarClientes();
   if (tab === 'empresas') carregarEmpresas();
+  if (tab === 'filiais') carregarFiliais();
   if (tab === 'billing') loadBillingDashboard();
   if (tab === 'settlements') carregarSettlements();
   if (tab === 'integracoes') SuperIntegracoes.carregar();
@@ -758,7 +801,7 @@ async function excluirEmpresa(id) {
 function activarTabPorQuery() {
   const p = new URLSearchParams(window.location.search);
   const tab = p.get('tab');
-  if (tab && ['dashboard', 'usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'settlements', 'integracoes', 'billing'].includes(tab)) {
+  if (tab && ['dashboard', 'usuarios', 'senhas', 'clientes', 'registros', 'empresas', 'filiais', 'settlements', 'integracoes', 'billing'].includes(tab)) {
     const btn = Array.from(document.querySelectorAll('.tab')).find(function(b) {
       return b.getAttribute('onclick') && b.getAttribute('onclick').indexOf("'" + tab + "'") !== -1;
     });
@@ -794,10 +837,10 @@ async function carregarSettlements() {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 <script src="js/superadmin-audit.js" type="module"></script>
-<script src="js/superadmin-integracoes.js"></script>
+<script src="js/superadmin-integracoes.js?v=2"></script>
 <script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
-<script src="js/superadminDashboard.js"></script>
+<script src="js/superadminDashboard.js?v=2"></script>
 <script src="js/superadminBilling.js"></script>
 </body>
 </html>

@@ -6,6 +6,7 @@ const requireEmpresa = require('../middleware/requireEmpresa');
 const router = Router();
 
 router.get('/balance', authenticate, authorize('superadmin', 'admin', 'user'), requireEmpresa, controller.balance);
+router.get('/consolidated', authenticate, authorize('superadmin', 'admin'), requireEmpresa, controller.consolidated);
 router.get('/entries', authenticate, authorize('superadmin', 'admin', 'user'), requireEmpresa, controller.entries);
 router.get('/closings', authenticate, authorize('superadmin', 'admin', 'user'), requireEmpresa, controller.closings);
 router.get('/reconciliations', authenticate, authorize('superadmin', 'admin', 'user'), requireEmpresa, controller.reconciliations);

@@ -71,7 +71,7 @@ exports.criar = asyncHandler(async (req, res) => {
       
       if (asaasResponse.ok) {
         const asaasData = await asaasResponse.json();
-        const prisma = require('../config/prisma.js').default;
+  const prisma = require('../config/prisma.js');
         await prisma.empresa.update({
           where: { id: empresa.id },
           data: { asaasSubcontaId: asaasData.id }
@@ -153,4 +153,163 @@ exports.deactivatePayment = asyncHandler(async (req, res) => {
     try { invalidateEmpresaCache(empresa.slug); } catch (e) {}
   }
   res.json(result);
+});
+
+// ---- Filiais ----
+
+exports.criarFilial = asyncHandler(async (req, res) => {
+  const { nome, slug, parentEmpresaId } = req.body;
+  if (!nome || !nome.trim() || !slug) {
+    return res.status(400).json({ error: 'Nome e slug são obrigatórios' });
+  }
+  if (!parentEmpresaId) {
+    return res.status(400).json({ error: 'parentEmpresaId é obrigatório para filial' });
+  }
+
+  // Verificar se matriz existe
+  const matriz = await sql.buscarEmpresa(Number(parentEmpresaId));
+  if (!matriz) {
+    return res.status(404).json({ error: 'Matriz não encontrada' });
+  }
+
+  // Verificar loop
+  const isLoop = await sql.verificarLoopFilial(Number(parentEmpresaId), parentEmpresaId);
+  if (isLoop) {
+    return res.status(400).json({ error: 'Loop de vínculo detectado' });
+  }
+
+  // Verificar slug único
+  const slugNorm = normalizarSlug(slug);
+  if (!slugNorm) {
+    return res.status(400).json({ error: 'Slug inválido' });
+  }
+  const existente = await sql.buscarEmpresaPorSlug(slugNorm);
+  if (existente) {
+    return res.status(409).json({ error: 'Slug já existe' });
+  }
+
+  // Criar filial
+  const filial = await sql.criarFilial({
+    nome: nome.trim(),
+    slug: slugNorm,
+    parentEmpresaId: Number(parentEmpresaId),
+    themeSettingsPai: matriz.themeSettings,
+  });
+
+  try { invalidateEmpresaCache(slugNorm); } catch (e) {}
+  res.status(201).json(filial);
+});
+
+exports.listarFiliais = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  // Se admin, só pode ver suas próprias filiais
+  if (req.user.role === 'admin' && req.user.empresaId !== id) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const filiais = await sql.listarFiliais(id);
+  res.json(filiais);
+});
+
+exports.atualizarParent = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const { parentEmpresaId } = req.body;
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  const empresa = await sql.buscarEmpresa(id);
+  if (!empresa) {
+    return res.status(404).json({ error: 'Empresa não encontrada' });
+  }
+
+  // Verificar loop se definindo como filial
+  if (parentEmpresaId) {
+    const isLoop = await sql.verificarLoopFilial(id, parentEmpresaId);
+    if (isLoop) {
+      return res.status(400).json({ error: 'Loop de vínculo detectado' });
+    }
+  }
+
+  const atualizada = await sql.atualizarParent(id, parentEmpresaId);
+  try { invalidateEmpresaCache(empresa.slug); } catch (e) {}
+  res.json(atualizada);
+});
+
+exports.enviarTemaPendente = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const { themeSettings } = req.body;
+
+  const empresa = await sql.buscarEmpresa(id);
+  if (!empresa) {
+    return res.status(404).json({ error: 'Empresa não encontrada' });
+  }
+
+  // Só filial pode enviar tema pendente
+  if (empresa.empresaTipo !== 'filial') {
+    return res.status(400).json({ error: 'Só filiais podem enviar tema pendente' });
+  }
+
+  // Só pode enviar se tema atual está aprovado
+  if (!empresa.themeApproved) {
+    return res.status(400).json({ error: 'Tema já está pendente de aprovação' });
+  }
+
+  const prisma = require('../config/prisma.js');
+  const atualizada = await prisma.empresa.update({
+    where: { id },
+    data: {
+      pendingThemeSettings: themeSettings,
+      themeApproved: false,
+    },
+  });
+
+  res.json(atualizada);
+});
+
+exports.aprovarTema = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const { approve } = req.body;
+
+  const empresa = await sql.buscarEmpresa(id);
+  if (!empresa) {
+    return res.status(404).json({ error: 'Empresa não encontrada' });
+  }
+
+  // Verificar se é filial
+  if (empresa.empresaTipo !== 'filial') {
+    return res.status(400).json({ error: 'Só filiais têm tema pendente' });
+  }
+
+  // Se admin, só pode aprovar suas próprias filiais
+  if (req.user.role === 'admin' && req.user.empresaId !== empresa.parentEmpresaId) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const prisma = require('../config/prisma.js');
+  let updateData;
+  if (approve) {
+    updateData = {
+      themeSettings: empresa.pendingThemeSettings,
+      pendingThemeSettings: null,
+      themeApproved: true,
+    };
+  } else {
+    updateData = {
+      pendingThemeSettings: null,
+      themeApproved: true,
+    };
+  }
+
+  const atualizada = await prisma.empresa.update({
+    where: { id },
+    data: updateData,
+  });
+
+  res.json(atualizada);
 });

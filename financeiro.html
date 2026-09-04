@@ -31,41 +31,203 @@
   .btn-closing:hover { background: #059669; }
   .btn-financeiro:disabled { opacity: 0.5; cursor: not-allowed; }
   .fin-loading { text-align: center; padding: 40px; color: var(--text-muted, #64748b); }
+  /* Tabs */
+  .fin-tabs { display:flex; gap:4px; margin-bottom:24px; border-bottom:2px solid var(--border, #e2e8f0); }
+  .fin-tab { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-muted, #64748b); border:none; background:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; font-family:inherit; }
+  .fin-tab.active { color:var(--primary, #F26D3D); border-bottom-color:var(--primary, #F26D3D); }
+  .fin-tab:hover { color:var(--text, #2D1A12); }
+  .fin-tab-panel { display:none; }
+  .fin-tab-panel.active { display:block; }
+  /* Consolidated table */
+  .consol-table { width:100%; border-collapse:collapse; background:var(--card-bg, #fff); border-radius:12px; overflow:hidden; border:1px solid var(--border, #e2e8f0); margin-bottom:24px; }
+  .consol-table th { background:var(--bg, #F5F0EB); padding:10px 14px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted, #64748b); border-bottom:1px solid var(--border, #e2e8f0); }
+  .consol-table td { padding:10px 14px; font-size:13px; border-bottom:1px solid var(--bg, #F5F0EB); }
+  .consol-table tr:last-child td { border-bottom:none; }
+  .consol-table .filial-name { font-weight:600; color:var(--text, #2D1A12); }
+  .consol-table .positive { color:#10b981; }
+  .consol-table .negative { color:#ef4444; }
+  .consol-table .pending { color:#f59e0b; }
+  .consol-table tfoot td { background:var(--bg, #F5F0EB); font-weight:700; border-top:2px solid var(--border, #e2e8f0); }
+  .section-title { font-size:16px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section-title i { color:var(--primary, #F26D3D); }
 </style>
 </head>
 <body>
-  <div id="fin-loading" class="fin-loading">Carregando dados financeiros...</div>
+  <!-- TABS (só para matriz) -->
+  <div id="fin-tabs" class="fin-tabs" style="display:none;">
+    <button class="fin-tab active" data-tab="resumo">Resumo</button>
+    <button class="fin-tab" data-tab="consolidado">Balanço Consolidado</button>
+  </div>
 
-  <div id="fin-content" style="display:none;">
-    <div class="fin-grid">
-      <div class="fin-card"><div class="label">Bruto</div><div class="value" id="fin-bruto">-</div></div>
-      <div class="fin-card"><div class="label">Descontos</div><div class="value" id="fin-descontos">-</div></div>
-      <div class="fin-card"><div class="label">Taxas</div><div class="value" id="fin-taxas">-</div></div>
-      <div class="fin-card net"><div class="label">Líquido</div><div class="value" id="fin-liquido">-</div></div>
-      <div class="fin-card"><div class="label">Recebido</div><div class="value" id="fin-recebido">-</div></div>
-      <div class="fin-card receivable"><div class="label">A Receber</div><div class="value" id="fin-a-receber">-</div></div>
-    </div>
-
-    <div class="fin-section">
-      <h3>Por Plataforma</h3>
-      <ul id="fin-por-plataforma"></ul>
-    </div>
-
-    <div class="fin-actions">
-      <button class="btn-financeiro btn-sync" onclick="Financeiro.sincronizar()">
-        <i class="fas fa-sync-alt"></i> Sincronizar Dados
-      </button>
-      <button class="btn-financeiro btn-closing" onclick="Financeiro.gerarFechamento()">
-        <i class="fas fa-file-invoice-dollar"></i> Gerar Fechamento
-      </button>
+  <!-- TAB: Resumo (fluxo existente) -->
+  <div id="fin-tab-resumo" class="fin-tab-panel active">
+    <div id="fin-loading" class="fin-loading">Carregando dados financeiros...</div>
+    <div id="fin-content" style="display:none;">
+      <div class="fin-grid">
+        <div class="fin-card"><div class="label">Bruto</div><div class="value" id="fin-bruto">-</div></div>
+        <div class="fin-card"><div class="label">Descontos</div><div class="value" id="fin-descontos">-</div></div>
+        <div class="fin-card"><div class="label">Taxas</div><div class="value" id="fin-taxas">-</div></div>
+        <div class="fin-card net"><div class="label">Líquido</div><div class="value" id="fin-liquido">-</div></div>
+        <div class="fin-card"><div class="label">Recebido</div><div class="value" id="fin-recebido">-</div></div>
+        <div class="fin-card receivable"><div class="label">A Receber</div><div class="value" id="fin-a-receber">-</div></div>
+      </div>
+      <div class="fin-section">
+        <h3>Por Plataforma</h3>
+        <ul id="fin-por-plataforma"></ul>
+      </div>
+      <div class="fin-actions">
+        <button class="btn-financeiro btn-sync" onclick="Financeiro.sincronizar()">
+          <i class="fas fa-sync-alt"></i> Sincronizar Dados
+        </button>
+        <button class="btn-financeiro btn-closing" onclick="Financeiro.gerarFechamento()">
+          <i class="fas fa-file-invoice-dollar"></i> Gerar Fechamento
+        </button>
+      </div>
     </div>
   </div>
 
+  <!-- TAB: Balanço Consolidado (só para matriz) -->
+  <div id="fin-tab-consolidado" class="fin-tab-panel">
+    <div id="consol-loading" class="fin-loading">Carregando balanço consolidado...</div>
+    <div id="consol-content" style="display:none;">
+      <div class="fin-grid">
+        <div class="fin-card" style="border-left:3px solid var(--primary, #F26D3D);"><div class="label">Bruto Total</div><div class="value" id="consol-bruto">-</div></div>
+        <div class="fin-card"><div class="label">Descontos</div><div class="value" id="consol-descontos">-</div></div>
+        <div class="fin-card"><div class="label">Taxas</div><div class="value" id="consol-taxas">-</div></div>
+        <div class="fin-card net"><div class="label">Líquido Total</div><div class="value" id="consol-liquido">-</div></div>
+        <div class="fin-card"><div class="label">Recebido</div><div class="value" id="consol-recebido">-</div></div>
+        <div class="fin-card receivable"><div class="label">A Receber</div><div class="value" id="consol-a-receber">-</div></div>
+      </div>
+      <div class="section-title"><i class="fas fa-sitemap"></i> Detalhamento por Filial</div>
+      <table class="consol-table">
+        <thead>
+          <tr>
+            <th>Filial</th>
+            <th>Bruto</th>
+            <th>Líquido</th>
+            <th>Recebido</th>
+            <th>A Receber</th>
+          </tr>
+        </thead>
+        <tbody id="consol-filiais-tbody"></tbody>
+        <tfoot id="consol-filiais-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="js/financeiro.js"></script>
   <script>
+    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
+    const isMatriz = authUser.empresaTipo === 'matriz';
+
+    // Formatação BRL
+    function fmtBRL(v) {
+      return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Tabs
+    const tabsEl = document.getElementById('fin-tabs');
+    const tabBtns = document.querySelectorAll('.fin-tab');
+    const tabPanels = document.querySelectorAll('.fin-tab-panel');
+
+    if (isMatriz) {
+      tabsEl.style.display = 'flex';
+    }
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanels.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('fin-tab-' + btn.dataset.tab).classList.add('active');
+
+        // Carregar consolidado ao clicar na tab
+        if (btn.dataset.tab === 'consolidado' && isMatriz) {
+          carregarConsolidado();
+        }
+      });
+    });
+
+    // Checar URL params para abrir consolidado direto
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('consolidated') === '1' && isMatriz) {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanels.forEach(p => p.classList.remove('active'));
+      document.querySelector('[data-tab="consolidado"]').classList.add('active');
+      document.getElementById('fin-tab-consolidado').classList.add('active');
+    }
+
+    // Carregar consolidado
+    async function carregarConsolidado() {
+      const loadingEl = document.getElementById('consol-loading');
+      const contentEl = document.getElementById('consol-content');
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/financeiro/consolidated', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('Erro ao carregar consolidado');
+        const data = await res.json();
+
+        // Totais
+        document.getElementById('consol-bruto').textContent = fmtBRL(data.bruto);
+        document.getElementById('consol-descontos').textContent = '-' + fmtBRL(data.descontos);
+        document.getElementById('consol-taxas').textContent = '-' + fmtBRL(data.taxas);
+        document.getElementById('consol-liquido').textContent = fmtBRL(data.liquido);
+        document.getElementById('consol-recebido').textContent = fmtBRL(data.recebido);
+        document.getElementById('consol-a-receber').textContent = fmtBRL(data.aReceber);
+
+        // Tabela por filial
+        const tbody = document.getElementById('consol-filiais-tbody');
+        const tfoot = document.getElementById('consol-filiais-tfoot');
+        tbody.innerHTML = '';
+        tfoot.innerHTML = '';
+
+        const filiais = data.filiais || [];
+        let totalBruto = 0, totalLiquido = 0, totalRecebido = 0, totalAReceber = 0;
+
+        filiais.forEach(f => {
+          totalBruto += f.bruto || 0;
+          totalLiquido += f.liquido || 0;
+          totalRecebido += f.recebido || 0;
+          totalAReceber += f.aReceber || 0;
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="filial-name">${f.nome || 'Filial'}</td>
+            <td>${fmtBRL(f.bruto)}</td>
+            <td class="positive">${fmtBRL(f.liquido)}</td>
+            <td>${fmtBRL(f.recebido)}</td>
+            <td class="pending">${fmtBRL(f.aReceber)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tfoot.innerHTML = `
+          <tr>
+            <td>TOTAL</td>
+            <td>${fmtBRL(totalBruto)}</td>
+            <td style="color:#10b981;">${fmtBRL(totalLiquido)}</td>
+            <td>${fmtBRL(totalRecebido)}</td>
+            <td style="color:#f59e0b;">${fmtBRL(totalAReceber)}</td>
+          </tr>
+        `;
+
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+      } catch (e) {
+        loadingEl.textContent = 'Erro ao carregar dados consolidados.';
+        console.error(e);
+      }
+    }
+
+    // Init
     (async function init() {
       try {
-        await Financeiro.carregarBalanco();
+        if (typeof Financeiro !== 'undefined' && Financeiro.carregarBalanco) {
+          await Financeiro.carregarBalanco();
+        }
         document.getElementById('fin-loading').style.display = 'none';
         document.getElementById('fin-content').style.display = 'block';
       } catch (e) {
