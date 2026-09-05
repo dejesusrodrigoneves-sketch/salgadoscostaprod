@@ -4,8 +4,22 @@ const IGNORED = ['www', 'api', 'admin', 'mail', 'ftp', 'login-sicia'];
 
 export async function resolveEmpresa(req, res, next) {
   const host = (req.headers.host || '').split(':')[0]; // remove porta
-  // localhost / sem ponto => sem tenant
+  // localhost / sem ponto => tentar fallback via ?slug= query param (dev)
   if (!host || !host.includes('.')) {
+    const slugParam = req.query?.slug;
+    if (slugParam) {
+      try {
+        const empresa = await getEmpresaFromCache(slugParam);
+        if (empresa && !empresa.deletedAt) {
+          req.ctx = req.ctx || {};
+          req.ctx.empresaId = empresa.id;
+          req.ctx.empresa = empresa;
+          return next();
+        }
+      } catch (err) {
+        return next(err);
+      }
+    }
     return next();
   }
   const labels = host.split('.');
