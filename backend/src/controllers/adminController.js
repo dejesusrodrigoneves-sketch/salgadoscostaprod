@@ -6,7 +6,18 @@ const paymentSetupService = require('../services/paymentSetupService');
 
 exports.listar = asyncHandler(async (req, res) => {
   const empresas = await sql.listarEmpresas();
-  res.json(empresas);
+  const filtradas = empresas.map(function(e) {
+    return {
+      id: e.id, nome: e.nome, slug: e.slug, telefone: e.telefone,
+      endereco: e.endereco, numero: e.numero, bairro: e.bairro,
+      cidade: e.cidade, estado: e.estado, cep: e.cep,
+      descricao: e.descricao, logo: e.logo, capa: e.capa,
+      empresaTipo: e.empresaTipo, parentEmpresaId: e.parentEmpresaId,
+      asaasOnboarded: e.asaasOnboarded, deletedAt: e.deletedAt,
+      createdAt: e.createdAt,
+    };
+  });
+  res.json(filtradas);
 });
 
 exports.criar = asyncHandler(async (req, res) => {

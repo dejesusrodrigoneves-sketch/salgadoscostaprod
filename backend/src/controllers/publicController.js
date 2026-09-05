@@ -11,6 +11,28 @@ const { validateMaxLen } = require('../utils/validation');
 
 const SALT_ROUNDS = 10;
 
+// Account lockout for client login
+const failedClientLoginAttempts = new Map();
+const CLIENT_LOCKOUT_THRESHOLD = 5;
+const CLIENT_LOCKOUT_DURATION = 15 * 60 * 1000;
+
+function isClientLockedOut(key) {
+  const record = failedClientLoginAttempts.get(key);
+  if (!record) return false;
+  if (Date.now() - record.lastAttempt > CLIENT_LOCKOUT_DURATION) {
+    failedClientLoginAttempts.delete(key);
+    return false;
+  }
+  return record.count >= CLIENT_LOCKOUT_THRESHOLD;
+}
+
+function recordClientFailedAttempt(key) {
+  const record = failedClientLoginAttempts.get(key) || { count: 0, lastAttempt: 0 };
+  record.count++;
+  record.lastAttempt = Date.now();
+  failedClientLoginAttempts.set(key, record);
+}
+
 function empresaId(req) {
   return req.ctx?.empresaId || req.user?.empresaId || req.cliente?.empresaId;
 }
@@ -194,9 +216,16 @@ exports.loginCliente = asyncHandler(async (req, res) => {
   if (!empId) return;
   const { telefone, password } = req.body;
   if (!telefone) return res.status(400).json({ error: 'Telefone é obrigatório' });
+
+  const lockoutKey = `${empId}:${telefone}`;
+  if (isClientLockedOut(lockoutKey)) {
+    return res.status(429).json({ error: 'Conta temporariamente bloqueada. Tente novamente em 15 minutos.' });
+  }
+
   const base = { ...getCtx(req), module: 'clientes' };
   const cliente = await sql.buscarCliente(telefone, empId);
   if (!cliente) {
+    recordClientFailedAttempt(lockoutKey);
     auditService.audit({
       ...base,
       action: 'cliente.login_failed',
@@ -205,11 +234,12 @@ exports.loginCliente = asyncHandler(async (req, res) => {
       severity: 'warning',
       reason: 'cliente_nao_encontrado',
     });
-    return res.status(404).json({ error: 'Cliente não encontrado' });
+    return res.status(401).json({ error: 'Credenciais inválidas' });
   }
   if (cliente.passwordHash && password) {
     const match = await bcrypt.compare(password, cliente.passwordHash);
     if (!match) {
+      recordClientFailedAttempt(lockoutKey);
       auditService.audit({
         ...base,
         action: 'cliente.login_failed',
@@ -221,11 +251,14 @@ exports.loginCliente = asyncHandler(async (req, res) => {
         severity: 'warning',
         reason: 'senha_incorreta',
       });
-      return res.status(401).json({ error: 'Senha incorreta' });
+      return res.status(401).json({ error: 'Credenciais inválidas' });
     }
   } else if (cliente.passwordHash && !password) {
-    return res.status(401).json({ error: 'Senha necessária' });
+    return res.status(401).json({ error: 'Credenciais inválidas' });
   }
+
+  failedClientLoginAttempts.delete(lockoutKey);
+
   const token = tokenService.gerarToken({ id: cliente.id, empresaId: empId, telefone: cliente.telefone, nome: cliente.nome });
 
   auditService.audit({
@@ -239,12 +272,11 @@ exports.loginCliente = asyncHandler(async (req, res) => {
   });
 
   res.json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia } });
-  // Set httpOnly cookie for additional security
   res.cookie('clientToken_' + empId, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    maxAge: 24 * 60 * 60 * 1000,
   });
 });
 

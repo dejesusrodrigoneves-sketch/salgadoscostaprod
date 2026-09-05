@@ -1693,7 +1693,7 @@ var pedidosTimer = setInterval(async function() {
     var hash = JSON.stringify(data.map(function(p) { return p.id + p.status; }));
     if (hash !== lastPedidosHash) {
       lastPedidosHash = hash;
-      renderPedidos(data);
+      carregarPedidos();
     }
     else { console.log('[polling] hash igual, skip re-render'); }
   } catch (e) { console.error('[polling] erro:', e); }

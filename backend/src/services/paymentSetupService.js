@@ -118,8 +118,6 @@ async function getStatus(empresaId, deps = defaultDeps) {
 
   return {
     onboarded: empresa.asaasOnboarded,
-    asaasSubcontaId: empresa.asaasSubcontaId || null,
-    pixKey: empresa.pixKey || null,
     pixKeyType: empresa.pixKeyType || null,
     lastSplitStatus: lastSettlement?.splitStatus || null,
     nextTransferDate,

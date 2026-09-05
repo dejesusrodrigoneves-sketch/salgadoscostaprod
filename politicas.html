@@ -12,81 +12,542 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./css/tokens.css">
 <link rel="stylesheet" href="./css/style.css">
-<title>Política de Privacidade v1.0 | Fabrica de Salgados Costa</title>
+<title>Política de Privacidade v2.0 | Fabrica de Salgados Costa</title>
 <style>
-  .privacy-page { padding: var(--s-24) var(--s-12) var(--s-48); }
+  .privacy-page { padding: var(--s-24) var(--s-12) var(--s-48); max-width: 800px; margin: 0 auto; }
   .privacy-page h1 { font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: var(--s-8); }
   .privacy-page .privacy-version { color: var(--text-muted); font-size: 13px; margin-bottom: var(--s-24); }
   .privacy-page h2 { font-size: 18px; font-weight: 700; color: var(--text); margin: var(--s-24) 0 var(--s-8); }
+  .privacy-page h3 { font-size: 15px; font-weight: 600; color: var(--text); margin: var(--s-16) 0 var(--s-4); }
   .privacy-page p, .privacy-page li { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
-  .privacy-page ul { padding-left: var(--s-20); }
+  .privacy-page ul, .privacy-page ol { padding-left: var(--s-20); }
+  .privacy-page li { margin-bottom: 4px; }
   .privacy-page .back-btn {
     display: inline-block; margin-top: var(--s-24);
     padding: var(--s-12) var(--s-20); border-radius: var(--radius);
     background: var(--primary); color: #fff; font-weight: 600; text-decoration: none;
   }
   .privacy-page .back-btn:hover { background: var(--primary-hover); }
+  .privacy-page table { width: 100%; border-collapse: collapse; margin: var(--s-8) 0 var(--s-16); font-size: 13px; }
+  .privacy-page th, .privacy-page td { border: 1px solid var(--border, #e5e7eb); padding: 8px 12px; text-align: left; }
+  .privacy-page th { background: var(--bg-secondary, #f9fafb); font-weight: 600; color: var(--text); }
+  .privacy-page td { color: var(--text-muted); }
+  .privacy-page .note { background: var(--bg-secondary, #f9fafb); border-left: 3px solid var(--primary); padding: 12px 16px; margin: var(--s-8) 0; border-radius: 0 var(--radius) var(--radius) 0; font-size: 13px; }
 </style>
 </head>
 <body>
 
 <div class="container pol-page-bg">
-  <div class="pol body-page">
+  <div class="pol body-page privacy-page">
+
     <h1>Política de Privacidade</h1>
-    <div class="privacy-version">Versão v1.0 — última atualização em 08/08/2026</div>
+    <div class="privacy-version">Versão v2.0 — última atualização em 04/09/2026</div>
 
+    <!-- ============================================================ -->
+    <!-- 1. CONTROLADOR -->
+    <!-- ============================================================ -->
     <h2>1. Controlador de dados</h2>
-    <p>O site Fabrica de Salgados Costa, doravante "controlador", é o responsável pelo tratamento dos dados pessoais coletados.</p>
-
-    <h2>2. Dados que coletamos</h2>
+    <p>O controlador responsável pelo tratamento dos dados pessoais é:</p>
     <ul>
-      <li>Dados de cadastro: nome, telefone/WhatsApp, CEP, endereço, nº, bairro, ponto de referência.</li>
-      <li>Dados de pedido: itens, quantidades, valores, forma de pagamento, status.</li>
-      <li>Dados de uso (log): IP e user-agent, tratados para segurança e prevenção de fraude (Art. 6º X da LGPD).</li>
+      <li><strong>Razão social:</strong> [INSERIR RAZÃO SOCIAL]</li>
+      <li><strong>CNPJ:</strong> [INSERIR CNPJ]</li>
+      <li><strong>Endereço:</strong> [INSERIR ENDEREÇO COMPLETO]</li>
+      <li><strong>E-mail:</strong> [INSERIR E-MAIL DE CONTATO]</li>
+    </ul>
+    <p>Doravante denominado "controlador".</p>
+
+    <!-- ============================================================ -->
+    <!-- 2. ENCARREGADO (DPO) -->
+    <!-- ============================================================ -->
+    <h2>2. Encarregado de Dados (Art. 41, LGPD)</h2>
+    <p>O Encarregado de Proteção de Dados (DPO) é responsável por receber comunicações dos titulares e da ANPD:</p>
+    <ul>
+      <li><strong>Nome:</strong> [INSERIR NOME DO DPO]</li>
+      <li><strong>E-mail:</strong> [INSERIR E-MAIL DO DPO]</li>
+      <li><strong>Telefone:</strong> [INSERIR TELEFONE DO DPO]</li>
+    </ul>
+    <p>Prazo de resposta às solicitações: até 15 dias (Art. 19, LGPD).</p>
+
+    <!-- ============================================================ -->
+    <!-- 3. DADOS COLETADOS -->
+    <!-- ============================================================ -->
+    <h2>3. Dados pessoais que coletamos</h2>
+    <p>Coletamos os seguintes dados pessoais para operação do serviço:</p>
+
+    <h3>3.1 Dados de cadastro (perfil do cliente)</h3>
+    <ul>
+      <li>Nome completo</li>
+      <li>Telefone / WhatsApp</li>
+      <li>Endereço, número, bairro, CEP, ponto de referência</li>
+      <li>Senha (armazenada em hash — não acessível em texto plano)</li>
     </ul>
 
-    <h2>3. Finalidades</h2>
-    <ol>
-      <li>Processar e entregar seus pedidos.</li>
-      <li>Comunicar status do pedido via WhatsApp.</li>
-      <li>Melhorar o cadastro de entrega.</li>
-      <li>Segurança e prevenção de fraude.</li>
-    </ol>
-
-    <h2>4. Base legal</h2>
-    <p>Consentimento (Art. 7º I, LGPD) para os dados de perfil; execução de contrato (Art. 7º V) para pedidos.</p>
-
-    <h2>5. Compartilhamento</h2>
-    <p>Não vendemos nem comercializamos dados pessoais. Compartilhamos apenas com provedores necessários ao serviço: hospedagem de banco de dados (Supabase), mensageria (WhatsApp). Nenhum dado é transferido a terceiros fora do necessário ao pedido.</p>
-
-    <h2>6. Armazenamento e retenção</h2>
-    <p>Dados de pedido são conservados enquanto o contrato existir. Dados fiscais (pedidos finalizados) são retidos por 5 anos por obrigação legal (Art. 16 I, LGPD). Ao solicitar exclusão de conta, eliminamos o perfil e dados não necessários em até 15 dias (Art. 19), mantendo apenas o que a lei exige.</p>
-
-    <h2>7. Seus direitos (Art. 18, LGPD)</h2>
+    <h3>3.2 Dados de pedidos</h3>
     <ul>
-      <li>Confirmação de existência e acesso aos dados.</li>
-      <li>Correção de dados incompletos ou desatualizados.</li>
-      <li>Eliminação da conta e dos dados pessoais.</li>
-      <li>Revogação do consentimento a qualquer momento.</li>
-      <li>Portabilidade dos dados, via exportação em formato JSON.</li>
-      <li>Não há decisões automatizadas no site: todas as decisões são manuais.</li>
+      <li>Itens, quantidades, valores, forma de pagamento, status do pedido</li>
+      <li>Endereço de entrega e referência</li>
     </ul>
-    <p>Prazo de resposta: acesso simplificado imediato; declaração completa em até 15 dias (Art. 19).</p>
 
-    <h2>8. Menores (Art. 14, LGPD)</h2>
-    <p>O serviço é destinado a maiores de 18 anos. Para menores de 16, o cadastro só é aceito com consentimento expresso do responsável legal.</p>
+    <h3>3.3 Dados de pagamento</h3>
+    <ul>
+      <li><strong>CPF</strong> — coletado exclusivamente para pagamentos via PIX (obrigação do provedor de pagamentos)</li>
+      <li>Código PIX e QR Code (gerados pelo processador de pagamentos)</li>
+      <li>Status e data do pagamento</li>
+    </ul>
+    <div class="note">
+      <strong>Nota sobre dados sensíveis:</strong> O CPF é classificado como dado pessoal sensível (Art. 5 II, LGPD). Ele é coletado apenas quando o cliente opta por pagamento via PIX e é enviado diretamente ao processador de pagamentos (Asaas). Não é armazenado em nossos servidores.
+    </div>
 
-    <h2>9. Encarregado de dados (Art. 41, LGPD)</h2>
-    <p>Contato do Encarregado de Dados: (e-mail a definir) — responde em até 15 dias às solicitações de titular.</p>
+    <h3>3.4 Dados de entregadores</h3>
+    <ul>
+      <li>Nome, telefone, WhatsApp, endereço</li>
+      <li>Chave Pix (para repasse de valores)</li>
+      <li>Token de notificação push (FCM)</li>
+    </ul>
 
-    <h2>10. Incidentes de segurança (Art. 48, LGPD)</h2>
-    <p>Em caso de incidente com risco relevante, comunicaremos ao titular e à ANPD em até 72 horas.</p>
+    <h3>3.5 Dados de usuários administrativos</h3>
+    <ul>
+      <li>Nome de usuário, senha (hash), perfil (role)</li>
+    </ul>
 
-    <h2>11. Cookies e armazenamento local</h2>
-    <p>Utilizamos o localStorage apenas para login (token) e carrinho de compras. Não usamos cookies de rastreio de terceiros.</p>
+    <h3>3.6 Dados de empresas (lojas)</h3>
+    <ul>
+      <li>Nome, slug, endereço, telefone</li>
+      <li>CPF/CNPJ do responsável</li>
+      <li>E-mail, chave PIX</li>
+      <li>Chaves de API do processador de pagamentos (criptografadas)</li>
+    </ul>
 
-    <h2>12. Alterações desta política</h2>
-    <p>Esta política será revisada quando houver mudança de finalidade, uso ou compartilhamento (Art. 9º). Mudanças relevantes serão comunicadas por aviso no site.</p>
+    <h3>3.7 Dados de uso e segurança</h3>
+    <ul>
+      <li>Endereço IP</li>
+      <li>User-agent (navegador/dispositivo)</li>
+      <li>Data e hora de acesso</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <!-- 4. FINALIDADES E BASES LEGAIS -->
+    <!-- ============================================================ -->
+    <h2>4. Finalidades e bases legais</h2>
+    <p>Cada tratamento de dados possui uma finalidade específica e uma base legal que o autoriza:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Finalidade</th>
+          <th>Dados tratados</th>
+          <th>Base legal (LGPD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cadastro e identificação do cliente</td>
+          <td>Nome, telefone, endereço</td>
+          <td>Consentimento (Art. 7º I)</td>
+        </tr>
+        <tr>
+          <td>Processamento e entrega de pedidos</td>
+          <td>Nome, telefone, endereço, itens, valores</td>
+          <td>Execução de contrato (Art. 7º V)</td>
+        </tr>
+        <tr>
+          <td>Comunicação do status via WhatsApp</td>
+          <td>Telefone, nome, dados do pedido</td>
+          <td>Execução de contrato (Art. 7º V)</td>
+        </tr>
+        <tr>
+          <td>Processamento de pagamentos PIX</td>
+          <td>CPF, valor, dados do pedido</td>
+          <td>Execução de contrato (Art. 7º V)</td>
+        </tr>
+        <tr>
+          <td>Gestão de entregas</td>
+          <td>Endereço, geolocalização, dados do entregador</td>
+          <td>Execução de contrato (Art. 7º V)</td>
+        </tr>
+        <tr>
+          <td>Segurança e prevenção de fraude</td>
+          <td>IP, user-agent, logs de acesso</td>
+          <td>Legítimo interesse (Art. 7º IX)</td>
+        </tr>
+        <tr>
+          <td>Cumprimento de obrigação fiscal</td>
+          <td>Dados de pedidos finalizados</td>
+          <td>Cumprimento de obrigação legal (Art. 7º II)</td>
+        </tr>
+        <tr>
+          <td>Auditoria e logs de sistema</td>
+          <td>Ações de usuários, IPs, timestamps</td>
+          <td>Legítimo interesse (Art. 7º IX)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- 5. TERCEIROS -->
+    <!-- ============================================================ -->
+    <h2>5. Compartilhamento com terceiros</h2>
+    <p>Não vendemos nem comercializamos dados pessoais. Compartilhamos dados apenas com os seguintes provedores, estritamente necessários à operação do serviço:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Terceiro</th>
+          <th>Finalidade</th>
+          <th>Dados compartilhados</th>
+          <th>Política de privacidade</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Supabase</strong></td>
+          <td>Hospedagem de banco de dados e armazenamento de imagens</td>
+          <td>Todos os dados da plataforma (produtos, pedidos, clientes, configurações)</td>
+          <td><a href="https://supabase.com/privacy" target="_blank">supabase.com/privacy</a></td>
+        </tr>
+        <tr>
+          <td><strong>Asaas</strong></td>
+          <td>Processamento de pagamentos PIX, cobranças e assinaturas</td>
+          <td>CPF do cliente, dados do pagamento, dados da empresa (CPF/CNPJ, chave PIX)</td>
+          <td><a href="https://www.asaas.com/politica-de-privacidade" target="_blank">asaas.com/politica-de-privacidade</a></td>
+        </tr>
+        <tr>
+          <td><strong>Evolution API</strong></td>
+          <td>Integração com WhatsApp para envio de status de pedidos</td>
+          <td>Telefone do cliente, dados do pedido</td>
+          <td><a href="https://doc.evolution-api.com/pt-br/self-hosted/privacy" target="_blank">evolution-api.com (auto-hospedado)</a></td>
+        </tr>
+        <tr>
+          <td><strong>iFood</strong></td>
+          <td>Marketplace — recebimento de pedidos</td>
+          <td>Dados do pedido (itens, valores, status)</td>
+          <td><a href="https://www.ifood.com.br/politica-de-privacidade" target="_blank">ifood.com.br/politica-de-privacidade</a></td>
+        </tr>
+        <tr>
+          <td><strong>Keeta</strong></td>
+          <td>Marketplace — recebimento de pedidos</td>
+          <td>Dados do pedido (itens, valores, status)</td>
+          <td><a href="https://www.keeta.com.br/politica-de-privacidade" target="_blank">keeta.com.br/politica-de-privacidade</a></td>
+        </tr>
+        <tr>
+          <td><strong>Ninefood</strong></td>
+          <td>Marketplace — recebimento de pedidos</td>
+          <td>Dados do pedido (itens, valores, status)</td>
+          <td><a href="https://www.ninefood.com.br/politica-de-privacidade" target="_blank">ninefood.com.br/politica-de-privacidade</a></td>
+        </tr>
+        <tr>
+          <td><strong>Mapbox</strong></td>
+          <td>Exibição de mapas e geolocalização</td>
+          <td>Coordenadas de latitude/longitude (quando disponíveis)</td>
+          <td><a href="https://www.mapbox.com/legal/privacy" target="_blank">mapbox.com/legal/privacy</a></td>
+        </tr>
+        <tr>
+          <td><strong>Graphhopper</strong></td>
+          <td>Cálculo de rotas de entrega</td>
+          <td>Coordenadas de origem e destino</td>
+          <td><a href="https://www.graphhopper.com/privacy/" target="_blank">graphhopper.com/privacy</a></td>
+        </tr>
+        <tr>
+          <td><strong>Geoapify</strong></td>
+          <td>Geocodificação (CEP → endereço)</td>
+          <td>Endereço/CEP consultado</td>
+          <td><a href="https://www.geoapify.com/privacy-policy" target="_blank">geoapify.com/privacy-policy</a></td>
+        </tr>
+        <tr>
+          <td><strong>META (WhatsApp)</strong></td>
+          <td>Comunicação via WhatsApp (status do pedido)</td>
+          <td>Telefone do cliente, mensagem de status</td>
+          <td><a href="https://www.facebook.com/privacy/policy/" target="_blank">facebook.com/privacy/policy</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Nota:</strong> O Evolution API é auto-hospedado pelo controlador. Os dados de mensagens WhatsApp trafegam diretamente entre nosso servidor e a API do WhatsApp (META), sem armazenamento em terceiros adicionais.
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 6. TRANSFERÊNCIA INTERNACIONAL -->
+    <!-- ============================================================ -->
+    <h2>6. Transferência internacional de dados</h2>
+    <p>Alguns dos nossos provedores de serviço podem realizar transferência internacional de dados:</p>
+    <ul>
+      <li><strong>Supabase</strong>: Dados armazenados em servidores na região <strong>US East (Virginia)</strong> ou <strong>South America (São Paulo)</strong>, dependendo da configuração da conta.</li>
+      <li><strong>Asaas</strong>: Processador de pagamentos brasileiro, dados armazenados no Brasil.</li>
+      <li><strong>META (WhatsApp)</strong>: Mensagens trafegam pela infraestrutura global da META.</li>
+    </ul>
+    <p>Quando a transferência internacional ocorre, ela é realizada com base em:</p>
+    <ul>
+      <li>Clausulas contratuais padrão (Art. 33, II, LGPD); ou</li>
+      <li>Países com grau de proteção adequado reconhecido pela ANPD (Art. 33, I).</li>
+    </ul>
+    <p>[INSERIR INFORMAÇÃO CONFIRMATIVA: Em qual região o Supabase está configurado para esta conta?]</p>
+
+    <!-- ============================================================ -->
+    <!-- 7. RETENÇÃO DE DADOS -->
+    <!-- ============================================================ -->
+    <h2>7. Armazenamento e retenção de dados</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Tipo de dado</th>
+          <th>Retenção</th>
+          <th>Base legal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Perfil do cliente (nome, telefone, endereço)</td>
+          <td>Enquanto a conta existir. Após exclusão, removido em até 15 dias.</td>
+          <td>Consentimento (Art. 7º I)</td>
+        </tr>
+        <tr>
+          <td>Dados de pedidos</td>
+          <td>5 anos após finalização (obrigação fiscal — Art. 16 I)</td>
+          <td>Cumprimento de obrigação legal (Art. 7º II)</td>
+        </tr>
+        <tr>
+          <td>Dados de pagamento (CPF, transações)</td>
+          <td>5 anos (obrigação fiscal e contábil)</td>
+          <td>Cumprimento de obrigação legal (Art. 7º II)</td>
+        </tr>
+        <tr>
+          <td>Logs de acesso (IP, user-agent)</td>
+          <td>12 meses, salvo investigação de incidente</td>
+          <td>Legítimo interesse (Art. 7º IX)</td>
+        </tr>
+        <tr>
+          <td>Logs de auditoria</td>
+          <td>24 meses</td>
+          <td>Legítimo interesse (Art. 7º IX)</td>
+        </tr>
+        <tr>
+          <td>Consentimento registrado</td>
+          <td>5 anos após coleta</td>
+          <td>Cumprimento de obrigação legal (Art. 7º II)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      <strong>Importante:</strong> Ao solicitar a exclusão da sua conta, seus dados pessoais de perfil (nome, telefone, endereço) serão eliminados em até 15 dias. Porém, dados vinculados a pedidos finalizados e transações financeiras serão retidos por 5 anos, conforme obrigação fiscal e contábil (Art. 16 I, LGPD). Esses dados retidos não serão utilizados para qualquer outra finalidade.
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 8. CONSENTIMENTO -->
+    <!-- ============================================================ -->
+    <h2>8. Consentimento (Art. 8, LGPD)</h2>
+
+    <h3>8.1 Como obtemos consentimento</h3>
+    <p>Ao se cadastrar no serviço, o cliente marca a caixa de aceite da Política de Privacidade, confirmando que leu e compreendeu os termos. O consentimento é:</p>
+    <ul>
+      <li><strong>Livre:</strong> sem condicionamento ao acesso ao serviço básico (cadastro e pedidos).</li>
+      <li><strong>Informado:</strong> esta política é apresentada antes do aceite.</li>
+      <li><strong>Inequívoco:</strong> manifestação por ação clara (marcação da caixa de aceite).</li>
+      <li><strong>Para finalidade determinada:</strong> cada finalidade está descrita na seção 4.</li>
+    </ul>
+
+    <h3>8.2 Registro do consentimento</h3>
+    <p>Registramos a data e hora do consentimento, bem como a versão da política aceita. Esses dados são mantidos por 5 anos para fins de prova.</p>
+
+    <h3>8.3 Como revogar o consentimento</h3>
+    <p>O cliente pode revogar o consentimento a qualquer momento:</p>
+    <ul>
+      <li>Pelo painel do cliente, na seção "Configurações da Conta"; ou</li>
+      <li>Por solicitação ao Encarregado de Dados (seção 2).</li>
+    </ul>
+    <p><strong>Efeitos da revogação:</strong> Ao revogar o consentimento, o cliente não poderá acessar funcionalidades que dependem de tratamento de dados pessoais (cadastro, pedidos, histórico). Os dados pessoais serão mantidos apenas quando houver obrigação legal de retenção (seção 7).</p>
+
+    <!-- ============================================================ -->
+    <!-- 9. DIREITOS DO TITULAR -->
+    <!-- ============================================================ -->
+    <h2>9. Direitos do titular dos dados (Art. 18, LGPD)</h2>
+    <p>Os titulares de dados pessoais têm os seguintes direitos:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Direito</th>
+          <th>Descrição</th>
+          <th>Como exercer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Confirmação e acesso</strong> (Art. 18 I)</td>
+          <td>Confirmar a existência de tratamento e acessar seus dados.</td>
+          <td>Pelo painel do cliente ("Meus Dados") ou solicitação ao DPO.</td>
+        </tr>
+        <tr>
+          <td><strong>Correção</strong> (Art. 18 II)</td>
+          <td>Corrigir dados incompletos, inexatos ou desatualizados.</td>
+          <td>Pelo painel do cliente ("Editar Perfil") ou solicitação ao DPO.</td>
+        </tr>
+        <tr>
+          <td><strong>Anonimização, bloqueio ou eliminação</strong> (Art. 18 III)</td>
+          <td>Solicitar anonimização, bloqueio ou eliminação de dados desnecessários.</td>
+          <td>Solicitação ao DPO (seção 2).</td>
+        </tr>
+        <tr>
+          <td><strong>Portabilidade</strong> (Art. 18 IV)</td>
+          <td>Solicitar exportação de seus dados em formato estruturado.</td>
+          <td>Solicitação ao DPO. Formato: JSON. Prazo: até 15 dias.</td>
+        </tr>
+        <tr>
+          <td><strong>Eliminação da conta</strong> (Art. 18 VI)</td>
+          <td>Solicitar a exclusão de dados tratados com base no consentimento.</td>
+          <td>Pelo painel do cliente ("Excluir Conta") ou solicitação ao DPO.</td>
+        </tr>
+        <tr>
+          <td><strong>Informação sobre compartilhamento</strong> (Art. 18 VII)</td>
+          <td>Saber com quem seus dados foram compartilhados.</td>
+          <td>Solicitação ao DPO (veja também seção 5).</td>
+        </tr>
+        <tr>
+          <td><strong>Revogação do consentimento</strong> (Art. 18 IX)</td>
+          <td>Revogar o consentimento a qualquer momento.</td>
+          <td>Pelo painel do cliente ou solicitação ao DPO.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>9.1 Prazo de resposta</h3>
+    <ul>
+      <li><strong>Acesso simplificado:</strong> imediato (via painel do cliente).</li>
+      <li><strong>Declaração completa:</strong> até 15 dias (Art. 19, LGPD).</li>
+    </ul>
+
+    <h3>9.2 Não discriminação</h3>
+    <p>O exercício de qualquer dos direitos acima não implicará discriminação. O titular não será tratado de forma diferente por ter exercido seus direitos (Art. 18 §2, LGPD).</p>
+
+    <!-- ============================================================ -->
+    <!-- 10. DECISÕES AUTOMATIZADAS -->
+    <!-- ============================================================ -->
+    <h2>10. Decisões automatizadas (Art. 20, LGPD)</h2>
+    <p>O sistema <strong>não realiza decisões automatizadas</strong> que produzam efeitos jurídicos ou afetem significativamente o titular. Todas as decisões de negócio são tomadas por pessoas físicas.</p>
+    <p>Caso, no futuro, o sistema implemente qualquer forma de decisão automatizada com efeitos significativos, o titular será informado previamente e poderá solicitar revisão humana.</p>
+
+    <!-- ============================================================ -->
+    <!-- 11. MENORES -->
+    <!-- ============================================================ -->
+    <h2>11. Proteção de menores (Art. 14, LGPD)</h2>
+    <p>O serviço é destinado a maiores de 18 anos.</p>
+    <ul>
+      <li>Para menores de <strong>16 anos</strong>: o cadastro só será aceito com consentimento expresso e específico do responsável legal (Art. 14, §1).</li>
+      <li>Para menores de <strong>16 anos</strong> sem consentimento do responsável: os dados serão imediatamente eliminados.</li>
+      <li>Maiores de <strong>16 anos e menores de 18 anos</strong>: podem se cadastrar independentemente, mas recomendamos orientação dos responsáveis.</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <!-- 12. SEGURANÇA -->
+    <!-- ============================================================ -->
+    <h2>12. Segurança dos dados (Art. 46, LGPD)</h2>
+    <p>Adotamos medidas técnicas e administrativas para proteger os dados pessoais:</p>
+    <ul>
+      <li><strong>Senhas:</strong> armazenadas com hash (bcrypt), impossível recuperar o texto plano.</li>
+      <li><strong>Criptografia em trânsito:</strong> todas as comunicação web utilizam HTTPS/TLS.</li>
+      <li><strong>Controle de acesso:</strong> autenticação por JWT, isolamento por tenant (empresa).</li>
+      <li><strong>Chaves de API:</strong> criptografadas no banco de dados.</li>
+      <li><strong>Logs de auditoria:</strong> registro de todas as ações relevantes com IP e timestamp.</li>
+      <li><strong>Backup:</strong> gerenciado pelo Supabase com replicação automática.</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <!-- 13. INCIDENTES -->
+    <!-- ============================================================ -->
+    <h2>13. Incidentes de segurança (Art. 48, LGPD)</h2>
+    <p>Em caso de incidente de segurança que acarrete risco ou dano relevante aos titulares:</p>
+    <ul>
+      <li>Comunicaremos a <strong>ANPD</strong> em até 72 horas.</li>
+      <li>Comunicaremos os <strong>titulares afetados</strong> de forma clara, indicando a natureza dos dados afetados e as medidas adotadas.</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <!-- 14. COOKIES E ARMAZENAMENTO LOCAL -->
+    <!-- ============================================================ -->
+    <h2>14. Cookies e armazenamento local</h2>
+    <p>Utilizamos as seguintes tecnologias de armazenamento no navegador:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Tecnologia</th>
+          <th>Chave</th>
+          <th>Finalidade</th>
+          <th>Retenção</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>localStorage</td>
+          <td><code>clientToken_{slug}</code></td>
+          <td>Autenticação do cliente (token JWT)</td>
+          <td>24 horas</td>
+        </tr>
+        <tr>
+          <td>localStorage</td>
+          <td><code>cart</code></td>
+          <td>Carrinho de compras</td>
+          <td>Até finalizar compra ou limpar pelo navegador</td>
+        </tr>
+        <tr>
+          <td>localStorage</td>
+          <td><code>authUser</code></td>
+          <td>Autenticação do administrador (token JWT)</td>
+          <td>Até logout</td>
+        </tr>
+        <tr>
+          <td>sessionStorage</td>
+          <td><code>sic_ia_slug</code></td>
+          <td>Identificação da loja atual durante navegação</td>
+          <td>Sessão (fecha com aba)</td>
+        </tr>
+        <tr>
+          <td>Cookie (httpOnly)</td>
+          <td><code>clientToken_{empresaId}</code></td>
+          <td>Autenticação adicional (cookie seguro)</td>
+          <td>24 horas</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Não utilizamos cookies de rastreio, cookies de terceiros ou qualquer tecnologia de monitoramento de comportamento do usuário.</p>
+
+    <!-- ============================================================ -->
+    <!-- 15. ALTERAÇÕES DESTA POLÍTICA -->
+    <!-- ============================================================ -->
+    <h2>15. Alterações desta política</h2>
+    <p>Esta política poderá ser atualizada quando houver:</p>
+    <ul>
+      <li>Mudança de finalidade no tratamento de dados.</li>
+      <li>Inclusão ou remoção de terceiros.</li>
+      <li>Mudança na legislação aplicável.</li>
+      <li>Inclusão de novas funcionalidades que envolvam tratamento de dados.</li>
+    </ul>
+    <p>Mudanças relevantes serão comunicadas por aviso destaque no site, com pelo menos 30 dias de antecedência para alterações substanciais (Art. 9º, LGPD).</p>
+
+    <h3>Histórico de versões</h3>
+    <ul>
+      <li><strong>v1.0</strong> — 08/08/2026 — Versão inicial.</li>
+      <li><strong>v2.0</strong> — 04/09/2026 — Atualização para conformidade total com LGPD: dados sensíveis (CPF), terceiros, bases legais, portabilidade, segurança, cookies.</li>
+    </ul>
+
+    <!-- ============================================================ -->
+    <!-- 16. FORO -->
+    <!-- ============================================================ -->
+    <h2>16. Foro</h2>
+    <p>Para dirimir questões oriundas desta política, as partes elegem o foro da Comarca de [INSERIR CIDADE/ESTADO], com renúncia a qualquer outro, por mais privilegiado que seja.</p>
+
+    <!-- ============================================================ -->
+    <!-- 17. CONTATO -->
+    <!-- ============================================================ -->
+    <h2>17. Contato</h2>
+    <p>Em caso de dúvidas sobre esta política ou sobre o tratamento de seus dados pessoais:</p>
+    <ul>
+      <li><strong>E-mail:</strong> [INSERIR E-MAIL DE CONTATO]</li>
+      <li><strong>Encarregado (DPO):</strong> [INSERIR E-MAIL DO DPO]</li>
+      <li><strong>Telefone:</strong> [INSERIR TELEFONE]</li>
+    </ul>
 
     <a class="back-btn" href="/">← Voltar ao cardápio</a>
   </div>

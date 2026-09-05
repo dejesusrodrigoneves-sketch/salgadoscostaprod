@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const authService = require('../services/authService');
 const { authenticate, authorize } = require('../middleware/auth');
-const { authLimiter } = require('../middleware/rateLimit');
+const { authLimiter, refreshLimiter } = require('../middleware/rateLimit');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 const router = Router();
@@ -51,7 +51,7 @@ router.post('/change-password', authenticate, authorize('entregador'), asyncHand
 }));
 
 // Refresh token
-router.post('/refresh', asyncHandler(async (req, res) => {
+router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(400).json({ error: 'refreshToken obrigatório' });
   const tokenService = require('../services/tokenService');

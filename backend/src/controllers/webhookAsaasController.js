@@ -1,12 +1,13 @@
 // backend/src/controllers/webhookAsaasController.js (CJS)
 const subscriptionService = require('../services/subscriptionService.js');
 const prisma = require('../config/prisma.js').default;
+const logger = require('../config/logger');
 
 async function webhookAsaasController(req, res) {
   try {
     const { event, payment } = req.body;
     
-    console.log('[Asaas Webhook] Evento recebido:', event);
+    logger.info('[Asaas Webhook] Evento recebido');
     
     if (event === 'PAYMENT_RECEIVED') {
       const subscription = await prisma.subscription.findFirst({
@@ -21,12 +22,12 @@ async function webhookAsaasController(req, res) {
         const valorEsperado = Number(subscription.value) + interest;
         
         if (Math.abs(valorPago - valorEsperado) > 0.01) {
-          console.log(`[Asaas Webhook] Valor divergente: pago R$${valorPago}, esperado R$${valorEsperado}`);
+          logger.info('[Asaas Webhook] Valor divergente');
           return res.status(200).json({ received: true, ignored: 'valor_divergente' });
         }
         
         await subscriptionService.processPayment(subscription.empresaId);
-        console.log('[Asaas Webhook] Pagamento processado para empresa:', subscription.empresaId);
+        logger.info('[Asaas Webhook] Pagamento processado');
       }
     }
     
@@ -40,13 +41,13 @@ async function webhookAsaasController(req, res) {
           where: { id: subscription.id },
           data: { status: 'CANCELED', canceledAt: new Date() }
         });
-        console.log('[Asaas Webhook] Assinatura cancelada:', subscription.empresaId);
+        logger.info('[Asaas Webhook] Assinatura cancelada');
       }
     }
     
     res.status(200).json({ received: true });
   } catch (error) {
-    console.error('[Asaas Webhook] Erro:', error);
+    logger.error('[Asaas Webhook] Erro:', error.message);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 }

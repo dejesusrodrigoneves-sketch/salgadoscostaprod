@@ -6,8 +6,14 @@ import { authenticate, authorize } from '../middleware/auth.js';
 
 const paymentRouter = Router();
 
-// SSE: acompanhamento público do status do pedido
-paymentRouter.get('/status/:pedidoId', asyncHandler(async (req, res) => {
+// SSE: authenticated payment status tracking
+paymentRouter.get('/status/:pedidoId', authenticate, asyncHandler(async (req, res) => {
+  // Validate pedido belongs to user's empresa
+  const empId = req.ctx?.empresaId || req.user?.empresaId;
+  if (empId) {
+    const pedido = await sql.buscarPedido(req.params.pedidoId, empId);
+    if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+  }
   // Reconcilia antes de abrir o stream (cobre webhook perdido)
   try { await paymentService.consultarESincronizar(req.params.pedidoId); } catch (e) { /* best-effort */ }
 

@@ -430,7 +430,7 @@ async function carregarSettingsLoja() {
 
     // Update copyright
     const crEl = document.getElementById('footerCopyright');
-    if (crEl) crEl.textContent = nome + ' - 2024 \u00A9 Todos os direitos reservados.';
+    if (crEl) crEl.innerHTML = nome + ' - 2024 \u00A9 Todos os direitos reservados. | <a href="politicas.html" rel="noopener">Pol\u00EDtica de Privacidade</a>';
 
     // Update WhatsApp links
     const waFloat = document.getElementById('whatsappFloatLink');
@@ -438,25 +438,32 @@ async function carregarSettingsLoja() {
     const waService = document.getElementById('whatsappServiceLink');
     if (waService) waService.href = 'https://wa.me/' + tel;
 
-    // Update address
+    // Update address (complete)
     const addrEl = document.getElementById('storeAddress');
     if (addrEl && config.endereco) {
-      const parts = [config.endereco, config.numero].filter(Boolean).join(', ');
-      const bairro = config.bairro || '';
+      const linha1 = [config.endereco, config.numero].filter(Boolean).join(', ');
+      const linha2 = [config.bairro, config.cidade, config.estado].filter(Boolean).join(' · ');
+      const cep = config.cep ? ' · CEP: ' + config.cep : '';
       addrEl.innerHTML = '';
       var bold = document.createElement('b');
-      bold.style.color = 'black';
-      bold.appendChild(document.createTextNode(parts));
+      bold.appendChild(document.createTextNode(linha1));
       bold.appendChild(document.createElement('br'));
-      bold.appendChild(document.createTextNode(bairro));
+      bold.appendChild(document.createTextNode(linha2 + cep));
       addrEl.appendChild(bold);
     }
 
-    // Update map
+    // Update map (prefer lat/lng when available, fallback to address string)
     const mapIframe = document.getElementById('mapIframe');
-    if (mapIframe && config.endereco) {
-      const q = encodeURIComponent([config.endereco, config.numero, config.bairro, config.cidade, config.estado].filter(Boolean).join(', '));
-      if (q) mapIframe.src = 'https://www.google.com/maps?q=' + q + '&output=embed';
+    if (mapIframe) {
+      let mapQuery = '';
+      if (config.latitude && config.longitude) {
+        mapQuery = config.latitude + ',' + config.longitude;
+      } else if (config.endereco) {
+        mapQuery = [config.endereco, config.numero, config.bairro, config.cidade, config.estado].filter(Boolean).join(', ');
+      }
+      if (mapQuery) {
+        mapIframe.src = 'https://www.google.com/maps?q=' + encodeURIComponent(mapQuery) + '&output=embed';
+      }
     }
     // Aplica tema da loja
     if (config.themeSettings && typeof applyTheme === 'function') {
@@ -576,7 +583,7 @@ document.getElementById("btnRegister").addEventListener("click", async () => {
 
     var consentCheck = document.getElementById("regConsent");
     if (!consentCheck || !consentCheck.checked) {
-        toast("Você precisa aceitar a Política de Privacidade para continuar", 'warning');
+        toast("Você precisa aceitar as Políticas de Uso de Dados para continuar", 'warning');
         return;
     }
 

@@ -478,7 +478,6 @@ function renderProdutos(){
 }
 
 tbodyProdutos.addEventListener('click', onActionProduto);
-}
 
 function onActionProduto(e){
   const btn = e.target.closest('button[data-act]');
@@ -731,6 +730,50 @@ async function carregarConfigLoja() {
     console.warn('Erro ao carregar config loja:', e.message);
   }
 }
+
+// ===== Auto-fill CEP via ViaCEP =====
+(function() {
+  const cepInput = document.getElementById('confCep');
+  if (!cepInput) return;
+
+  // Input mask: XXXXX-XXX (igits only on value)
+  cepInput.addEventListener('input', function() {
+    let v = this.value.replace(/\D/g, '').substring(0, 8);
+    if (v.length > 5) v = v.substring(0, 5) + '-' + v.substring(5);
+    this.value = v;
+  });
+
+  cepInput.addEventListener('blur', async function() {
+    const raw = this.value.replace(/\D/g, '');
+    if (raw.length !== 8) return;
+
+    // Check if address fields are already filled (user edited manually)
+    const endereco = document.getElementById('confEndereco');
+    const bairro = document.getElementById('confBairro');
+    const cidade = document.getElementById('confCidade');
+    const estado = document.getElementById('confEstado');
+    const hasManualData = endereco.value.trim() || bairro.value.trim() || cidade.value.trim();
+    if (hasManualData) {
+      if (!confirm('Os campos de endereço já estão preenchidos. Deseja substituir pelo CEP informado?')) return;
+    }
+
+    try {
+      const res = await fetch('https://viacep.com.br/ws/' + raw + '/json/');
+      const data = await res.json();
+      if (data.erro) {
+        toast('CEP não encontrado. Verifique o número informado.', 'danger');
+        return;
+      }
+      endereco.value = data.logradouro || '';
+      bairro.value = data.bairro || '';
+      cidade.value = data.localidade || '';
+      estado.value = data.uf || '';
+      toast('Endereço preenchido automaticamente!');
+    } catch (e) {
+      toast('Erro ao consultar CEP. Verifique sua conexão.', 'danger');
+    }
+  });
+})();
 
 // Logo upload handler
 document.getElementById('confLogoFile')?.addEventListener('change', async function() {

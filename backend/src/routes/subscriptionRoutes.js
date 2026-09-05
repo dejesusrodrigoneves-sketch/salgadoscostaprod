@@ -12,6 +12,7 @@ const {
   listAllSubscriptionsController
 } = require('../controllers/subscriptionController.js');
 const { webhookAsaasController } = require('../controllers/webhookAsaasController.js');
+const asaasClient = require('../services/asaasClient.js').default;
 
 const router = Router();
 
@@ -26,7 +27,13 @@ router.get('/empresa/subscription/status', authenticate, authorize('admin'), sub
 router.post('/empresa/subscription/pay', authenticate, authorize('admin'), subscriptionGuard, payController);
 router.delete('/empresa/subscription/cancel', authenticate, authorize('admin'), subscriptionGuard, cancelController);
 
-// Asaas webhook (no auth — verified by Asaas signature)
-router.post('/webhooks/asaas/subscription', webhookAsaasController);
+// Asaas webhook (token validated)
+router.post('/webhooks/asaas/subscription', (req, res, next) => {
+  const token = req.headers['asaas-access-token'];
+  if (!asaasClient.verificarAutenticacao(token)) {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+  next();
+}, webhookAsaasController);
 
 module.exports = router;

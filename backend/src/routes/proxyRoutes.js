@@ -2,6 +2,7 @@ const { Router } = require('express');
 const axios = require('axios');
 const config = require('../config/env');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { proxyLimiter } = require('../middleware/rateLimit');
 
 const router = Router();
 
@@ -41,7 +42,7 @@ function validatePath(service, path) {
   return allowed.some(prefix => normalized.startsWith(prefix));
 }
 
-router.get('/:service', asyncHandler(async (req, res) => {
+router.get('/:service', proxyLimiter, asyncHandler(async (req, res) => {
   const svc = SERVICES[req.params.service];
   if (!svc) return res.status(400).json({ error: 'Serviço não suportado' });
   const path = req.query.path || '';
@@ -55,7 +56,7 @@ router.get('/:service', asyncHandler(async (req, res) => {
   res.json(data);
 }));
 
-router.post('/:service', asyncHandler(async (req, res) => {
+router.post('/:service', proxyLimiter, asyncHandler(async (req, res) => {
   const svc = SERVICES[req.params.service];
   if (!svc) return res.status(400).json({ error: 'Serviço não suportado' });
   const path = req.query.path || '';

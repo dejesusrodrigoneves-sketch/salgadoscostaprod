@@ -34,7 +34,7 @@
         headers: { 'Authorization': 'Bearer ' + authUser.token }
       });
       
-      if (!res.ok) return;
+      if (!res.ok) return; // 404/401/500 — silently skip
       
       const data = await res.json();
       
