@@ -1,0 +1,24 @@
+{
+  "version": 2,
+  "framework": null,
+  "builds": [
+    { "src": "backend/api.js", "use": "@vercel/node" },
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "css/**/*", "use": "@vercel/static" },
+    { "src": "js/**/*", "use": "@vercel/static" },
+    { "src": "icons/**/*", "use": "@vercel/static" },
+    { "src": "manifest.json", "use": "@vercel/static" },
+    { "src": "sw.js", "use": "@vercel/static" },
+    { "src": "firebase-messaging-sw.js", "use": "@vercel/static" },
+    { "src": "firebase-config.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend/api.js" },
+    { "src": "/health", "dest": "backend/api.js" },
+    { "src": "/sw.js", "headers": { "Cache-Control": "no-cache" }, "dest": "/sw.js" },
+    { "src": "/firebase-messaging-sw.js", "headers": { "Cache-Control": "no-cache" }, "dest": "/firebase-messaging-sw.js" },
+    { "src": "/manifest.json", "headers": { "Cache-Control": "no-cache" }, "dest": "/manifest.json" },
+    { "src": "/", "dest": "/entregador-login.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}

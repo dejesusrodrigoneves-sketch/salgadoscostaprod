@@ -1,16 +1,19 @@
-const CACHE_NAME = 'sic-entregador-v1';
+const CACHE_NAME = 'sic-entregador-v2';
 const STATIC_ASSETS = [
-  '/entregador/entregador-login.html',
-  '/entregador/entregador-app.html',
-  '/entregador/css/entregador.css',
-  '/entregador/js/api.js',
-  '/entregador/js/auth.js',
-  '/entregador/js/orders.js',
-  '/entregador/js/confirm.js',
-  '/entregador/js/history.js',
-  '/entregador/js/profile.js',
-  '/entregador/js/app.js',
-  '/entregador/manifest.json',
+  '/entregador-login.html',
+  '/entregador-app.html',
+  '/login.html',
+  '/css/entregador.css',
+  '/js/api.js',
+  '/js/auth.js',
+  '/js/orders.js',
+  '/js/confirm.js',
+  '/js/history.js',
+  '/js/profile.js',
+  '/js/app.js',
+  '/js/offline.js',
+  '/js/push.js',
+  '/manifest.json',
 ];
 
 // Install: cache static assets
@@ -43,12 +46,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Never cache non-GET
+  if (event.request.method !== 'GET') return;
+
   // Static assets: cache-first
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        if (response.ok && event.request.method === 'GET') {
+        if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
@@ -64,8 +70,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/entregador/manifest-icon.png',
-      badge: '/entregador/manifest-icon.png',
+      icon: '/icons/manifest-icon.png',
+      badge: '/icons/manifest-icon.png',
       data: data,
     })
   );
@@ -76,9 +82,9 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((clients) => {
-      const existing = clients.find((c) => c.url.includes('entregador'));
+      const existing = clients.find((c) => c.url.includes('entregador-app'));
       if (existing) return existing.focus();
-      return self.clients.openWindow('/entregador/entregador-app.html');
+      return self.clients.openWindow('/entregador-app.html');
     })
   );
 });

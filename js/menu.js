@@ -184,6 +184,7 @@ async function loadProducts() {
         products = data.filter(function(p) { return p.status !== "removed" && p.status !== "paused"; });
         showProducts(0);
         allPromotions();
+        updateOrderBar();
     } catch(e) {
         console.error("Erro ao carregar produtos:", e);
         menu.innerHTML = '<div class=\"error-state\"><span class=\"iconify-inline\" data-icon=\"mdi:alert-circle-outline\"></span><p>Erro ao carregar cardápio</p></div>';
@@ -348,9 +349,9 @@ function abrirPedidosNav(){
     if (typeof abrirOverlayPedidos === 'function') abrirOverlayPedidos(savedUser);
 }
 
-// Init order bar on load
+// Init order bar on load (chamado após loadProducts completar)
 document.addEventListener('DOMContentLoaded', function() {
-  updateOrderBar();
+  // updateOrderBar() chamado em loadProducts() após products ser populado
 });
 
 // Cart notify badge also via floating cart (keep compatible)

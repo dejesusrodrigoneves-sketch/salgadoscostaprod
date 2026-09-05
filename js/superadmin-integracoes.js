@@ -17,7 +17,7 @@ window.SuperIntegracoes = (function () {
     integs.forEach(i => {
       const div = document.createElement('div');
       div.innerHTML = `
-        <strong>${i.platform}</strong>
+        <strong>${i.platform === 'NINEFOOD' ? '99Food' : i.platform}</strong>
         <span>${i.configured ? 'Configurado' : 'Não configurado'}</span>
         <span>Empresas conectadas: ${i.empresasConectadas}</span>
         <span>Com erro: ${i.comErro}</span>

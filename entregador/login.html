@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F26D3D">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Entregador - Login</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #F26D3D;
+      --bg: #FAFAFA;
+      --card: #ffffff;
+      --text: #1F2937;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .login-wrap { width: 100%; max-width: 400px; }
+    .brand { text-align: center; margin-bottom: 28px; }
+    .brand .logo {
+      width: 64px; height: 64px; border-radius: 18px;
+      background: var(--accent);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 30px; color: #fff; margin-bottom: 12px;
+    }
+    .brand h1 { font-size: 24px; font-weight: 800; }
+    .brand p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    }
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .input-group input {
+      width: 100%; padding: 14px; font-size: 15px; font-family: inherit;
+      border: 1px solid var(--border); border-radius: 12px;
+      background: #fff; outline: none; transition: border .15s;
+    }
+    .input-group input:focus { border-color: var(--accent); }
+    .btn-primary {
+      width: 100%; padding: 15px; font-size: 15px; font-weight: 700; font-family: inherit;
+      background: var(--accent); color: #fff; border: none; border-radius: 12px;
+      cursor: pointer; transition: opacity .15s;
+    }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+    .error { color: #DC2626; font-size: 13px; margin-top: 12px; text-align: center; display: none; }
+    .error.show { display: block; }
+    .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="brand">
+      <div class="logo">📦</div>
+      <h1>SIC.ia Entregador</h1>
+      <p>Entre para ver seus pedidos</p>
+    </div>
+    <div class="card">
+      <form id="loginForm" autocomplete="off">
+        <div class="input-group">
+          <label for="loginUser">Usuário</label>
+          <input type="text" id="loginUser" placeholder="Seu usuário" required autocomplete="username">
+        </div>
+        <div class="input-group">
+          <label for="loginPass">Senha</label>
+          <input type="password" id="loginPass" placeholder="Sua senha" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-primary" id="btnLogin">Entrar</button>
+        <div class="error" id="loginError"></div>
+      </form>
+    </div>
+    <div class="footer">&copy; 2026 @djesus.programmer</div>
+  </div>
+
+  <script>
+    // Register PWA service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(err => console.warn('[SW] register failed:', err.message));
+    }
+
+    // Already authenticated? Go to app
+    const token = localStorage.getItem('entregador_token');
+    const expiry = localStorage.getItem('entregador_expiry');
+    if (token && expiry && Date.now() < Number(expiry)) {
+      window.location.href = 'entregador-app.html';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = document.getElementById('loginUser').value.trim();
+      const pass = document.getElementById('loginPass').value.trim();
+      const error = document.getElementById('loginError');
+      const btn = document.getElementById('btnLogin');
+
+      error.classList.remove('show');
+      if (!user || !pass) {
+        error.textContent = 'Preencha usuário e senha.';
+        error.classList.add('show');
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/entregador/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          error.textContent = data.error || 'Erro no login. Verifique usuário e senha.';
+          error.classList.add('show');
+          return;
+        }
+        localStorage.setItem('entregador_token', data.token);
+        localStorage.setItem('entregador_refresh', data.refreshToken);
+        localStorage.setItem('entregador_user', JSON.stringify(data.user));
+        localStorage.setItem('entregador_expiry', String(Date.now() + 30 * 60 * 1000));
+        window.location.href = data.mustChangePassword
+          ? 'entregador-app.html#/senha'
+          : 'entregador-app.html';
+      } catch (err) {
+        error.textContent = 'Erro de conexão. Tente novamente.';
+        error.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

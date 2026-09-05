@@ -1,0 +1,636 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Empresa {
+  id                Int                @id @default(autoincrement())
+  nome              String
+  slug              String             @unique
+  logo              String?
+  createdAt         DateTime           @default(now()) @map("criado_em")
+  telefone          String?
+  endereco          String?
+  numero            String?
+  bairro            String?
+  cidade            String?
+  estado            String?
+  cep               String?
+  latitude          Decimal?           @db.Decimal(10, 7)
+  longitude         Decimal?           @db.Decimal(10, 7)
+  descricao         String?
+  openingTime       String?            @map("opening_time")
+  closingTime       String?            @map("closing_time")
+  workingDays       Json               @default("[]") @map("working_days")
+  isOpen            Boolean            @default(true) @map("is_open")
+  manualOverride    Boolean            @default(false) @map("manual_override")
+  themeSettings     Json?              @map("theme_settings")
+  capa              String?
+  bairrosAtendidos  Json               @default("[]") @map("bairros_atendidos")
+  caixaDiario       CaixaDiario[]
+  categorias        Categoria[]
+  clientes          Cliente[]
+  counters          Counter[]
+  cupons            Cupom[]
+  entregadores      Entregador[]
+  entregasDiarias   EntregaDiaria[]
+  horarios          Horario?
+  pedidos           Pedido[]
+  produtos          Produto[]
+  usuarios          Usuario[]
+  pagamentos        Pagamento[]
+  whatsappInstances WhatsAppInstance[]
+  weeklySettlements   WeeklySettlement[]
+  platformConnections PlatformConnection[]
+  financialEntries    FinancialEntry[]
+  settlements         Settlement[]
+  reconciliations     Reconciliation[]
+  dailyClosings       DailyClosing[]
+  webhookEvents       WebhookEvent[]
+  oauthStates         OAuthState[]
+  email             String?            @unique
+  cpfCnpj           String?            @map("cpf_cnpj")
+  pixKey            String?            @map("pix_key")
+  pixKeyType        String?            @map("pix_key_type")
+  asaasSubcontaId   String?            @map("asaas_subconta_id")
+  asaasWalletId     String?            @map("asaas_wallet_id")
+  asaasApiKey       String?            @map("asaas_api_key")
+  asaasOnboarded    Boolean            @default(false) @map("asaas_onboarded")
+   asaasCreatedAt    DateTime?          @map("asaas_created_at")
+   whatsappNumber    String?            @map("whatsapp_number")
+   asaasSubscriptionId  String?  @map("asaas_subscription_id")
+   billingType          String?  @default("PIX") @map("billing_type")
+   nextDueDate          DateTime? @map("next_due_date")
+   subscription         Subscription?
+   deletedAt DateTime?
+   parentEmpresaId         Int?      @map("parent_empresa_id")
+   parentEmpresa           Empresa?  @relation("EmpresaFilial", fields: [parentEmpresaId], references: [id])
+   filiais                 Empresa[] @relation("EmpresaFilial")
+   empresaTipo             String    @default("independente") @map("empresa_tipo")
+   pendingThemeSettings    Json?     @map("pending_theme_settings")
+   themeApproved           Boolean   @default(true) @map("theme_approved")
+
+   @@map("empresas")
+}
+
+model Categoria {
+  id        Int       @id @default(autoincrement())
+  empresaId Int       @map("empresa_id")
+  nome      String
+  createdAt DateTime  @default(now()) @map("criado_em")
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+  produtos  Produto[]
+
+  @@unique([empresaId, nome])
+  @@map("categorias")
+}
+
+model Usuario {
+  id           Int          @id @default(autoincrement())
+  empresaId    Int          @map("empresa_id")
+  username     String
+  passwordHash String       @map("password_hash")
+  lojaNome     String?      @map("loja_nome")
+  role         String       @default("user")
+  createdAt    DateTime     @default(now()) @map("criado_em")
+  empresa      Empresa      @relation(fields: [empresaId], references: [id])
+   entregador   Entregador?
+
+  @@unique([username])
+  @@map("usuarios")
+}
+
+model Produto {
+  id                 Int           @id @default(autoincrement())
+  empresaId          Int           @map("empresa_id")
+  type               Int           @default(0)
+  name               String
+  description        String?
+  price              Decimal       @db.Decimal(10, 2)
+  img                String?
+  status             String        @default("active")
+  congelado          Boolean       @default(false)
+  controlaEstoque    Boolean       @default(false) @map("controla_estoque")
+  estoqueAtual       Int           @default(0) @map("estoque_atual")
+  estoqueMinimo      Int           @default(0) @map("estoque_minimo")
+  hideWhenOutOfStock Boolean       @default(true) @map("hide_when_out_of_stock")
+  lastPrice          Decimal?      @map("last_price") @db.Decimal(10, 2)
+  categoryId         Int?          @map("category_id")
+  config             Json?         @map("config")
+  itens              ItensPedido[]
+  category           Categoria?    @relation(fields: [categoryId], references: [id])
+  empresa            Empresa       @relation(fields: [empresaId], references: [id])
+
+  @@map("produtos")
+}
+
+model Pedido {
+  id                String        @id
+  empresaId         Int           @map("empresa_id")
+  clienteNome       String        @map("cliente_nome")
+  clienteWhatsapp   String?       @map("cliente_whatsapp")
+  clienteEndereco   String?       @map("cliente_endereco")
+  clienteNumero     String?       @map("cliente_numero")
+  clienteBairro     String?       @map("cliente_bairro")
+  clienteCep        String?       @map("cliente_cep")
+  clienteReferencia String?       @map("cliente_referencia")
+  tipoEntrega       String        @default("delivery") @map("tipo_entrega")
+  formaPagamento    String?       @map("forma_pagamento")
+  troco             Decimal?      @db.Decimal(10, 2)
+  status            String        @default("pendente")
+  valoresItens      Decimal?      @map("valores_itens") @db.Decimal(10, 2)
+  taxasEntrega      Decimal?      @map("taxas_entrega") @db.Decimal(10, 2)
+  taxasCartao       Decimal?      @map("taxas_cartao") @db.Decimal(10, 2)
+  desconto          Decimal?      @db.Decimal(10, 2)
+  total             Decimal?      @db.Decimal(10, 2)
+  entregadorId      String?       @map("entregador_id")
+  lat               Decimal?      @db.Decimal(10, 7)
+  lon               Decimal?      @db.Decimal(10, 7)
+  createdAt         DateTime      @default(now()) @map("criado_em")
+  finalizadoEm      DateTime?     @map("finalizado_em")
+  paymentStatus     String?       @map("payment_status")
+  paymentMethod     String?       @map("payment_method")
+  paymentId         Int?          @map("payment_id")
+  deletedAt         DateTime?     @map("deleted_em")
+  semanaNoAcervo    Boolean       @default(false)
+  pagamentos        Pagamento[]
+  itens             ItensPedido[]
+  empresa           Empresa       @relation(fields: [empresaId], references: [id])
+
+  @@index([paymentStatus])
+  @@index([deletedAt])
+  @@index([empresaId])
+  @@index([empresaId, createdAt(sort: Desc)])
+  @@index([clienteWhatsapp])
+  @@map("pedidos")
+}
+
+model ItensPedido {
+  id            Int      @id @default(autoincrement())
+  pedidoId      String   @map("pedido_id")
+  produtoId     Int      @map("produto_id")
+  quantidade    Int
+  precoUnitario Decimal? @map("preco_unitario") @db.Decimal(10, 2)
+  sabores       String?
+  pedido        Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto       Produto  @relation(fields: [produtoId], references: [id])
+
+  @@index([pedidoId])
+  @@index([produtoId])
+  @@map("itens_pedido")
+}
+
+model Pagamento {
+  id               Int       @id @default(autoincrement())
+  pedidoId         String    @map("pedido_id")
+  empresaId        Int       @map("empresa_id")
+  asaasPaymentId   String    @unique @map("asaas_payment_id")
+  asaasCustomerId  String?   @map("asaas_customer_id")
+  metodo           String    @default("pix")
+  valor            Decimal   @db.Decimal(10, 2)
+  pixCode          String?   @map("pix_code")
+  pixQrCode        String?   @map("pix_qr_code")
+  status           String    @default("aguardando_pagamento")
+  expiresAt        DateTime? @map("expira_em")
+  paidAt           DateTime? @map("pago_em")
+  rejeitadoEm      DateTime? @map("rejeitado_em")
+  refundId         String?   @map("refund_id")
+  refundStatus     String?   @map("refund_status")
+  refundReason     String?   @map("refund_reason")
+  refundedAt       DateTime? @map("refundado_em")
+  createdAt        DateTime  @default(now()) @map("criado_em")
+  pedido           Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  empresa          Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([pedidoId])
+  @@index([empresaId, status])
+  @@map("pagamentos")
+}
+
+model ProcessedWebhook {
+  eventId   String   @id
+  createdAt DateTime @default(now()) @map("criado_em")
+
+  @@map("processed_webhooks")
+}
+
+model Entregador {
+  id                  Int             @id @default(autoincrement())
+  empresaId           Int             @map("empresa_id")
+  nome                String
+  username            String?         @unique
+  telefone            String?
+  endereco            String?
+  whatsapp            String?
+  chavePix            String?         @map("chave_pix")
+  ativo               Boolean         @default(true)
+  usuarioId           Int?            @unique @map("usuario_id")
+  passwordHash        String?         @map("password_hash")
+  mustChangePassword  Boolean         @default(true) @map("must_change_password")
+  fcmToken            String?         @map("fcm_token")
+  createdAt           DateTime        @default(now()) @map("criado_em")
+  empresa             Empresa         @relation(fields: [empresaId], references: [id])
+  entregas            EntregaDiaria[]
+  usuario             Usuario?        @relation(fields: [usuarioId], references: [id])
+
+  @@unique([empresaId, telefone])
+  @@map("entregadores")
+}
+
+model EntregaDiaria {
+  id           Int        @id @default(autoincrement())
+  empresaId    Int        @map("empresa_id")
+  data         DateTime
+  entregadorId Int        @map("entregador_id")
+  pedidoId     String     @map("pedido_id")
+  valor        Decimal?   @db.Decimal(10, 2)
+  valorCobrado Decimal?   @db.Decimal(10, 2)
+  status       String     @default("entregue")
+  confirmadoEm DateTime?  @map("confirmado_em")
+  observacao   String?
+  createdAt    DateTime   @default(now()) @map("criado_em")
+  empresa      Empresa    @relation(fields: [empresaId], references: [id])
+  entregador   Entregador @relation(fields: [entregadorId], references: [id])
+
+  @@index([pedidoId])
+  @@index([data])
+  @@index([entregadorId])
+  @@map("entregas_diarias")
+}
+
+model CaixaDiario {
+  id                Int       @id @default(autoincrement())
+  empresaId         Int       @map("empresa_id")
+  data              DateTime
+  valorInicial      Decimal?  @map("valor_inicial") @db.Decimal(10, 2)
+  totalDinheiro     Decimal?  @default(0) @map("total_dinheiro") @db.Decimal(10, 2)
+  totalPix          Decimal?  @default(0) @map("total_pix") @db.Decimal(10, 2)
+  totalDebito       Decimal?  @default(0) @map("total_debito") @db.Decimal(10, 2)
+  totalCredito      Decimal?  @default(0) @map("total_credito") @db.Decimal(10, 2)
+  totalPedidos      Decimal?  @default(0) @map("total_pedidos") @db.Decimal(10, 2)
+  quantidadePedidos Int?      @default(0) @map("quantidade_pedidos")
+  status            String    @default("aberto")
+  abertoEm          DateTime? @map("aberto_em")
+  fechadoEm         DateTime? @map("fechado_em")
+  empresa           Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([data])
+  @@map("caixa_diario")
+}
+
+model Horario {
+  id        Int     @id @default(autoincrement())
+  empresaId Int     @unique @map("empresa_id")
+  dia       String
+  fechado   Boolean @default(false)
+  inicio    String?
+  fim       String?
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  @@map("horarios")
+}
+
+model Counter {
+  nome      String
+  empresaId Int     @map("empresa_id")
+  lastValue Int     @default(0) @map("last_value")
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  @@id([nome, empresaId])
+  @@map("counters")
+}
+
+model Cliente {
+  id              Int      @id @default(autoincrement())
+  empresaId       Int      @map("empresa_id")
+  nome            String
+  telefone        String
+  endereco        String?
+  numero          String?
+  bairro          String?
+  cep             String?
+  pontoReferencia String?  @map("ponto_referencia")
+  passwordHash    String?  @map("password_hash")
+  asaasCustomerId String?  @map("asaas_customer_id")
+  createdAt       DateTime @default(now()) @map("criado_em")
+  consentimentoAt DateTime? @map("consentimento_em")
+  consentimentoRevogadoAt DateTime? @map("consentimento_revogado_em")
+  politicaVersao  Int?      @default(1) @map("politica_versao")
+  empresa         Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, telefone])
+  @@map("clientes")
+}
+
+model Cupom {
+  codigo    String  @id
+  empresaId Int     @map("empresa_id")
+  desconto  Decimal @db.Decimal(10, 2)
+  usado     Boolean @default(false)
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  @@map("cupons")
+}
+
+model LoginLog {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int      @map("usuario_id")
+  username  String
+  ip        String?
+  userAgent String?  @map("user_agent")
+  loggedAt  DateTime @default(now()) @map("logado_em")
+
+  @@map("login_logs")
+}
+
+model AuditLog {
+  id            BigInt   @id @default(autoincrement())
+  requestId     String   @map("request_id")
+  sessionId     String?  @map("session_id")
+  empresaId     Int      @default(1) @map("empresa_id")
+  actorType     String   @default("admin") @map("actor_type")
+  actorId       Int?     @map("actor_id")
+  actorUsername String?  @map("actor_username")
+  actorRole     String?  @map("actor_role")
+  action        String
+  module        String
+  targetType    String?  @map("target_type")
+  targetId      String?  @map("target_id")
+  before        Json?
+  after         Json?
+  changedFields Json?    @map("changed_fields")
+  severity      String   @default("info")
+  reason        String?
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("criado_em")
+
+  @@index([empresaId, action])
+  @@index([empresaId, actorId, createdAt])
+  @@index([empresaId, createdAt])
+  @@index([requestId])
+  @@map("audit_logs")
+}
+
+model AppLog {
+  id        BigInt   @id @default(autoincrement())
+  requestId String   @map("request_id")
+  level     String
+  message   String
+  module    String?
+  stack     String?
+  meta      Json?
+  empresaId Int      @default(1) @map("empresa_id")
+  createdAt DateTime @default(now()) @map("criado_em")
+
+  @@index([empresaId, level, createdAt])
+  @@index([requestId])
+  @@map("app_logs")
+}
+
+model WhatsAppInstance {
+  id               Int      @id @default(autoincrement())
+  empresaId        Int      @map("empresa_id")
+  instanceId       String   @map("instance_id")
+  connectionStatus String   @default("disconnected") @map("connection_status")
+  phoneNumber      String?  @map("phone_number")
+  qrCode           String?  @map("qr_code")
+  isActive         Boolean  @default(false) @map("is_active")
+  createdAt        DateTime @default(now()) @map("criado_em")
+  updatedAt        DateTime @updatedAt @map("atualizado_em")
+  empresa          Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, instanceId])
+  @@map("whatsapp_instances")
+}
+
+model WeeklySettlement {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int
+  weekStart       DateTime
+  weekEnd         DateTime
+  totalPedidos    Int       @default(0)
+  totalBruto      Decimal   @db.Decimal(10, 2) @default(0)
+  totalLiquido    Decimal   @db.Decimal(10, 2) @default(0)
+  status          String    @default("processando")
+  processedAt     DateTime?
+  paidAt          DateTime?
+  asaasTransferId String?
+  splitStatus     String?   @map("split_status")
+  splitError      String?   @map("split_error")
+  transferId           String?   @map("transfer_id")
+  transferStatus       String?   @map("transfer_status")
+  transferScheduledAt  DateTime? @map("transfer_scheduled_at")
+  transferAmount       Decimal?  @db.Decimal(10, 2) @map("transfer_amount")
+  createdAt            DateTime  @default(now())
+
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, weekStart])
+  @@index([empresaId])
+  @@index([status])
+}
+
+enum Platform {
+  SAAS
+  IFOOD
+  KEETA
+  NINEFOOD
+}
+
+model PlatformConnection {
+  id                Int       @id @default(autoincrement())
+  empresaId         Int       @map("empresa_id")
+  platform          Platform
+  status            String    @default("NOT_CONNECTED")
+  externalAccountId String?   @map("external_account_id")
+  accessTokenEnc    String?   @map("access_token_enc")
+  refreshTokenEnc   String?   @map("refresh_token_enc")
+  tokenExpiresAt    DateTime? @map("token_expires_at")
+  lastSyncAt        DateTime? @map("last_sync_at")
+  lastError         String?   @map("last_error")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  empresa           Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, platform])
+  @@index([platform])
+  @@index([status])
+  @@map("platform_connections")
+}
+
+model FinancialEntry {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int       @map("empresa_id")
+  source          Platform
+  externalId      String    @map("external_id")
+  type            String    @default("SALE")
+  grossAmount     Decimal   @db.Decimal(10, 2) @map("gross_amount")
+  discountAmount  Decimal   @db.Decimal(10, 2) @default(0) @map("discount_amount")
+  platformFee     Decimal   @db.Decimal(10, 2) @default(0) @map("platform_fee")
+  paymentFee      Decimal   @db.Decimal(10, 2) @default(0) @map("payment_fee")
+  deliveryAmount  Decimal   @db.Decimal(10, 2) @default(0) @map("delivery_amount")
+  otherFees       Decimal   @db.Decimal(10, 2) @default(0) @map("other_fees")
+  netAmount       Decimal   @db.Decimal(10, 2) @map("net_amount")
+  expectedAmount  Decimal?  @db.Decimal(10, 2) @map("expected_amount")
+  receivedAmount  Decimal?  @db.Decimal(10, 2) @map("received_amount")
+  transactionDate DateTime  @map("transaction_date")
+  settlementDate  DateTime? @map("settlement_date")
+  status          String    @default("PENDING")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, source, externalId])
+  @@index([empresaId, source, transactionDate])
+  @@index([empresaId, settlementDate])
+  @@index([empresaId, status])
+  @@map("financial_entries")
+}
+
+model Settlement {
+  id                   Int       @id @default(autoincrement())
+  empresaId            Int       @map("empresa_id")
+  source               Platform
+  externalSettlementId String    @map("external_settlement_id")
+  expectedAmount       Decimal   @db.Decimal(10, 2) @map("expected_amount")
+  actualAmount         Decimal?  @db.Decimal(10, 2) @map("actual_amount")
+  settlementDate       DateTime  @map("settlement_date")
+  status               String    @default("PENDING")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  empresa              Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, source, externalSettlementId])
+  @@index([empresaId, settlementDate])
+  @@map("settlements")
+}
+
+model Reconciliation {
+  id             Int       @id @default(autoincrement())
+  empresaId      Int       @map("empresa_id")
+  source         Platform
+  settlementId   Int?      @map("settlement_id")
+  expectedAmount Decimal   @db.Decimal(10, 2) @map("expected_amount")
+  receivedAmount Decimal   @db.Decimal(10, 2) @map("received_amount")
+  difference     Decimal   @db.Decimal(10, 2) @map("difference")
+  status         String    @default("DIVERGENT")
+  resolvedAt     DateTime? @map("resolved_at")
+  resolvedBy     Int?      @map("resolved_by")
+  reason         String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  empresa        Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, source])
+  @@index([empresaId, status])
+  @@map("reconciliations")
+}
+
+model DailyClosing {
+  id               Int      @id @default(autoincrement())
+  empresaId        Int      @map("empresa_id")
+  date             DateTime @db.Date
+  grossAmount      Decimal  @db.Decimal(10, 2) @default(0) @map("gross_amount")
+  discountAmount   Decimal  @db.Decimal(10, 2) @default(0) @map("discount_amount")
+  feesAmount       Decimal  @db.Decimal(10, 2) @default(0) @map("fees_amount")
+  netAmount        Decimal  @db.Decimal(10, 2) @default(0) @map("net_amount")
+  receivedAmount   Decimal  @db.Decimal(10, 2) @default(0) @map("received_amount")
+  receivableAmount Decimal  @db.Decimal(10, 2) @default(0) @map("receivable_amount")
+  divergenceAmount Decimal  @db.Decimal(10, 2) @default(0) @map("divergence_amount")
+  status           String   @default("CLOSED")
+  generatedBy      Int?     @map("generated_by")
+  generatedAt      DateTime @default(now()) @map("generated_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  empresa          Empresa  @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, date])
+  @@index([empresaId])
+  @@map("daily_closings")
+}
+
+model WebhookEvent {
+  id              Int       @id @default(autoincrement())
+  empresaId       Int       @map("empresa_id")
+  platform        Platform
+  externalEventId String    @map("external_event_id")
+  eventType       String    @map("event_type")
+  receivedAt      DateTime  @default(now()) @map("received_at")
+  processedAt     DateTime? @map("processed_at")
+  status          String    @default("PENDING")
+  error           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([platform, externalEventId])
+  @@index([empresaId, platform])
+  @@map("webhook_events")
+}
+
+model OAuthState {
+  nonce     String    @id
+  empresaId Int       @map("empresa_id")
+  usuarioId Int       @map("usuario_id")
+  platform  Platform
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  empresa   Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId])
+  @@map("oauth_states")
+}
+
+model Subscription {
+  id                   Int       @id @default(autoincrement())
+  empresaId            Int       @unique @map("empresa_id")
+  asaasSubscriptionId  String?   @map("asaas_subscription_id")
+  status               String    @default("TRIAL")
+  value                Decimal   @default(100) @db.Decimal(10, 2)
+  billingType          String    @default("PIX") @map("billing_type")
+  nextDueDate          DateTime? @map("next_due_date")
+  trialEndsAt          DateTime? @map("trial_ends_at")
+  lastPaymentAt        DateTime? @map("last_payment_at")
+  canceledAt           DateTime? @map("canceled_at")
+  createdAt            DateTime  @default(now()) @map("criado_em")
+  updatedAt            DateTime  @updatedAt @map("atualizado_em")
+  empresa              Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model PricingConfig {
+  id              Int      @id @default(autoincrement())
+  value           Decimal  @db.Decimal(10, 2)
+  effectiveDate   DateTime @map("effective_date")
+  status          String   @default("PENDING")
+  notifiedAt      DateTime? @map("notified_at")
+  createdAt       DateTime @default(now()) @map("criado_em")
+  updatedAt       DateTime  @updatedAt @map("atualizado_em")
+
+  @@map("pricing_configs")
+}
+
+model SubscriptionNotification {
+  id              Int      @id @default(autoincrement())
+  empresaId       Int      @map("empresa_id")
+  tipo            String
+  sentAt          DateTime @default(now()) @map("enviado_em")
+  createdAt       DateTime @default(now()) @map("criado_em")
+
+  @@map("subscription_notifications")
+}
+
+model PlatformSettings {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @map("criado_em")
+  updatedAt DateTime @updatedAt @map("atualizado_em")
+
+  @@map("platform_settings")
+}

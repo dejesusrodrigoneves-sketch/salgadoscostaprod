@@ -1010,6 +1010,7 @@ function mostrarConfirmacaoPedido(orderId, itens, total) {
 
 function fecharOverlay() {
   document.getElementById("orderOverlay").classList.add("hidden");
+  window.location.href = '../index.html';
 }
 
 // Inicializa

@@ -32,7 +32,8 @@ window.Financeiro = (function () {
     lista.innerHTML = '';
     (b.porPlataforma || []).forEach(p => {
       const li = document.createElement('li');
-      li.textContent = `${p.source}: ${fmt(p.net)}`;
+      const displayName = p.source === 'NINEFOOD' ? '99Food' : p.source;
+      li.textContent = `${displayName}: ${fmt(p.net)}`;
       lista.appendChild(li);
     });
   }

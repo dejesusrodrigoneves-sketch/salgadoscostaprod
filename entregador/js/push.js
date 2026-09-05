@@ -24,15 +24,18 @@ const EntregadorPush = {
     if (this.messaging) return;
 
     try {
-      // Firebase config — UPDATE THESE VALUES from your Firebase project
-      const firebaseConfig = {
-        apiKey: process.env?.FIREBASE_API_KEY || 'YOUR_API_KEY',
-        authDomain: process.env?.FIREBASE_AUTH_DOMAIN || 'YOUR_PROJECT.firebaseapp.com',
-        projectId: process.env?.FIREBASE_PROJECT_ID || 'YOUR_PROJECT_ID',
-        storageBucket: process.env?.FIREBASE_STORAGE_BUCKET || 'YOUR_PROJECT.appspot.com',
-        messagingSenderId: process.env?.FIREBASE_MESSAGING_SENDER_ID || 'YOUR_SENDER_ID',
-        appId: process.env?.FIREBASE_APP_ID || 'YOUR_APP_ID',
-      };
+      // Firebase config from shared firebase-config.js
+      const firebaseConfig = window.FIREBASE_CONFIG || {};
+      this.vapidKey = window.FIREBASE_VAPID_KEY || '';
+
+      // Skip if no real config yet
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') {
+        console.warn('[Push] Firebase não configurado — push desabilitado');
+        return;
+      }
+
+      // Register the FCM service worker
+      const swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
 
       // Initialize Firebase
       if (!firebase.apps.length) {
@@ -50,6 +53,7 @@ const EntregadorPush = {
       // Get FCM token
       const token = await this.messaging.getToken({
         vapidKey: this.vapidKey,
+        serviceWorkerRegistration: swRegistration,
       });
 
       if (token) {

@@ -1,0 +1,104 @@
+const service = require('../services/whatsappInstanceService');
+const whatsapp = require('../services/whatsappService');
+const sql = require('../repositories/sqlRepository');
+const auditService = require('../services/auditService');
+const { getCtx } = require('../middleware/context');
+const { asyncHandler } = require('../middleware/errorHandler');
+
+function empresaId(req) {
+  return req.ctx?.empresaId || req.user?.empresaId;
+}
+
+exports.listar = asyncHandler(async (req, res) => {
+  const instancias = await service.listar(empresaId(req));
+  res.json(instancias);
+});
+
+exports.criar = asyncHandler(async (req, res) => {
+  const { instanceName, phoneNumber } = req.body;
+  const resultado = await service.criar(req.user.role, instanceName, phoneNumber, empresaId(req), getCtx(req));
+  res.status(201).json(resultado);
+});
+
+exports.deletar = asyncHandler(async (req, res) => {
+  await service.deletar(req.params.id, empresaId(req), getCtx(req));
+  res.json({ success: true });
+});
+
+exports.qrCode = asyncHandler(async (req, res) => {
+  const resultado = await service.gerarQrCode(req.params.id, empresaId(req), getCtx(req));
+  res.json(resultado);
+});
+
+exports.reconectar = asyncHandler(async (req, res) => {
+  const resultado = await service.reconectar(req.params.id, empresaId(req), getCtx(req));
+  res.json(resultado);
+});
+
+exports.status = asyncHandler(async (req, res) => {
+  const resultado = await service.status(req.params.id, empresaId(req));
+  res.json(resultado);
+});
+
+exports.enviarTeste = asyncHandler(async (req, res) => {
+  const instancia = await service.status(req.params.id, empresaId(req));
+  if (!instancia) {
+    return res.status(404).json({ error: 'Instância não encontrada' });
+  }
+  if (instancia.connectionStatus !== 'connected' && instancia.connectionStatus !== 'open') {
+    return res.status(400).json({ error: 'Instância não está conectada' });
+  }
+  if (!instancia.phoneNumber) {
+    return res.status(400).json({ error: 'Instância não possui número de telefone registrado' });
+  }
+
+  const resultado = await whatsapp.enviarMensagemDireta(
+    instancia.instanceId,
+    instancia.phoneNumber,
+    '✅ Mensagem de teste! A integração WhatsApp está funcionando corretamente.'
+  );
+
+  auditService.audit({
+    ...getCtx(req),
+    action: 'whatsapp.test_send',
+    module: 'whatsapp',
+    targetType: 'whatsapp_instance',
+    targetId: instancia.id,
+    after: { to: instancia.phoneNumber },
+    changedFields: ['to'],
+  });
+
+  res.json({ success: true, message: 'Mensagem de teste enviada', to: instancia.phoneNumber });
+});
+
+exports.enviarContatoPedido = asyncHandler(async (req, res) => {
+  const { telefone, mensagem } = req.body;
+  if (!telefone || !mensagem) return res.status(400).json({ error: 'telefone e mensagem obrigatórios' });
+
+  const instancia = await service.statusAtivo(empresaId(req));
+  if (instancia && (instancia.connectionStatus === 'connected' || instancia.connectionStatus === 'open')) {
+    await whatsapp.enviarMensagem(telefone, mensagem, empresaId(req));
+    auditService.audit({
+      ...getCtx(req),
+      action: 'whatsapp.contact_send',
+      module: 'whatsapp',
+      targetType: 'whatsapp_instance',
+      targetId: instancia.id,
+      after: { to: telefone },
+      changedFields: ['to'],
+      metadata: { via: 'evolution' },
+    });
+    return res.json({ success: true, via: 'evolution' });
+  }
+
+  const link = `https://wa.me/55${telefone.replace(/\D/g, '')}?text=${encodeURIComponent(mensagem)}`;
+  auditService.audit({
+    ...getCtx(req),
+    action: 'whatsapp.contact_send',
+    module: 'whatsapp',
+    after: { to: telefone },
+    changedFields: ['to'],
+    metadata: { via: 'link' },
+  });
+  res.json({ success: true, via: 'link', link });
+});
