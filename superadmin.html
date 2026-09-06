@@ -58,20 +58,19 @@
 </head>
 <body>
 
-<h1><i class="fas fa-shield-alt"></i> Super Admin</h1>
-
-<div class="tabs">
-  <button class="tab active" onclick="switchTab('dashboard',this)"><i class="fas fa-chart-line"></i> Dashboard</button>
-  <button class="tab" onclick="switchTab('usuarios',this)"><i class="fas fa-users"></i> Usuários</button>
-  <button class="tab" onclick="switchTab('senhas',this)"><i class="fas fa-key"></i> Gerenciar Senhas</button>
-  <button class="tab" onclick="switchTab('registros',this)"><i class="fas fa-scroll"></i> Registros</button>
-  <button class="tab" onclick="switchTab('clientes',this)"><i class="fas fa-user-tie"></i> Clientes</button>
-  <button class="tab" onclick="switchTab('empresas',this)"><i class="fas fa-store"></i> Empresas</button>
-  <button class="tab" onclick="switchTab('filiais',this)"><i class="fas fa-sitemap"></i> Empresas Filiais</button>
-  <button class="tab" onclick="switchTab('settlements',this)"><i class="fas fa-dollar-sign"></i> Settlements</button>
-  <button class="tab" onclick="switchTab('integracoes',this)"><i class="fas fa-plug"></i> Integrações</button>
-  <button class="tab" onclick="switchTab('billing',this)"><i class="fas fa-credit-card"></i> Billing</button>
-</div>
+<div class="sa-layout">
+  <div class="sa-overlay" id="saOverlay"></div>
+  <aside class="sa-sidebar" id="saSidebar">
+    <div class="sa-sidebar-header">
+      <div class="sa-logo"><i class="fas fa-shield-alt"></i></div>
+      <div class="sa-brand"><strong>Super Admin</strong><span>Controle geral</span></div>
+      <button class="sa-hamburger" id="saCollapseBtn" title="Recolher menu"><i class="fas fa-bars"></i></button>
+      <button class="sa-expand" id="saExpandBtn" title="Expandir menu"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <nav class="sa-nav" id="saNav"></nav>
+    <div class="sa-sidebar-foot">v1.0</div>
+  </aside>
+  <div class="sa-main">
 
 <!-- Dashboard tab -->
 <div class="tab-content active" id="tabDashboard">
@@ -426,10 +425,117 @@ function api(path, opts) {
 </script>
 
 <script>
+// ===== Sidebar Navigation =====
+const navSections = [
+  { title: 'Visão Geral', items: [
+    { id: 'dashboard', icon: 'fa-chart-line', label: 'Dashboard' },
+  ]},
+  { title: 'Administração', items: [
+    { id: 'usuarios', icon: 'fa-users', label: 'Usuários' },
+    { id: 'senhas', icon: 'fa-key', label: 'Gerenciar Senhas' },
+    { id: 'registros', icon: 'fa-scroll', label: 'Registros' },
+  ]},
+  { title: 'Organização', items: [
+    { id: 'clientes', icon: 'fa-user-tie', label: 'Clientes' },
+    { id: 'empresas', icon: 'fa-store', label: 'Empresas' },
+    { id: 'filiais', icon: 'fa-sitemap', label: 'Empresas Filiais' },
+  ]},
+  { title: 'Financeiro', items: [
+    { id: 'settlements', icon: 'fa-dollar-sign', label: 'Settlements' },
+    { id: 'billing', icon: 'fa-credit-card', label: 'Billing' },
+    { id: 'integracoes', icon: 'fa-plug', label: 'Integrações' },
+  ]},
+];
+
+function renderSaNav() {
+  const nav = document.getElementById('saNav');
+  if (!nav) return;
+  nav.innerHTML = '';
+  navSections.forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sa-section open';
+    wrap.innerHTML =
+      '<button class="sa-section-head">' +
+        '<span class="lbl">' + sec.title + '</span>' +
+        '<i class="fas fa-chevron-right chev"></i>' +
+      '</button>' +
+      '<div class="sa-items">' +
+        sec.items.map(function(it) {
+          return '<div class="sa-item" data-tab="' + it.id + '" title="' + it.label + '">' +
+            '<i class="fas ' + it.icon + '"></i><span class="lbl">' + it.label + '</span>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    nav.appendChild(wrap);
+  });
+
+  // Accordion toggle
+  nav.querySelectorAll('.sa-section-head').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      btn.closest('.sa-section').classList.toggle('open');
+    });
+  });
+
+  // Item click → switchTab + active state
+  nav.querySelectorAll('.sa-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+      nav.querySelectorAll('.sa-item').forEach(function(i) { i.classList.remove('active'); });
+      item.classList.add('active');
+      switchTab(item.dataset.tab);
+      if (window.innerWidth <= 820) closeSaDrawer();
+    });
+  });
+
+  // Default active
+  var first = nav.querySelector('.sa-item');
+  if (first) first.classList.add('active');
+}
+
+// ===== Sidebar Collapse =====
+var saSidebar = document.getElementById('saSidebar');
+var saCollapseBtn = document.getElementById('saCollapseBtn');
+var saExpandBtn = document.getElementById('saExpandBtn');
+var saOverlay = document.getElementById('saOverlay');
+
+if (saCollapseBtn) {
+  saCollapseBtn.addEventListener('click', function() {
+    saSidebar.classList.toggle('collapsed');
+    var icon = saCollapseBtn.querySelector('i');
+    icon.classList.toggle('fa-bars');
+    icon.classList.toggle('fa-angles-right');
+  });
+}
+
+if (saExpandBtn) {
+  saExpandBtn.addEventListener('click', function() {
+    saSidebar.classList.remove('collapsed');
+    var icon = saCollapseBtn.querySelector('i');
+    icon.classList.add('fa-bars');
+    icon.classList.remove('fa-angles-right');
+  });
+}
+
+// ===== Mobile Drawer =====
+function openSaDrawer() {
+  if (saSidebar) saSidebar.classList.add('open');
+  if (saOverlay) saOverlay.classList.add('show');
+}
+function closeSaDrawer() {
+  if (saSidebar) saSidebar.classList.remove('open');
+  if (saOverlay) saOverlay.classList.remove('show');
+}
+
+var saMobileToggle = document.querySelector('.sa-mobile-toggle');
+if (saMobileToggle) saMobileToggle.addEventListener('click', openSaDrawer);
+if (saOverlay) saOverlay.addEventListener('click', closeSaDrawer);
+
+// Init sidebar
+renderSaNav();
+
 function switchTab(tab, btn) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
   const map = { dashboard: 'tabDashboard', usuarios: 'tabUsuarios', senhas: 'tabSenhas', empresas: 'tabEmpresas', filiais: 'tabFiliais', registros: 'tabRegistros', clientes: 'tabClientes', settlements: 'tabSettlements', integracoes: 'tabIntegracoes', billing: 'tabBilling' };
   document.getElementById(map[tab]).classList.add('active');
   if (tab === 'registros') superadminAudit.carregarAudit(1);
@@ -834,6 +940,9 @@ async function carregarSettlements() {
   }
 }
 </script>
+
+  </div><!-- /.sa-main -->
+</div><!-- /.sa-layout -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
 <script src="js/superadmin-audit.js" type="module"></script>
