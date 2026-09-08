@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import ifoodProvider from '../src/integrations/ifood/IfoodFinancialProvider.js';
 import keetaProvider from '../src/integrations/keeta/KeetaFinancialProvider.js';
-import ninefoodProvider from '../src/integrations/ninefood/NineFoodFinancialProvider.js';
+import ninefoodProvider from '../src/integrations/99food/99FoodFinancialProvider.js';
 
 describe('providers dormentes', () => {
   it('isConfigured é false sem credenciais no env', () => {

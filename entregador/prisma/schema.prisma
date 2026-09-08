@@ -441,7 +441,7 @@ enum Platform {
   SAAS
   IFOOD
   KEETA
-  NINEFOOD
+  99FOOD
 }
 
 model PlatformConnection {

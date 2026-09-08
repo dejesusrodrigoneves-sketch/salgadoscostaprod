@@ -24,7 +24,7 @@ window.Integracoes = (function () {
       card.className = 'integ-card';
       const label = i.configured ? (i.status === 'CONNECTED' ? '🟢 Conectado' : 'Conectar') : 'Indisponível — aguardando liberação';
       card.innerHTML = `
-        <strong>${i.platform === 'NINEFOOD' ? '99Food' : i.platform}</strong>
+        <strong>${i.platform === '99FOOD' ? '99Food' : i.platform}</strong>
         <span>${label}</span>
         ${i.lastSyncAt ? `<small>Última sync: ${new Date(i.lastSyncAt).toLocaleString('pt-BR')}</small>` : ''}
         <button data-platform="${i.platform}" ${!i.configured ? 'disabled' : ''}>${i.status === 'CONNECTED' ? 'Desconectar' : 'Conectar'}</button>

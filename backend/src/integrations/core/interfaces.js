@@ -1,6 +1,6 @@
 // Contrato FinancialMarketplaceProvider (adaptado, não TS):
 // {
-//   platform: 'SAAS'|'IFOOD'|'KEETA'|'NINEFOOD',
+//   platform: 'SAAS'|'IFOOD'|'KEETA'|'99FOOD',
 //   isConfigured(): boolean,
 //   buildAuthorizeUrl(state): string|null,
 //   exchangeCode(code): Promise<{accessToken, refreshToken, expiresIn, externalAccountId}>,

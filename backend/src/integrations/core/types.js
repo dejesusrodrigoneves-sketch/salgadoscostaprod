@@ -2,7 +2,7 @@ export const PLATFORMS = {
   SAAS: 'SAAS',
   IFOOD: 'IFOOD',
   KEETA: 'KEETA',
-  NINEFOOD: 'NINEFOOD',
+  99FOOD: '99FOOD',
 };
 
 export const ENTRY_TYPES = {
