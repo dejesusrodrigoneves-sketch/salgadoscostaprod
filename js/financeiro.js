@@ -32,7 +32,7 @@ window.Financeiro = (function () {
     lista.innerHTML = '';
     (b.porPlataforma || []).forEach(p => {
       const li = document.createElement('li');
-      const displayName = p.source === '99FOOD' ? '99Food' : p.source;
+      const displayName = p.source === 'FOOD99' ? '99Food' : p.source;
       li.textContent = `${displayName}: ${fmt(p.net)}`;
       lista.appendChild(li);
     });

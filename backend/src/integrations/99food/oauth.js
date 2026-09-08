@@ -2,7 +2,7 @@ import env from '../../config/env.js';
 import { buildAuthorizeUrl, exchangeCode, refreshToken, revokeToken } from '../core/oauthClient.js';
 
 function redirectUri() {
-  return `${env.oauthRedirectBase}/api/financeiro/integrations/99FOOD/callback`;
+  return `${env.oauthRedirectBase}/api/financeiro/integrations/FOOD99/callback`;
 }
 export function authorizeUrl(state) {
   return buildAuthorizeUrl({ authorizeUrl: env.ninefoodAuthorizeUrl, clientId: env.ninefoodClientId, redirectUri: redirectUri(), state, scope: env.ninefoodScope || null });

@@ -7,7 +7,7 @@ const router = Router();
 const MARKETPLACE_TOKENS = {
   IFOOD: process.env.IFOOD_WEBHOOK_TOKEN,
   KEETA: process.env.KEETA_WEBHOOK_TOKEN,
-  99FOOD: process.env['99FOOD_WEBHOOK_TOKEN'],
+  FOOD99: process.env['FOOD99_WEBHOOK_TOKEN'],
 };
 
 function verificarMarketplaceToken(platform, token) {
@@ -16,7 +16,7 @@ function verificarMarketplaceToken(platform, token) {
   return token === expected;
 }
 
-['IFOOD', 'KEETA', '99FOOD'].forEach((platform) => {
+['IFOOD', 'KEETA', 'FOOD99'].forEach((platform) => {
   router.post(`/${platform.toLowerCase()}`, asyncHandler(async (req, res) => {
     const token = req.headers['x-webhook-token'];
     if (!verificarMarketplaceToken(platform, token)) {

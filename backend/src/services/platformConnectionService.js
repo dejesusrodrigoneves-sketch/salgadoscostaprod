@@ -89,7 +89,7 @@ export async function desconectar(empresaId, platform) {
 }
 
 export async function listarIntegracoes(empresaId) {
-  const platforms = ['IFOOD', 'KEETA', '99FOOD'];
+  const platforms = ['IFOOD', 'KEETA', 'FOOD99'];
   const connections = await prisma.platformConnection.findMany({ where: { empresaId } });
   const byPlatform = new Map(connections.map(c => [c.platform, c]));
   return platforms.map(platform => {
@@ -108,7 +108,7 @@ export async function listarIntegracoes(empresaId) {
 }
 
 export async function statusGlobal() {
-  const platforms = ['IFOOD', 'KEETA', '99FOOD'];
+  const platforms = ['IFOOD', 'KEETA', 'FOOD99'];
   const grupos = await prisma.platformConnection.groupBy({
     by: ['platform', 'status'],
     _count: { _all: true },

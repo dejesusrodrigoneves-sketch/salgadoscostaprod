@@ -49,7 +49,7 @@ export async function syncEmpresa(empresaId, opts = {}) {
   result.updated += saas.updated;
 
   // Marketplaces: somente providers configurados com conexão ativa
-  for (const platform of ['IFOOD', 'KEETA', '99FOOD']) {
+  for (const platform of ['IFOOD', 'KEETA', 'FOOD99']) {
     const provider = getProvider(platform);
     if (!provider || !provider.isConfigured()) continue;
     const connection = await prisma.platformConnection.findUnique({

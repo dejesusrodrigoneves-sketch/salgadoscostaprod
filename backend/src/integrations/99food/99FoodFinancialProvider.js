@@ -3,7 +3,7 @@ import { PLATFORMS } from '../core/types.js';
 import { authorizeUrl, exchange, refresh, revoke } from './oauth.js';
 
 const ninefoodProvider = {
-  platform: PLATFORMS['99FOOD'],
+  platform: PLATFORMS['FOOD99'],
   isConfigured() {
     return Boolean(env.ninefoodClientId && env.ninefoodClientSecret && env.ninefoodAuthorizeUrl && env.ninefoodTokenUrl);
   },
