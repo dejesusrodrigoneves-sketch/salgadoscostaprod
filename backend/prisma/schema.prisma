@@ -74,6 +74,10 @@ model Empresa {
    empresaTipo             String    @default("independente") @map("empresa_tipo")
    pendingThemeSettings    Json?     @map("pending_theme_settings")
    themeApproved           Boolean   @default(true) @map("theme_approved")
+   status          String    @default("active") @map("status")
+   createdBy       Int?      @map("created_by")
+   justificativa   String?   @map("justificativa")
+   createdByUser   Usuario?  @relation("FilialCreator", fields: [createdBy], references: [id])
 
    @@map("empresas")
 }
@@ -98,10 +102,11 @@ model Usuario {
   lojaNome     String?      @map("loja_nome")
   role         String       @default("user")
   createdAt    DateTime     @default(now()) @map("criado_em")
-  empresa      Empresa      @relation(fields: [empresaId], references: [id])
-   entregador   Entregador?
+   empresa      Empresa      @relation(fields: [empresaId], references: [id])
+    entregador   Entregador?
+   createdFiliais  Empresa[] @relation("FilialCreator")
 
-  @@unique([username])
+   @@unique([username])
   @@map("usuarios")
 }
 

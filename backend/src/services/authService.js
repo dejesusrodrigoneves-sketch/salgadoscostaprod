@@ -102,6 +102,13 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
   const token = tokenService.gerarToken(payload);
   const refreshToken = tokenService.gerarRefreshToken(payload);
 
+  // Fetch empresa for empresaTipo
+  let empresaTipo = null;
+  if (user.empresaId) {
+    const empresa = await sql.buscarEmpresa(user.empresaId);
+    if (empresa) empresaTipo = empresa.empresaTipo;
+  }
+
   auditService.audit({
     ...base,
     action: 'auth.login',
@@ -112,7 +119,15 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
     actorRole: user.role,
   });
 
-  return { token, refreshToken, user: { id: user.id, username: user.username, role: user.role, lojaNome: user.lojaNome } };
+  return {
+    token, refreshToken,
+    user: {
+      id: user.id, username: user.username, role: user.role,
+      lojaNome: user.lojaNome || null,
+      empresaId: user.role === 'superadmin' ? null : user.empresaId,
+      empresaTipo,
+    },
+  };
 }
 
 async function criarUsuario(data, ctx = {}) {

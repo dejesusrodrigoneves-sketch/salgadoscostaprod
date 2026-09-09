@@ -9,6 +9,14 @@ const adminController = require('../controllers/adminController');
 
 const router = Router();
 
+// Filiais routes (before superadmin gate)
+router.post('/filiais', authenticate, authorize('superadmin', 'admin'), adminController.criarFilial);
+router.get('/filiais/pendentes', authenticate, authorize('superadmin'), adminController.listarFiliaisPendentes);
+router.get('/empresas/:id/filiais', authenticate, authorize('superadmin', 'admin'), adminController.listarFiliais);
+router.put('/filiais/:id/approve', authenticate, authorize('superadmin'), adminController.aprovarFilial);
+router.delete('/filiais/:id', authenticate, authorize('superadmin', 'admin'), adminController.deletarFilial);
+router.put('/empresas/:id/parent', authenticate, authorize('superadmin', 'admin'), adminController.atualizarParent);
+
 router.get('/pedidos/preview-limpeza', authenticate, authorize('superadmin', 'admin'), orderController.previewLimpeza);
 router.post('/pedidos/limpar-expirados', authenticate, authorize('superadmin', 'admin'), orderController.executarLimpeza);
 
@@ -26,10 +34,6 @@ router.delete('/clientes/:id', clientAdminController.deletar);
 
 router.delete('/empresa/:id/payment', adminController.deactivatePayment);
 
-// Rotas de filiais
-router.post('/filiais', adminController.criarFilial);
-router.get('/empresas/:id/filiais', adminController.listarFiliais);
-router.put('/empresas/:id/parent', adminController.atualizarParent);
 router.put('/empresas/:id/theme/pending', adminController.enviarTemaPendente);
 router.put('/empresas/:id/theme/approve', adminController.aprovarTema);
 

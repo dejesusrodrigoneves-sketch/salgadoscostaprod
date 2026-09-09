@@ -169,46 +169,114 @@ exports.deactivatePayment = asyncHandler(async (req, res) => {
 // ---- Filiais ----
 
 exports.criarFilial = asyncHandler(async (req, res) => {
-  const { nome, slug, parentEmpresaId } = req.body;
-  if (!nome || !nome.trim() || !slug) {
-    return res.status(400).json({ error: 'Nome e slug são obrigatórios' });
-  }
-  if (!parentEmpresaId) {
-    return res.status(400).json({ error: 'parentEmpresaId é obrigatório para filial' });
+  const { nome, justificativa } = req.body;
+  if (!nome || !nome.trim()) {
+    return res.status(400).json({ error: 'Nome é obrigatório' });
   }
 
-  // Verificar se matriz existe
-  const matriz = await sql.buscarEmpresa(Number(parentEmpresaId));
+  const isSuperadmin = req.user.role === 'superadmin';
+
+  // Superadmin: must send parentEmpresaId
+  let parentEmpresaId;
+  if (isSuperadmin) {
+    parentEmpresaId = Number(req.body.parentEmpresaId);
+    if (!parentEmpresaId || !Number.isInteger(parentEmpresaId)) {
+      return res.status(400).json({ error: 'parentEmpresaId é obrigatório' });
+    }
+  } else {
+    // Admin: force own empresa
+    parentEmpresaId = req.user.empresaId;
+  }
+
+  // Verify matriz exists and is not filial
+  const matriz = await sql.buscarEmpresa(parentEmpresaId);
   if (!matriz) {
     return res.status(404).json({ error: 'Matriz não encontrada' });
   }
+  if (!isSuperadmin && matriz.empresaTipo === 'filial') {
+    return res.status(403).json({ error: 'Somente loja matriz pode criar filiais' });
+  }
 
-  // Verificar loop
-  const isLoop = await sql.verificarLoopFilial(Number(parentEmpresaId), parentEmpresaId);
+  // Verify loop
+  const isLoop = await sql.verificarLoopFilial(parentEmpresaId, parentEmpresaId);
   if (isLoop) {
     return res.status(400).json({ error: 'Loop de vínculo detectado' });
   }
 
-  // Verificar slug único
-  const slugNorm = normalizarSlug(slug);
+  // Generate slug from name
+  const slugNorm = normalizarSlug(nome);
   if (!slugNorm) {
-    return res.status(400).json({ error: 'Slug inválido' });
+    return res.status(400).json({ error: 'Nome inválido para slug' });
   }
   const existente = await sql.buscarEmpresaPorSlug(slugNorm);
   if (existente) {
-    return res.status(409).json({ error: 'Slug já existe' });
+    return res.status(409).json({ error: 'Já existe loja com esse nome' });
   }
 
-  // Criar filial
+  // Create filial
   const filial = await sql.criarFilial({
     nome: nome.trim(),
     slug: slugNorm,
-    parentEmpresaId: Number(parentEmpresaId),
+    parentEmpresaId,
     themeSettingsPai: matriz.themeSettings,
+    status: isSuperadmin ? 'active' : 'pending',
+    createdBy: req.user.id,
+    justificativa: justificativa || null,
   });
 
   try { invalidateEmpresaCache(slugNorm); } catch (e) {}
   res.status(201).json(filial);
+});
+
+exports.aprovarFilial = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  const filial = await sql.buscarEmpresa(id);
+  if (!filial) {
+    return res.status(404).json({ error: 'Filial não encontrada' });
+  }
+  if (filial.empresaTipo !== 'filial') {
+    return res.status(400).json({ error: 'Empresa não é filial' });
+  }
+  if (filial.status === 'active') {
+    return res.status(400).json({ error: 'Filial já está ativa' });
+  }
+
+  const atualizada = await sql.aprovarFilial(id);
+  try { invalidateEmpresaCache(filial.slug); } catch (e) {}
+  res.json(atualizada);
+});
+
+exports.deletarFilial = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  const filial = await sql.buscarEmpresa(id);
+  if (!filial) {
+    return res.status(404).json({ error: 'Filial não encontrada' });
+  }
+  if (filial.empresaTipo !== 'filial') {
+    return res.status(400).json({ error: 'Empresa não é filial' });
+  }
+
+  // Admin: can only delete own filiais
+  if (req.user.role === 'admin' && filial.parentEmpresaId !== req.user.empresaId) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  await sql.softDeleteEmpresa(id);
+  try { invalidateEmpresaCache(filial.slug); } catch (e) {}
+  res.json({ success: true, message: 'Filial removida (soft delete)' });
+});
+
+exports.listarFiliaisPendentes = asyncHandler(async (req, res) => {
+  const filiais = await sql.listarFiliaisPendentes();
+  res.json(filiais);
 });
 
 exports.listarFiliais = asyncHandler(async (req, res) => {
@@ -237,6 +305,11 @@ exports.atualizarParent = asyncHandler(async (req, res) => {
   const empresa = await sql.buscarEmpresa(id);
   if (!empresa) {
     return res.status(404).json({ error: 'Empresa não encontrada' });
+  }
+
+  // Admin: can only update own filiais
+  if (req.user.role === 'admin' && empresa.parentEmpresaId !== req.user.empresaId) {
+    return res.status(403).json({ error: 'Acesso negado' });
   }
 
   // Verificar loop se definindo como filial

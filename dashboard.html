@@ -137,7 +137,7 @@ if (role === 'superadmin') {
     );
 
     // Seção Filiais (só para matriz)
-    if (authUser.empresaTipo === 'matriz') {
+    if (authUser.empresaTipo !== 'filial') {
       menuSections.push({
         title: 'Filiais',
         items: [

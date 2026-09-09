@@ -120,42 +120,47 @@
     if (!tbody) return;
     
     try {
-      var empresas = await apiFetch('/api/admin/empresas');
-      var matrizes = empresas.filter(function(e) { return e.empresaTipo === 'matriz' || (e.filiais && e.filiais.length > 0); });
+      // Load all empresas for matriz names
+      var empresas = await apiFetch('/api/admin');
+      var matrizMap = {};
+      empresas.forEach(function(e) { matrizMap[e.id] = e.nome; });
+      
+      // Load filiais from all matrizes (flat list)
+      var allFiliais = [];
+      for (var i = 0; i < empresas.length; i++) {
+        var e = empresas[i];
+        if (e.empresaTipo !== 'filial') {
+          try {
+            var filiais = await apiFetch('/api/admin/empresas/' + e.id + '/filiais');
+            filiais.forEach(function(f) { f._matrizNome = e.nome; });
+            allFiliais = allFiliais.concat(filiais);
+          } catch (err) { /* skip */ }
+        }
+      }
       
       tbody.innerHTML = '';
-      if (matrizes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:#7C7C6F;">Nenhuma matriz encontrada</td></tr>';
+      if (allFiliais.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="color:#7C7C6F;">Nenhuma filial encontrada</td></tr>';
         return;
       }
       
-      for (var i = 0; i < matrizes.length; i++) {
-        var matriz = matrizes[i];
-        var filiais = await apiFetch('/api/admin/empresas/' + matriz.id + '/filiais');
+      allFiliais.forEach(function(filial) {
+        var statusClass = filial.status === 'active' ? 'status-active' : 'status-trial';
+        var statusLabel = filial.status === 'active' ? 'Ativa' : 'Pendente';
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td>' +
-          '<div class="empresa-name">' + escapeHtml(matriz.nome) + '</div>' +
-          '<div class="empresa-slug">' + escapeHtml(matriz.slug) + '</div>' +
-          '</td>' +
-          '<td>' + filiais.length + ' filial(is)</td>' +
-          '<td><span class="status-badge status-active">Matriz</span></td>' +
-          '<td><button onclick="expandirFiliais(' + matriz.id + ')" style="padding:4px 8px;border:1px solid #333;border-radius:4px;background:transparent;color:#fff;font-size:12px;"><i class="fas fa-eye"></i> Ver Filiais</button></td>';
+        tr.innerHTML = 
+          '<td>' + escapeHtml(filial.nome) + '</td>' +
+          '<td>' + escapeHtml(filial.slug) + '</td>' +
+          '<td>' + escapeHtml(filial._matrizNome) + '</td>' +
+          '<td>' + (filial.justificativa ? escapeHtml(filial.justificativa) : '-') + '</td>' +
+          '<td>' + (filial.createdAt ? new Date(filial.createdAt).toLocaleDateString('pt-BR') : '-') + '</td>' +
+          '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+          '<td>' +
+            (filial.status === 'pending' ? '<button onclick="aprovarFilial(' + filial.id + ')" style="padding:4px 8px;border:1px solid #22c55e;border-radius:4px;background:transparent;color:#22c55e;font-size:12px;margin-right:4px;"><i class="fas fa-check"></i> Aprovar</button>' : '') +
+            '<button onclick="excluirFilial(' + filial.id + ')" style="padding:4px 8px;border:1px solid #EF4444;border-radius:4px;background:transparent;color:#EF4444;font-size:12px;"><i class="fas fa-trash"></i> Excluir</button>' +
+          '</td>';
         tbody.appendChild(tr);
-        
-        for (var j = 0; j < filiais.length; j++) {
-          var filial = filiais[j];
-          var trFilial = document.createElement('tr');
-          trFilial.style.background = '#1a1a1a';
-          trFilial.innerHTML = '<td style="padding-left:32px;">' +
-            '<div class="empresa-name"><i class="fas fa-arrow-right" style="color:#7C7C6F;margin-right:8px;"></i>' + escapeHtml(filial.nome) + '</div>' +
-            '<div class="empresa-slug">' + escapeHtml(filial.slug) + '</div>' +
-            '</td>' +
-            '<td>-</td>' +
-            '<td><span class="status-badge status-trial">Filial</span></td>' +
-            '<td><button onclick="desvincularFilial(' + filial.id + ')" style="padding:4px 8px;border:1px solid #EF4444;border-radius:4px;background:transparent;color:#EF4444;font-size:12px;"><i class="fas fa-unlink"></i> Desvincular</button></td>';
-          tbody.appendChild(trFilial);
-        }
-      }
+      });
     } catch (err) {
       console.error('Erro ao carregar filiais:', err);
     }
@@ -171,7 +176,7 @@
     select.innerHTML = '<option value="">Carregando...</option>';
     
     try {
-      var empresas = await apiFetch('/api/admin/empresas');
+      var empresas = await apiFetch('/api/admin');
       var matrizes = empresas.filter(function(e) { return e.empresaTipo !== 'filial'; });
       select.innerHTML = '<option value="">Selecionar matriz...</option>';
       matrizes.forEach(function(m) {
@@ -184,20 +189,20 @@
 
   async function criarFilial() {
     var nome = document.getElementById('filialNome').value.trim();
-    var slug = document.getElementById('filialSlug').value.trim();
+    var justificativa = document.getElementById('filialJustificativa')?.value.trim() || '';
     var parentEmpresaId = document.getElementById('filialMatriz').value;
     
-    if (!nome || !slug || !parentEmpresaId) {
-      alert('Preencha todos os campos');
+    if (!nome || !parentEmpresaId) {
+      alert('Preencha todos os campos obrigatórios');
       return;
     }
     
     try {
       var token = getToken();
-      var res = await fetch(API_BASE + '/api/admin/empresas/filiais', {
+      var res = await fetch(API_BASE + '/api/admin/filiais', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ nome: nome, slug: slug, parentEmpresaId: Number(parentEmpresaId) }),
+        body: JSON.stringify({ nome: nome, justificativa: justificativa || undefined, parentEmpresaId: Number(parentEmpresaId) }),
       });
       
       if (!res.ok) {
@@ -207,7 +212,7 @@
       
       document.getElementById('modalCriarFilial').style.display = 'none';
       document.getElementById('filialNome').value = '';
-      document.getElementById('filialSlug').value = '';
+      if (document.getElementById('filialJustificativa')) document.getElementById('filialJustificativa').value = '';
       document.getElementById('filialMatriz').value = '';
       carregarFiliais();
       alert('Filial criada com sucesso!');
@@ -236,10 +241,50 @@
     }
   }
 
+  async function aprovarFilial(id) {
+    if (!confirm('Tem certeza que deseja aprovar esta filial?')) return;
+    
+    try {
+      var token = getToken();
+      var res = await fetch(API_BASE + '/api/admin/filiais/' + id + '/approve', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      });
+      
+      if (!res.ok) throw new Error('Erro ao aprovar');
+      
+      carregarFiliais();
+      alert('Filial aprovada com sucesso!');
+    } catch (err) {
+      alert('Erro ao aprovar: ' + err.message);
+    }
+  }
+
+  async function excluirFilial(id) {
+    if (!confirm('Tem certeza que deseja excluir esta filial?')) return;
+    
+    try {
+      var token = getToken();
+      var res = await fetch(API_BASE + '/api/admin/filiais/' + id, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      });
+      
+      if (!res.ok) throw new Error('Erro ao excluir');
+      
+      carregarFiliais();
+      alert('Filial excluída com sucesso!');
+    } catch (err) {
+      alert('Erro ao excluir: ' + err.message);
+    }
+  }
+
   window.carregarFiliais = carregarFiliais;
   window.abrirModalCriarFilial = abrirModalCriarFilial;
   window.criarFilial = criarFilial;
   window.desvincularFilial = desvincularFilial;
+  window.aprovarFilial = aprovarFilial;
+  window.excluirFilial = excluirFilial;
 
   // Expose globally for superadmin.html onclick
   window.carregarDashboard = carregarDashboard;

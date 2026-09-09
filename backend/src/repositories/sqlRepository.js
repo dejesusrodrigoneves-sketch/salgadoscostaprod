@@ -302,12 +302,12 @@ const sql = {
   // ---- Filiais ----
   async listarFiliais(parentEmpresaId) {
     return prisma.empresa.findMany({
-      where: { parentEmpresaId: Number(parentEmpresaId) },
+      where: { parentEmpresaId: Number(parentEmpresaId), deletedAt: null },
       orderBy: { nome: 'asc' },
     });
   },
   async criarFilial(data) {
-    const { parentEmpresaId, themeSettingsPai } = data;
+    const { parentEmpresaId, themeSettingsPai, status, createdBy, justificativa } = data;
     return prisma.empresa.create({
       data: {
         nome: data.nome,
@@ -316,6 +316,9 @@ const sql = {
         empresaTipo: 'filial',
         themeSettings: themeSettingsPai || null,
         themeApproved: true,
+        status: status || 'active',
+        createdBy: createdBy || null,
+        justificativa: justificativa || null,
       },
     });
   },
@@ -336,6 +339,22 @@ const sql = {
     });
     const filialIds = filiais.map(f => f.id);
     return filialIds.includes(Number(parentEmpresaId));
+  },
+  async aprovarFilial(id) {
+    return prisma.empresa.update({
+      where: { id: Number(id) },
+      data: { status: 'active' },
+    });
+  },
+  async listarFiliaisPendentes() {
+    return prisma.empresa.findMany({
+      where: { status: 'pending', empresaTipo: 'filial', deletedAt: null },
+      include: {
+        parentEmpresa: { select: { id: true, nome: true, slug: true } },
+        createdByUser: { select: { id: true, username: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   },
 
   // ---- Settlements ----

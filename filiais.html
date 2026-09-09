@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciar Filiais</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0a0a0a; color: #fff; padding: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .header h2 { font-size: 20px; font-weight: 600; }
+    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; }
+    .btn-primary { background: #22c55e; color: #000; }
+    .btn-danger { background: transparent; border: 1px solid #EF4444; color: #EF4444; }
+    .btn-secondary { background: transparent; border: 1px solid #333; color: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1a1a1a; }
+    th { color: #7C7C6F; font-size: 11px; text-transform: uppercase; font-weight: 600; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-pending { background: #F59E0B20; color: #F59E0B; }
+    .badge-active { background: #22c55e20; color: #22c55e; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal-box { background: #111; border: 1px solid #333; border-radius: 8px; padding: 24px; width: 90%; max-width: 400px; }
+    .modal-box h3 { margin-bottom: 16px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 4px; font-size: 12px; color: #7C7C6F; }
+    .form-group input, .form-group textarea { width: 100%; padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; color: #fff; font-size: 13px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .empty { color: #7C7C6F; text-align: center; padding: 40px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2><i class="fas fa-sitemap"></i> Gerenciar Filiais</h2>
+    <button class="btn btn-primary" onclick="abrirModalCriar()"><i class="fas fa-plus"></i> Criar Filial</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Slug</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="filiaisBody">
+      <tr><td colspan="4" class="empty">Carregando...</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Modal Criar Filial -->
+  <div class="modal-overlay" id="modalCriar">
+    <div class="modal-box">
+      <h3>Criar Filial</h3>
+      <div class="form-group">
+        <label>Nome da filial</label>
+        <input type="text" id="filialNome" placeholder="Ex: Loja Centro">
+      </div>
+      <div class="form-group">
+        <label>Justificativa (opcional)</label>
+        <textarea id="filialJustificativa" rows="2" placeholder="Ex: expansão bairro X"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="criarFilial()">Criar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/filiais.js"></script>
+</body>
+</html>

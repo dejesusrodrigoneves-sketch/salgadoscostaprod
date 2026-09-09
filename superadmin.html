@@ -249,8 +249,11 @@
       <table class="user-table">
         <thead>
           <tr>
-            <th>Matriz</th>
-            <th>Filiais</th>
+            <th>Nome</th>
+            <th>Slug</th>
+            <th>Matriz Pai</th>
+            <th>Justificativa</th>
+            <th>Data Criação</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
@@ -265,7 +268,7 @@
     <div class="modal-card">
       <h3><i class="fas fa-plus"></i> Criar Nova Filial</h3>
       <label>Nome <input type="text" id="filialNome" placeholder="Nome da filial"></label>
-      <label>Slug <input type="text" id="filialSlug" placeholder="Slug (url)"></label>
+      <label>Justificativa <textarea id="filialJustificativa" rows="2" placeholder="Ex: expansão bairro X"></textarea></label>
       <label>Matriz
         <select id="filialMatriz">
           <option value="">Selecionar matriz...</option>
@@ -946,7 +949,7 @@ async function carregarSettlements() {
 <script src="js/superadmin-integracoes.js?v=2"></script>
 <script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
-<script src="js/superadminDashboard.js?v=2"></script>
+<script src="js/superadminDashboard.js?v=3"></script>
 <script src="js/superadminBilling.js"></script>
 </body>
 </html>
