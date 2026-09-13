@@ -114,6 +114,10 @@ como rollback; depois removido. Frontend continua no Vercel.
 - `CORS_BASE_DOMAIN` (explícito, sem default).
 - `CORS_ORIGIN` (lista fixa: admin/login).
 
+**Envs copiadas do Vercel (obrigatórias):** `DATABASE_URL` (pooled, runtime),
+`DIRECT_URL` (direta, migrations/CLI), `JWT_SECRET`, `SUPABASE_*`, `ASAAS_*`, `EVOLUTION_*`,
+`PIX_*`, chaves de marketplace. `NODE_ENV=production`, `PORT` (Railway injeta).
+
 ## Fluxo de corte (phased)
 
 ```
@@ -243,7 +247,7 @@ Nomenclatura: **`CORS_BASE_DOMAIN`**.
 - Linha de base contra Vercel para comparação.
 
 ### Gate 4 — Pós-corte (monitoramento)
-- Janela de monitoramento definida (ex.: 48h) com critérios.
+- **Janela de monitoramento: 48h** após o corte, com critérios abaixo.
 - Critérios objetivos de rollback: erro 5xx acima da linha de base · falha de cron/worker ·
   login/pedido/cupom quebrados · **qualquer suspeita de falha de isolamento multi-tenant →
   rollback imediato**.
