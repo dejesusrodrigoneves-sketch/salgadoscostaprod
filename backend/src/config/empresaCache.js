@@ -37,3 +37,7 @@ export async function getEmpresaFromIdCache(id) {
 export function invalidateEmpresaCache(slug) {
   slugCache.delete(slug);
 }
+
+export function isEmpresaDisponivel(empresa) {
+  return !!empresa && !empresa.deletedAt && empresa.status === 'active';
+}
