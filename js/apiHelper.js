@@ -2,7 +2,7 @@
 // Substitui chamadas Firebase no frontend público (menu, carrinho)
 
 var PUBLIC_API = (function () {
-  var base = '/api/public';
+  var base = (window.getApiBase ? window.getApiBase() : '') + '/api/public';
 
   // Persiste ?slug= em sessionStorage p/ navegação entre páginas (cart.html etc)
   try {
@@ -46,7 +46,8 @@ var PUBLIC_API = (function () {
     if (token) headers['Authorization'] = 'Bearer ' + token;
     var url = base + path;
     var slug = getSlug();
-    if (slug) url += (path.indexOf('?') === -1 ? '?' : '&') + 'slug=' + encodeURIComponent(slug);
+    var isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (slug && isDev) url += (path.indexOf('?') === -1 ? '?' : '&') + 'slug=' + encodeURIComponent(slug);
     return fetch(url, {
       method: method,
       headers: headers,

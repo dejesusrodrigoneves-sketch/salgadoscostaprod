@@ -3,7 +3,7 @@ function api(path, opts) {
   var headers = { 'Content-Type': 'application/json' };
   var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  return fetch('/api' + path, { headers: headers, ...opts }).then(function(r) {
+  return fetch((window.getApiBase?window.getApiBase():'') + '/api' + path, { headers: headers, ...opts }).then(function(r) {
     if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Erro ' + r.status); });
     return r.json();
   });
@@ -513,7 +513,7 @@ function modalEditarItens(p) {
     var produtos = window.products || [];
     if (!produtos.length) {
       try {
-        var r = await fetch('/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
+        var r = await fetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
         var d = await r.json(); produtos = Array.isArray(d) ? d : [];
         window.products = produtos;
       } catch(e) { console.error('Falha ao carregar produtos', e); }
@@ -1681,14 +1681,14 @@ async function carregarNaoConcluidos() {
 }
 
 async function initAdmin() {
-  try { var r = await fetch('/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } }); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
+  try { var r = await fetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } }); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
   carregarPedidos();
 }
 initAdmin();
 var lastPedidosHash = '';
 var pedidosTimer = setInterval(async function() {
   try {
-    var res = await fetch('/api/pedidos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
+    var res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/pedidos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
     var data = await res.json();
     var hash = JSON.stringify(data.map(function(p) { return p.id + p.status; }));
     if (hash !== lastPedidosHash) {

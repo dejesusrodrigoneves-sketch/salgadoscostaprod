@@ -30,7 +30,7 @@
     if (!authUser.token || authUser.role === 'superadmin') return;
     
     try {
-      const res = await fetch('/api/empresa/subscription/status', {
+      const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/status', {
         headers: { 'Authorization': 'Bearer ' + authUser.token }
       });
       
@@ -141,7 +141,7 @@
     document.getElementById('payNowBtn').addEventListener('click', async () => {
       try {
         const authUser = getAuthUser();
-        const res = await fetch('/api/empresa/subscription/pay', {
+        const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/pay', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

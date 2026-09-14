@@ -1,5 +1,5 @@
 (function() {
-  const API_BASE = window.location.port === '5173' ? 'http://localhost:3000' : '';
+  const API_BASE = (window.getApiBase ? window.getApiBase() : '');
 
   function getToken() {
     try {

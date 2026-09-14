@@ -1,6 +1,6 @@
 // js/superadminBilling.js
 (function() {
-  const API_BASE = window.location.port === '5173' ? 'http://localhost:3000' : '';
+  const API_BASE = (window.getApiBase ? window.getApiBase() : '');
   
   function getToken() {
     try {
@@ -98,9 +98,9 @@
     }
     
     try {
-      await apiFetch('/api/admin/pricing', {
+      await apiFetch('/api/admin/filial-pricing', {
         method: 'POST',
-        body: JSON.stringify({ value, effectiveDate: date })
+        body: JSON.stringify({ valorX: value, effectiveDate: date })
       });
       alert('Configuração salva e notificações enviadas!');
     } catch (e) {

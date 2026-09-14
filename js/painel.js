@@ -7,7 +7,7 @@
   }
 })();
 
-const API_BASE = window.location.origin + '/api';
+const API_BASE = (window.getApiBase ? window.getApiBase() : '') + '/api';
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 const TOKEN = authUser?.token || '';
 

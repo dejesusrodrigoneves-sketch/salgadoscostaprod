@@ -154,7 +154,7 @@ async function carregarAudit(novaPagina) {
     filtros.page = page;
     filtros.limit = 50;
     const qs = buildQueryParams(filtros);
-    const res = await fetch('/api/audit?' + qs, {
+    const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/audit?' + qs, {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
     });
     if (!res.ok) {
@@ -208,7 +208,7 @@ async function popularSelectUsuarios() {
   if (!select) return;
   select.innerHTML = '<option value="">Todos os usuários</option>';
   try {
-    const atores = await fetch('/api/audit/usuarios', {
+    const atores = await fetch((window.getApiBase?window.getApiBase():'') + '/api/audit/usuarios', {
       headers: { Authorization: 'Bearer ' + getToken() },
     }).then(function (r) { return r.json(); });
     if (!Array.isArray(atores)) return;

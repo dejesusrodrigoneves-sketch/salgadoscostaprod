@@ -7,7 +7,7 @@ window.SuperIntegracoes = (function () {
 
   async function carregar() {
     const a = auth();
-    const res = await fetch('/api/admin/integracoes', {
+    const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/integracoes', {
       headers: { Authorization: `Bearer ${a.token}` },
     });
     if (res.status === 401) { window.location.href = 'login.html'; return; }
