@@ -2,103 +2,105 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const { getEmpresaFromCache } = vi.hoisted(() => ({ getEmpresaFromCache: vi.fn() }));
 
-vi.mock('../src/config/empresaCache.js', () => ({ getEmpresaFromCache }));
+vi.mock('../src/config/empresaCache.js', () => ({
+  getEmpresaFromCache,
+  isEmpresaDisponivel: (e) => !!e && !e.deletedAt && e.status === 'active',
+}));
 
 import { resolveEmpresa } from '../src/middleware/resolveEmpresa.js';
 
 describe('resolveEmpresa middleware', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.CORS_BASE_DOMAIN;
+    delete process.env.API_HOST;
+    delete process.env.RAILWAY_PUBLIC_DOMAIN;
+    delete process.env.TRUSTED_HOSTS;
+    process.env.NODE_ENV = 'test';
   });
-
-  function mockReq(host, query) {
-    return { headers: { host }, ctx: {}, query: query || {} };
-  }
 
   function mockRes() {
-    return { status: vi.fn().mockReturnThis(), json: vi.fn() };
+    const r = { code: 0, body: null };
+    r.status = (c) => { r.code = c; return r; };
+    r.json = (b) => { r.body = b; return r; };
+    return r;
   }
 
-  it('resolve empresa válida', async () => {
-    getEmpresaFromCache.mockResolvedValue({ id: 1, slug: 'test', nome: 'Test' });
-    const req = mockReq('test.sua-app.com');
-    const res = mockRes();
-    const next = vi.fn();
-
+  it('resolve por Origin canônico', async () => {
+    process.env.CORS_BASE_DOMAIN = 'vercel.app';
+    getEmpresaFromCache.mockResolvedValue({ id: 5, slug: 'loja1', status: 'active', deletedAt: null });
+    const req = { headers: { host: 'svc.up.railway.app', origin: 'https://loja1.vercel.app' }, ctx: {}, query: {} };
+    const res = mockRes(); const next = vi.fn();
     await resolveEmpresa(req, res, next);
-
-    expect(req.ctx.empresaId).toBe(1);
-    expect(req.ctx.empresa.slug).toBe('test');
-    expect(next).toHaveBeenCalled();
+    expect(req.ctx.empresaId).toBe(5);
   });
 
-  it('retorna 404 para slug inexistente', async () => {
-    getEmpresaFromCache.mockResolvedValue(null);
-    const req = mockReq('naoexiste.sua-app.com');
-    const res = mockRes();
-    const next = vi.fn();
-
-    await resolveEmpresa(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(404);
-    expect(next).not.toHaveBeenCalled();
+  it('suspenso => 404', async () => {
+    process.env.CORS_BASE_DOMAIN = 'vercel.app';
+    getEmpresaFromCache.mockResolvedValue({ id: 9, slug: 'susp', status: 'suspended' });
+    const res = mockRes(); const next = vi.fn();
+    await resolveEmpresa({ headers: { origin: 'https://susp.vercel.app' }, ctx: {}, query: {} }, res, next);
+    expect(res.code).toBe(404);
   });
 
-  it('ignora subdomínio www', async () => {
-    const req = mockReq('www.sua-app.com');
-    const res = mockRes();
+  it('Status null/desconhecido => 404', async () => {
+    process.env.CORS_BASE_DOMAIN = 'vercel.app';
+    getEmpresaFromCache.mockResolvedValue({ id: 9, slug: 'x', status: null });
+    const res = mockRes(); const next = vi.fn();
+    await resolveEmpresa({ headers: { origin: 'https://x.vercel.app' }, ctx: {}, query: {} }, res, next);
+    expect(res.code).toBe(404);
+  });
+
+  it('host arbitrário NÃO vira tenant', async () => {
+    const req = { headers: { host: 'evil.example.com' }, ctx: {}, query: {} };
     const next = vi.fn();
-
-    await resolveEmpresa(req, res, next);
-
+    await resolveEmpresa(req, mockRes(), next);
     expect(req.ctx.empresaId).toBeUndefined();
     expect(next).toHaveBeenCalled();
   });
 
-  it('ignora localhost (dev)', async () => {
-    const req = mockReq('localhost');
-    const res = mockRes();
+  it('API_HOST ignorado (sem Origin)', async () => {
+    process.env.API_HOST = 'svc.up.railway.app';
+    process.env.CORS_BASE_DOMAIN = 'vercel.app';
+    const req = { headers: { host: 'svc.up.railway.app' }, ctx: {}, query: {} };
     const next = vi.fn();
-
-    await resolveEmpresa(req, res, next);
-
+    await resolveEmpresa(req, mockRes(), next);
     expect(req.ctx.empresaId).toBeUndefined();
     expect(next).toHaveBeenCalled();
   });
 
-  it('ignora IP / sem ponto (dev)', async () => {
-    const req = mockReq('127.0.0.1');
-    const res = mockRes();
+  it('?slug= ignorado em produção', async () => {
+    process.env.NODE_ENV = 'production';
+    const req = { headers: { host: 'localhost' }, ctx: {}, query: { slug: 'loja1' } };
     const next = vi.fn();
-
-    await resolveEmpresa(req, res, next);
-
-    expect(req.ctx.empresaId).toBeUndefined();
-    expect(next).toHaveBeenCalled();
-  });
-
-  it('ignora domínio raiz sem subdomínio', async () => {
-    const req = mockReq('sua-app.com');
-    const res = mockRes();
-    const next = vi.fn();
-
-    await resolveEmpresa(req, res, next);
-
-    expect(req.ctx.empresaId).toBeUndefined();
-    expect(next).toHaveBeenCalled();
-  });
-
-  it('ignora ?slug= query parameter (IDOR previsto)', async () => {
-    getEmpresaFromCache.mockResolvedValue({ id: 7, slug: 'teste', nome: 'Teste' });
-    const req = mockReq('localhost', { slug: 'TESTE' });
-    const res = mockRes();
-    const next = vi.fn();
-
-    await resolveEmpresa(req, res, next);
-
-    // slug query parameter should be ignored, localhost => sem tenant
+    await resolveEmpresa(req, mockRes(), next);
     expect(getEmpresaFromCache).not.toHaveBeenCalled();
-    expect(req.ctx.empresaId).toBeUndefined();
-    expect(next).toHaveBeenCalled();
+  });
+
+  it('?slug= permitido em dev', async () => {
+    process.env.NODE_ENV = 'development';
+    getEmpresaFromCache.mockResolvedValue({ id: 1, slug: 'loja1', status: 'active' });
+    const req = { headers: { host: 'localhost' }, ctx: {}, query: { slug: 'Loja1' } };
+    const next = vi.fn();
+    await resolveEmpresa(req, mockRes(), next);
+    expect(getEmpresaFromCache).toHaveBeenCalledWith('loja1');
+  });
+
+  it('conflito Origin x ?slug= => vence Origin', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.CORS_BASE_DOMAIN = 'vercel.app';
+    getEmpresaFromCache.mockResolvedValue({ id: 1, slug: 'certa', status: 'active' });
+    const req = { headers: { origin: 'https://certa.vercel.app' }, ctx: {}, query: { slug: 'outra' } };
+    const next = vi.fn();
+    await resolveEmpresa(req, mockRes(), next);
+    expect(getEmpresaFromCache).toHaveBeenCalledWith('certa');
+  });
+
+  it('cache error => next(err) (não pendura)', async () => {
+    process.env.CORS_BASE_DOMAIN = 'vercel.app';
+    getEmpresaFromCache.mockRejectedValue(new Error('db down'));
+    const next = vi.fn();
+    await resolveEmpresa({ headers: { origin: 'https://loja1.vercel.app' }, ctx: {}, query: {} }, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.any(Error));
   });
 });
