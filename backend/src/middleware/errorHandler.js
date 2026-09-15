@@ -7,6 +7,7 @@ function errorHandler(err, req, res, _next) {
   const status = err.status || 500;
   res.status(status).json({
     error: err.message || 'Erro interno do servidor',
+    ...(err.code && { code: err.code }),
     ...(status === 500 && process.env.NODE_ENV !== 'production' && { requestId }),
   });
 }

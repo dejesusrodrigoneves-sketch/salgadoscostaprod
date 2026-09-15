@@ -40,6 +40,7 @@ function contextMiddleware(req, res, next) {
     startedAt: Date.now(),
   };
   req.actor = getActor(req);
+  res.setHeader('X-Request-Id', req.context.requestId);
   next();
 }
 

@@ -286,6 +286,21 @@ const sql = {
   async atualizarCupom(codigo, data) {
     return prisma.cupom.update({ where: { codigo }, data });
   },
+  async consumirCupom(codigo, empresaId) {
+    if (!empresaId) throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
+    return prisma.cupom.updateMany({
+      where: { codigo, empresaId, usado: false },
+      data: { usado: true },
+    });
+  },
+
+  // ---- Estoque atômico ----
+  async baixarEstoque(produtoId, empresaId, quantidade) {
+    return prisma.produto.updateMany({
+      where: { id: Number(produtoId), empresaId, controlaEstoque: true, estoqueAtual: { gte: Number(quantidade) } },
+      data: { estoqueAtual: { decrement: Number(quantidade) } },
+    });
+  },
 
   // ---- Empresas (delegated to empresaRepository) ----
   async listarEmpresas() { return empresaRepository.listarEmpresas(); },

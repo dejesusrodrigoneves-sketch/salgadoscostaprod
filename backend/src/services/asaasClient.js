@@ -68,6 +68,14 @@ async function criarSubscription({ customerId, valor, descricao, nextDueDate }) 
   return { subscriptionId: data.id, status: data.status };
 }
 
+async function updateSubscription(subscriptionId, { valor, nextDueDate }) {
+  const body = {};
+  if (valor !== undefined) body.value = valor;
+  if (nextDueDate) body.nextDueDate = nextDueDate;
+  const { data } = await axios.patch(`${BASE}/subscriptions/${subscriptionId}`, body, { headers: headers() });
+  return { subscriptionId: data.id, status: data.status };
+}
+
 async function consultarPayment(paymentId) {
   const { data } = await axios.get(`${BASE}/payments/${paymentId}`, { headers: headers() });
   return data;
@@ -108,4 +116,4 @@ function verificarAutenticacao(headerToken) {
   return crypto.timingSafeEqual(a, b);
 }
 
-export default { criarCustomer, criarSubconta, criarPix, criarSubscription, consultarPayment, reembolsar, agendarTransferencia, consultarSaldo, verificarAutenticacao };
+export default { criarCustomer, criarSubconta, criarPix, criarSubscription, updateSubscription, consultarPayment, reembolsar, agendarTransferencia, consultarSaldo, verificarAutenticacao };

@@ -2,6 +2,8 @@ const app = require('./src/app');
 const config = require('./src/config/env');
 const logger = require('./src/config/logger');
 
+let pixJob, settlementJob, filialBillingWorker;
+
 app.listen(config.port, async () => {
   logger.info(`Servidor iniciado na porta ${config.port}`);
 
@@ -17,18 +19,47 @@ app.listen(config.port, async () => {
 
   // PIX expiration job: checks pending payments every 2 min
   try {
-    const { iniciarPixExpirationJob } = require('./src/jobs/pixExpirationJob');
-    iniciarPixExpirationJob();
+    const pixExpirationJob = require('./src/jobs/pixExpirationJob');
+    pixExpirationJob.iniciarPixExpirationJob();
+    pixJob = pixExpirationJob;
   } catch (err) {
     logger.error('PIX sync job falhou:', err.message);
   }
 
   // Weekly settlement job: processes all empresas every Saturday 00:00
   try {
-    const settlementJob = require('./src/jobs/weeklySettlement');
+    settlementJob = require('./src/jobs/weeklySettlement');
     settlementJob.start();
   } catch (err) {
     logger.error('Settlement job falhou:', err.message);
+  }
+
+  // Filial billing cron: applies pending filial pricing daily at 00:01
+  try {
+    const cron = require('node-cron');
+    const cronTask = cron.schedule('1 0 * * *', async () => {
+      try {
+        const { runFilialBillingCron } = await import('./src/cron/filialBillingCron.js');
+        await runFilialBillingCron();
+      } catch (e) {
+        logger.error('Filial billing cron falhou:', e.message);
+      }
+    });
+    logger.info('Filial billing cron registrado (diário 00:01)');
+    // Expose stop for shutdown
+    filialBillingWorker = { stop: () => { cronTask.stop(); logger.info('Filial billing cron parado'); } };
+  } catch (err) {
+    logger.error('Filial billing cron falhou ao registrar:', err.message);
+  }
+
+  // Filial billing worker: processes BillingOperation outbox every 5 min (Asaas updates)
+  try {
+    const billingWorker = require('./src/jobs/filialBillingWorker');
+    billingWorker.start();
+    filialBillingWorker = filialBillingWorker || {};
+    filialBillingWorker.stopBillingWorker = billingWorker.stop;
+  } catch (err) {
+    logger.error('Filial billing worker falhou ao registrar:', err.message);
   }
 
   // Audit cleanup: purge client logs + enforce 90-day retention
@@ -43,3 +74,23 @@ app.listen(config.port, async () => {
     logger.error('Audit cleanup falhou:', err.message);
   }
 });
+
+// Graceful shutdown
+async function shutdown(signal) {
+  logger.info(`${signal} recebido. Encerrando jobs...`);
+  try { if (pixJob) pixJob.stop(); } catch {}
+  try { if (settlementJob) settlementJob.stop(); } catch {}
+  try { if (filialBillingWorker && filialBillingWorker.stop) filialBillingWorker.stop(); } catch {}
+  try { if (filialBillingWorker && filialBillingWorker.stopBillingWorker) filialBillingWorker.stopBillingWorker(); } catch {}
+
+  try {
+    const prisma = require('./src/config/prisma');
+    await prisma.$disconnect();
+    logger.info('Prisma desconectado');
+  } catch {}
+
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

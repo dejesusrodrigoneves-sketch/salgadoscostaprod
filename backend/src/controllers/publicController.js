@@ -8,6 +8,7 @@ const tokenService = require('../services/tokenService');
 const productService = require('../services/productService');
 const consentimentoService = require('../services/consentimentoService');
 const { validateMaxLen } = require('../utils/validation');
+const pricingPolicy = require('../services/pricingPolicy');
 
 const SALT_ROUNDS = 10;
 
@@ -328,7 +329,7 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
 exports.criarPedido = asyncHandler(async (req, res) => {
   const empId = requireTenant(req, res);
   if (!empId) return;
-  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, taxasEntrega, taxasCartao, desconto, cpf } = req.body;
+  const { clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, tipoEntrega, formaPagamento, troco, itens, cupomCodigo, cpf } = req.body;
   if (!clienteNome || !itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ error: 'Dados do pedido incompletos' });
   }
@@ -341,6 +342,11 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   if (ehPix && (!cpf || !/^\d{11}$/.test(String(cpf).replace(/\D/g, '')))) {
     return res.status(400).json({ error: 'CPF obrigatório para pagamento via PIX' });
   }
+
+  // Fetch empresa for bairrosAtendidos
+  const empresa = await sql.buscarEmpresa(empId);
+  if (!empresa) return res.status(400).json({ error: 'Empresa não encontrada' });
+
   const pedidoId = await sql.nextPedidoId(empId);
 
   const produtoIds = itens.map(i => Number(i.produtoId));
@@ -365,6 +371,27 @@ exports.criarPedido = asyncHandler(async (req, res) => {
     });
   }
 
+  // Server-side fee calculation (ignore client values)
+  let taxasEntrega = 0;
+  try {
+    taxasEntrega = pricingPolicy.calcularTaxaEntrega(empresa, clienteBairro, tipoEntrega);
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message });
+  }
+  const taxasCartao = 0; // derive from empresa config if needed
+
+  // Coupon validation + atomic consumption
+  let desconto = 0;
+  if (cupomCodigo) {
+    const cupom = await sql.buscarCupom(cupomCodigo, empId);
+    if (!cupom || cupom.usado) return res.status(400).json({ error: 'Cupom inválido' });
+    const consumido = await sql.consumirCupom(cupomCodigo, empId);
+    if (consumido.count === 0) return res.status(400).json({ error: 'Cupom já utilizado' });
+    desconto = pricingPolicy.calcularDesconto(cupom.desconto, valoresItens + taxasEntrega);
+  }
+
+  const total = Number(valoresItens) + taxasEntrega + taxasCartao - desconto;
+
   const pedido = await prisma.pedido.create({
     data: {
       id: pedidoId,
@@ -377,10 +404,10 @@ exports.criarPedido = asyncHandler(async (req, res) => {
       paymentStatus: ehPix ? 'aguardando_pagamento' : null,
       paymentMethod: ehPix ? 'pix' : null,
       valoresItens,
-      taxasEntrega: taxasEntrega !== undefined ? Number(taxasEntrega) : 0,
-      taxasCartao: taxasCartao !== undefined ? Number(taxasCartao) : 0,
-      desconto: desconto !== undefined ? Number(desconto) : 0,
-      total: Number(valoresItens) + Number(taxasEntrega || 0) + Number(taxasCartao || 0) - Number(desconto || 0),
+      taxasEntrega,
+      taxasCartao,
+      desconto,
+      total,
       itens: { create: itensPedido },
     },
     include: { itens: true },

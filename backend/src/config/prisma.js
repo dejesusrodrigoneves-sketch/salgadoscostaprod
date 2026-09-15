@@ -6,6 +6,11 @@ const prisma = globalForPrisma.prisma ?? new PrismaClient({
     { level: 'warn', emit: 'event' },
     { level: 'error', emit: 'event' },
   ],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
 });
 
 // Log pool warnings and errors

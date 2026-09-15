@@ -1,7 +1,7 @@
 // js/config.js — base da API em runtime.
 // '' => same-origin (Vercel /api, fallback durante a migração).
 // Corte: definir SIC_API_BASE = 'https://<svc>.up.railway.app'.
-window.SIC_API_BASE = window.SIC_API_BASE || '';
+window.SIC_API_BASE = window.SIC_API_BASE || 'https://backend-sicia-production.up.railway.app/';
 
 window.getApiBase = function () {
   var h = location.hostname;

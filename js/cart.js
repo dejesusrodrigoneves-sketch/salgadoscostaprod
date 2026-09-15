@@ -3,6 +3,7 @@ window.products = [];
 let modaisState = {};
 let deliveryValue = 0;
 let discountPercent = 0;
+let couponCode = null;
 let taxaCartao = 0;
 let taxaPix = 0;
 let asaasPixFeePercent = 2;
@@ -585,10 +586,12 @@ function addDiscount(){
   if(!code){ toast("Digite um cupom válido!"); return; }
   PUBLIC_API.validarCupom(code).then(function(data){
     discountPercent = Number(data.desconto)||0;
-    if(discountPercent<=0){ discountPercent=0; toast("Desconto inválido."); return; }
+    if(discountPercent<=0){ discountPercent=0; couponCode=null; toast("Desconto inválido."); return; }
+    couponCode = code;
     toast(`Cupom aplicado! ${discountPercent}%`);
     updateValores();
   }).catch(function(e){
+    discountPercent=0; couponCode=null;
     toast(e.message || "Erro ao verificar cupom.");
   });
 }
@@ -911,10 +914,7 @@ async function generateOrder() {
     itens: cart.map(function(prod) {
       return { produtoId: prod.id, quantidade: prod.qtd || 1, sabores: prod.sabores ? JSON.stringify(prod.sabores) : null };
     }),
-    taxasEntrega: deliveryValueLocal,
-    taxasCartao: taxaCartaoLocal,
-    desconto: desconto,
-    total: totalFinal,
+    cupomCodigo: couponCode,
     cpf: cpfCliente,
   };
 
@@ -935,6 +935,8 @@ async function generateOrder() {
 
     _cartCache = null;
     localStorage.removeItem("cart");
+    discountPercent = 0;
+    couponCode = null;
     renderizaItens();
     if (result.pagamento && result.pagamento.pixCode) {
       mostrarPagamentoPix(result.id, result.pagamento, itensFormatados, totalFinalComPix);

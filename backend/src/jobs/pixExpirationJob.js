@@ -6,12 +6,12 @@ const logger = require('../config/logger');
 const env = require('../config/env');
 
 let isRunning = false;
+let cronTask = null;
 
 async function sincronizarPendentes() {
   if (isRunning) return;
   isRunning = true;
   try {
-    // Itera todas empresas ativas
     const empresas = await prisma.empresa.findMany({ select: { id: true } });
     for (const emp of empresas) {
       const pendentes = await sql.listarPedidosFiltrados(emp.id, { paymentStatus: 'aguardando_pagamento' });
@@ -30,8 +30,12 @@ async function sincronizarPendentes() {
 
 function iniciarPixExpirationJob() {
   logger.info(`PIX sync job iniciado (cron ${env.pixSyncCron})`);
-  cron.schedule(env.pixSyncCron, sincronizarPendentes);
+  cronTask = cron.schedule(env.pixSyncCron, sincronizarPendentes);
   sincronizarPendentes();
 }
 
-module.exports = { iniciarPixExpirationJob };
+function stop() {
+  if (cronTask) { cronTask.stop(); cronTask = null; logger.info('PIX sync job parado'); }
+}
+
+module.exports = { iniciarPixExpirationJob, stop };

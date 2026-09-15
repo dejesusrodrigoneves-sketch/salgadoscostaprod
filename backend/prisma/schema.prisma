@@ -74,10 +74,17 @@ model Empresa {
    empresaTipo             String    @default("independente") @map("empresa_tipo")
    pendingThemeSettings    Json?     @map("pending_theme_settings")
    themeApproved           Boolean   @default(true) @map("theme_approved")
-   status          String    @default("active") @map("status")
+status          String    @default("active") @map("status")
+   statusReason    String?   @map("status_reason")
+   suspendedAt     DateTime? @map("suspended_at")
+   suspendedByPricingVersion Int? @map("suspended_by_pricing_version")
    createdBy       Int?      @map("created_by")
    justificativa   String?   @map("justificativa")
    createdByUser   Usuario?  @relation("FilialCreator", fields: [createdBy], references: [id])
+   termoConsents         TermoConsent[] @relation("TermoConsentEmpresa")
+   termoConsentsFilial   TermoConsent[] @relation("TermoConsentFilial")
+   billingSnapshots      BillingSnapshot[]
+   billingOperations     BillingOperation[]
 
    @@map("empresas")
 }
@@ -102,9 +109,10 @@ model Usuario {
   lojaNome     String?      @map("loja_nome")
   role         String       @default("user")
   createdAt    DateTime     @default(now()) @map("criado_em")
-   empresa      Empresa      @relation(fields: [empresaId], references: [id])
+empresa      Empresa      @relation(fields: [empresaId], references: [id])
     entregador   Entregador?
    createdFiliais  Empresa[] @relation("FilialCreator")
+   termoConsents   TermoConsent[]
 
    @@unique([username])
   @@map("usuarios")
@@ -638,4 +646,96 @@ model PlatformSettings {
   updatedAt DateTime @updatedAt @map("atualizado_em")
 
   @@map("platform_settings")
+}
+
+model TermoConsent {
+  id                   Int       @id @default(autoincrement())
+  empresaId            Int       @map("empresa_id")
+  filialId             Int?      @map("filial_id")
+  pricingFilialConfigId Int?     @map("pricing_filial_config_id")
+  tipo                 String
+  valorFilialX         Decimal?  @db.Decimal(10, 2) @map("valor_filial_x")
+  valorMensalidade     Decimal?  @db.Decimal(10, 2) @map("valor_mensalidade")
+  nFiliaisSnapshot     Int?      @map("n_filiais_snapshot")
+  valorTotalProjetado  Decimal?  @db.Decimal(10, 2) @map("valor_total_projetado")
+  status               String
+  termosVersao         Int?      @map("termos_versao")
+  termosTexto          String?   @map("termos_texto")
+  termosCopyId         String?   @map("termos_copy_id")
+  usuarioId            Int?      @map("usuario_id")
+  ip                   String?
+  userAgent            String?   @map("user_agent")
+  requestId            String?   @map("request_id")
+  agreedAt             DateTime? @map("agreed_at")
+  createdAt            DateTime  @default(now()) @map("criado_em")
+
+  empresa              Empresa   @relation("TermoConsentEmpresa", fields: [empresaId], references: [id])
+  filial               Empresa?  @relation("TermoConsentFilial", fields: [filialId], references: [id])
+  pricingFilialConfig  PricingFilialConfig? @relation(fields: [pricingFilialConfigId], references: [id])
+  usuario              Usuario?  @relation(fields: [usuarioId], references: [id])
+
+  @@index([empresaId, tipo])
+  @@map("termo_consent")
+}
+
+model PricingFilialConfig {
+  id                   Int       @id @default(autoincrement())
+  versao               Int       @map("versao")
+  valorX               Decimal   @db.Decimal(10, 2) @map("valor_x")
+  effectiveDate        DateTime  @map("effective_date")
+  status               String    @default("PENDING")
+  createdById          Int       @map("created_by_id")
+  createdAt            DateTime  @default(now()) @map("criado_em")
+  updatedAt            DateTime  @updatedAt @map("atualizado_em")
+  appliedAt            DateTime? @map("applied_at")
+  cancelledAt          DateTime? @map("cancelled_at")
+  settlementCompletedAt DateTime? @map("settlement_completed_at")
+  termosTexto          String?   @db.Text @map("termos_texto")
+
+  termos               TermoConsent[]
+
+  @@map("pricing_filial_configs")
+}
+
+model BillingSnapshot {
+  id               Int      @id @default(autoincrement())
+  empresaId        Int      @map("empresa_id")
+  pricingVersion   Int      @map("pricing_version")
+  valorBase        Decimal  @db.Decimal(10, 2) @map("valor_base")
+  valorPorFilial   Decimal  @db.Decimal(10, 2) @map("valor_por_filial")
+  nFiliaisAtivas   Int      @map("n_filiais_ativas")
+  valorTotal       Decimal  @db.Decimal(10, 2) @map("valor_total")
+  effectiveDate    DateTime @map("effective_date")
+  generatedAt      DateTime @default(now()) @map("generated_at")
+
+  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  billingOperations BillingOperation[]
+
+  @@unique([empresaId, pricingVersion])
+  @@map("billing_snapshots")
+}
+
+model BillingOperation {
+  id                String    @id @default(uuid())
+  empresaId         Int       @map("empresa_id")
+  billingSnapshotId Int?      @map("billing_snapshot_id")
+  status            String    @default("PENDING")
+  idempotencyKey    String    @map("idempotency_key")
+  attempts          Int       @default(0)
+  lastAttemptAt     DateTime? @map("last_attempt_at")
+  nextRetryAt       DateTime? @map("next_retry_at")
+  externalId        String?   @map("external_id")
+  externalReference String?   @map("external_reference")
+  errorCode         String?   @map("error_code")
+  errorMessage      String?   @map("error_message")
+  createdAt         DateTime  @default(now()) @map("criado_em")
+  updatedAt         DateTime  @updatedAt @map("atualizado_em")
+
+  empresa          Empresa           @relation(fields: [empresaId], references: [id])
+  billingSnapshot  BillingSnapshot?  @relation(fields: [billingSnapshotId], references: [id])
+
+  @@unique([idempotencyKey])
+  @@index([status])
+  @@index([empresaId, status])
+  @@map("billing_operations")
 }

@@ -57,15 +57,19 @@ como rollback; depois removido. Frontend continua no Vercel.
 - **`/backend/railway.json`** (novo; caminho explícito por causa do Root Directory = `backend`):
   ```json
   {
-    "build": { "builder": "RAILPACK" },
+    "$schema": "https://railway.app/railway.schema.json",
+    "build": { "builder": "RAILPACK", "nodeVersion": "22" },
     "deploy": {
       "preDeployCommand": "npx prisma migrate deploy",
       "startCommand": "node server.js",
       "healthcheckPath": "/health",
-      "restartPolicyType": "ON_FAILURE"
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyLimit": 3
     }
   }
   ```
+  - `nodeVersion: "22"` (casado com `engines: node >=22.12.0`). `numReplicas=1` e
+    `maxConcurrency` são configurados **no dashboard** (não assumidos no arquivo — validar o schema vigente).
 - Builder **Railpack** (não nixpacks).
 - `backend/package.json` (modificar): `"postinstall": "prisma generate"`.
 - Config Railway: Root Directory = `backend`, 1 réplica.
@@ -75,13 +79,14 @@ como rollback; depois removido. Frontend continua no Vercel.
 - `API_HOST = process.env.API_HOST || process.env.RAILWAY_PUBLIC_DOMAIN` (fallback).
 - Conflito `Origin` × `?slug=` → vence o `Origin`. Nunca resolver tenant incorreto.
 - `IGNORED` (`www`, `api`, `admin`, `admin-sicia`, `login-sicia`…) → autenticado usa JWT.
-- Slug inexistente/deletado → `404`; erro inesperado → `next(err)`.
+- Slug inexistente/deletado/**suspenso** → `404`; erro inesperado → `next(err)`.
 
 ### C) CORS (`backend/src/middleware/corsOrigin.js` — novo)
 - **Não** trata `vercel.app` genericamente. Origem permitida somente se:
   1. sem `Origin` (curl/webhooks) → permitir; **ou**
   2. host ∈ lista fixa `CORS_ORIGIN` (ex.: `admin-sicia.vercel.app`, `login-sicia.vercel.app`); **ou**
-  3. host = `<slug>.<CORS_BASE_DOMAIN>` **e** `<slug>` corresponde a `empresa` existente e não-deletada no cache.
+  3. host = `<slug>.<CORS_BASE_DOMAIN>` **e** `<slug>` corresponde a `empresa` **existente, não-deletada e ativa**
+     (`deletedAt == null` **e** `status !== 'suspended'`). Empresa suspensa → **bloqueada** (fail-closed).
 - `CORS_BASE_DOMAIN` é env explícito (sem default). Ausente → nenhuma origem dinâmica.
 - Preview URLs (`proj-abc123.vercel.app`) e slugs inexistentes → bloqueados.
 - **Fail-closed:** erro de cache/DB na validação → **rejeitar**.
@@ -113,6 +118,9 @@ como rollback; depois removido. Frontend continua no Vercel.
 - `API_HOST` (fallback `RAILWAY_PUBLIC_DOMAIN`).
 - `CORS_BASE_DOMAIN` (explícito, sem default).
 - `CORS_ORIGIN` (lista fixa: admin/login).
+- `LOG_FORMAT=json`, `LOG_LEVEL=info` (observabilidade leve).
+- `SENTRY_DSN` (opcional; ausente → no-op).
+- `DB_CONNECTION_LIMIT=10`, `DB_POOL_TIMEOUT=10` (GAP 4).
 
 **Envs copiadas do Vercel (obrigatórias):** `DATABASE_URL` (pooled, runtime),
 `DIRECT_URL` (direta, migrations/CLI), `JWT_SECRET`, `SUPABASE_*`, `ASAAS_*`, `EVOLUTION_*`,
@@ -262,6 +270,67 @@ Nomenclatura: **`CORS_BASE_DOMAIN`**.
 - **Segurança multi-tenant:** `isolationAB`, `pedidoSeguro`, `driverWhitelist`, `resolveEmpresa`.
 - **Integridade de dados:** `cupomAtomico`, `estoqueAtomico`.
 
+## Gaps da revisão de design (endereçados)
+
+Revisão apontou 7 gaps. Auditoria no código confirmou 3 já mitigados.
+
+### GAP 1 — Rate limiting — **JÁ MITIGADO**
+- `backend/src/middleware/rateLimit.js`: `authLimiter` (5/15min), `apiLimiter` (60/min),
+  `registerLimiter`, `orderLimiter`, `proxyLimiter`, `refreshLimiter`.
+- Aplicados em `app.js` (`app.use('/api', apiLimiter)`) e `publicRoutes`.
+- **Ação:** nenhuma. Teste de confirmação no plano (429 ao exceder). Nota: store in-memory —
+  ok com **1 réplica**; se escalar, migrar para store compartilhado (fora de escopo).
+
+### GAP 2 — Observabilidade (escopo **A1, leve**) — **A FAZER**
+- Manter `config/logger.js` (níveis + `LOG_FORMAT=json`).
+- Setar `LOG_FORMAT=json` na Railway (log viewer captura stdout).
+- **Sentry opcional:** dependência `@sentry/node`, inicializada **somente** se `SENTRY_DSN` setado
+  (ausente → no-op, sem carregar o SDK).
+- **Sem** `pino`/`prom-client`/`/metrics` nesta fase (YAGNI). Alertas via Railway + Sentry.
+
+### GAP 3 — Cache de tenant — **JÁ MITIGADO**
+- `config/empresaCache.js`: TTL 5min, negative-cache 60s, `invalidateEmpresaCache` chamado
+  nos CRUDs (`adminController`).
+- **Ação:** nenhuma. No plano: teste de invalidação + nota de comportamento no rollback
+  (stale ≤ 5min é aceitável).
+
+### GAP 4 — Timeout de conexão DB — **A FAZER**
+- **Mecanismo:** anexar params à `DATABASE_URL` (pooled) — `connection_limit=10&pool_timeout=10&connect_timeout=10`.
+  `DB_CONNECTION_LIMIT`/`DB_POOL_TIMEOUT` são envs de referência usadas ao **montar** a URL (ou
+  setadas diretamente no datasource Prisma); não são lidas pelo Prisma isoladamente.
+- `/health` usa `SELECT 1` com timeout curto (ver Seção 4.4).
+
+### GAP 5 — Status da empresa no CORS — **A FAZER (decisão B)**
+- **Tratar `suspended` explicitamente** e **bloquear**: CORS rejeita origem se
+  `empresa.deletedAt != null` **ou** `empresa.status === 'suspended'`.
+- `Empresa.status` é distinto de `Subscription.status` (TRIAL/ACTIVE) — **não confundir**.
+- Vale também para `resolveEmpresa` (vitrine pública de empresa suspensa não resolve tenant).
+- **Ação:** implementar + testes (suspensa → origem bloqueada / 404).
+
+### GAP 6 — Idempotência de webhooks — **JÁ MITIGADO**
+- `ProcessedWebhook` + `paymentService.js` (`buscarEventoWebhook` → `criarEventoWebhook`).
+- **Ação:** confirmar no plano que a rota Asaas usa o guard + teste de replay (mesmo `eventId`
+  processado 1x).
+
+### GAP 7 — `railway.json` — **A FAZER (menor)**
+- Adicionados: `nodeVersion: "22"`, `restartPolicyLimit: 3`, `numReplicas: 1` (ver Seção 2A).
+- `maxConcurrency` validado no dashboard, não assumido no arquivo.
+
+### Runbook de incidente (resumo)
+- **Railway degradado:** aguardar draining (60s); conferir `/health`.
+- **Railway down:** rollback via frontend (`SIC_API_BASE=''` + redeploy Vercel) + webhooks → Vercel.
+- **Suspeita de falha de isolamento multi-tenant:** rollback **imediato**.
+- Post-mortem em 48h.
+
+### Checklist pré-corte
+- [ ] `/health` retorna 200 (DB ok) e `/live` 200
+- [ ] Smoke (Gate 2) passando
+- [ ] Gate 3 Playwright passando (incl. isolamento A/B)
+- [ ] `LOG_FORMAT=json` ativo; Sentry conectado (se aplicável)
+- [ ] `CORS_BASE_DOMAIN`, `API_HOST`, `DB_*` setados
+- [ ] Webhooks repointados
+- [ ] Janela de manutenção comunicada; stakeholders avisados
+
 ## Riscos e mitigações
 
 | Risco | Mitigação |
@@ -281,3 +350,6 @@ Nomenclatura: **`CORS_BASE_DOMAIN`**.
 - Webhooks repointados no corte; Evolution API inalterada.
 - Fallback Vercel `/api` por **50 dias**.
 - Nomenclatura `CORS_BASE_DOMAIN`.
+- Observabilidade escopo **A1 (leve)**: logger atual + `LOG_FORMAT=json` + Sentry opcional.
+- CORS/tenant bloqueiam empresa **suspensa ou deletada**; `Empresa.status` ≠ `Subscription.status`.
+- Gaps 1 (rate limit), 3 (cache) e 6 (idempotência webhook) **verificados como já mitigados**.

@@ -112,6 +112,31 @@ export async function cancelSubscription(empresaId) {
   return updated;
 }
 
+export async function updateSubscriptionValue(empresaId, newValue) {
+  const subscription = await getSubscriptionByEmpresaId(empresaId);
+  if (!subscription) return null;
+
+  // 1. Atualizar DB local
+  const updated = await prisma.subscription.update({
+    where: { empresaId },
+    data: { value: newValue }
+  });
+
+  // 2. Se existe assinatura no Asaas, atualizar lá também
+  if (subscription.asaasSubscriptionId) {
+    try {
+      await asaasClient.updateSubscription(subscription.asaasSubscriptionId, {
+        valor: Number(newValue)
+      });
+    } catch (e) {
+      // Propaga erro — worker decide retry/backoff
+      throw new Error(`Asaas update falhou: ${e.message}`);
+    }
+  }
+
+  return updated;
+}
+
 export function calculateInterest(amount, daysOverdue) {
   return amount * INTEREST_RATE_DAILY * daysOverdue;
 }

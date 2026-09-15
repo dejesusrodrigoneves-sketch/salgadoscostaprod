@@ -1,7 +1,7 @@
 const { Router } = require('express');
 const controller = require('../controllers/publicController');
 const { registerLimiter, orderLimiter, authLimiter } = require('../middleware/rateLimit');
-const prisma = require('../config/prisma.js').default;
+const prisma = require('../config/prisma.js');
 
 const router = Router();
 

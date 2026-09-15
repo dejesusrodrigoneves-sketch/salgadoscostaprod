@@ -129,7 +129,7 @@ async function cancelController(req, res) {
 
 async function listAllSubscriptionsController(req, res) {
   try {
-    const subscriptions = await require('../config/prisma.js').default.subscription.findMany({
+    const subscriptions = await require('../config/prisma.js').subscription.findMany({
       include: { empresa: { select: { id: true, nome: true, slug: true } } },
       orderBy: { createdAt: 'desc' }
     });

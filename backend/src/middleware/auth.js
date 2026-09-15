@@ -2,14 +2,8 @@ const tokenService = require('../services/tokenService');
 const auditService = require('../services/auditService');
 const sql = require('../repositories/sqlRepository');
 
-// Lazy-load ESM cache module
-let empresaCache = null;
-async function getEmpresaCache() {
-  if (!empresaCache) {
-    empresaCache = await import('../config/empresaCache.js');
-  }
-  return empresaCache;
-}
+// empresaCache — CJS module, requires prisma
+const empresaCache = require('../config/empresaCache.js');
 
 // JWT decode cache — avoids repeated verify for same token within TTL
 const TOKEN_CACHE_TTL = 60 * 1000; // 1 minute
@@ -56,22 +50,38 @@ async function authenticate(req, res, next) {
     }
 
     // Se resolveEmpresa resolveu empresa, valida match (previne cross-tenant token)
-    if (req.ctx?.empresaId && decoded.empresaId !== req.ctx.empresaId) {
+    if (req.ctx?.empresaId && Number(decoded.empresaId) !== Number(req.ctx.empresaId)) {
+      auditService.audit({
+        requestId: req.context?.requestId,
+        ip: req.context?.ip,
+        userAgent: req.context?.userAgent,
+        action: 'auth.cross_tenant_denied',
+        module: 'auth',
+        actorType: 'admin',
+        actorId: Number(decoded.id),
+        actorUsername: decoded.username,
+        actorRole: decoded.role,
+        targetType: 'empresa',
+        targetId: String(req.ctx.empresaId),
+        severity: 'warning',
+        metadata: { jwtEmpresaId: decoded.empresaId, ctxEmpresaId: req.ctx.empresaId },
+      });
       return res.status(403).json({ error: 'Acesso negado: empresa não corresponde' });
     }
 
     req.user = decoded;
 
-    // Verificar se empresa está deletada (usando cache)
+    // Verificar se empresa está ativa (usando regra central)
     if (decoded.empresaId) {
-      const cache = await getEmpresaCache();
-      const empresa = await cache.getEmpresaFromIdCache(decoded.empresaId);
-      if (empresa && empresa.deletedAt) {
+      const empresa = await empresaCache.getEmpresaFromIdCache(decoded.empresaId);
+      if (empresa && !empresaCache.isEmpresaDisponivel(empresa)) {
         return res.status(403).json({ error: 'Empresa inativa' });
       }
     }
 
-    next();
+    // Suspensão de filial por pendência de aceite de reajuste
+    const { filialSuspendedCheck } = require('./filialSuspended.js');
+    await filialSuspendedCheck(req, res, next);
   } catch (err) {
     return res.status(401).json({ error: 'Token inválido' });
   }

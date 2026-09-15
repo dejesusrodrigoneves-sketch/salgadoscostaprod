@@ -1,10 +1,10 @@
-import prisma from './prisma.js';
+const prisma = require('./prisma.js');
 
 const slugCache = new Map();
 const idCache = new Map();
 const TTL_MS = 5 * 60 * 1000; // 5 minutos
 
-export async function getEmpresaFromCache(slug) {
+async function getEmpresaFromCache(slug) {
   const entry = slugCache.get(slug);
   if (entry && Date.now() < entry.expirouEm) {
     return entry.empresa;
@@ -19,7 +19,7 @@ export async function getEmpresaFromCache(slug) {
   return empresa;
 }
 
-export async function getEmpresaFromIdCache(id) {
+async function getEmpresaFromIdCache(id) {
   const entry = idCache.get(id);
   if (entry && Date.now() < entry.expirouEm) {
     return entry.empresa;
@@ -34,10 +34,12 @@ export async function getEmpresaFromIdCache(id) {
   return empresa;
 }
 
-export function invalidateEmpresaCache(slug) {
+function invalidateEmpresaCache(slug) {
   slugCache.delete(slug);
 }
 
-export function isEmpresaDisponivel(empresa) {
+function isEmpresaDisponivel(empresa) {
   return !!empresa && !empresa.deletedAt && empresa.status === 'active';
 }
+
+module.exports = { getEmpresaFromCache, getEmpresaFromIdCache, invalidateEmpresaCache, isEmpresaDisponivel };

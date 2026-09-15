@@ -52,8 +52,10 @@ async function catchUp() {
   }
 }
 
+let cronTask = null;
+
 function start() {
-  cron.schedule('0 0 * * 6', async () => {
+  cronTask = cron.schedule('0 0 * * 6', async () => {
     console.log('[SETTLEMENT] Iniciando processamento semanal...');
     const result = await processarTodasEmpresas();
     console.log('[SETTLEMENT] Concluido: ' + result.processadas + ' ok, ' + result.erros + ' erros');
@@ -66,4 +68,8 @@ function start() {
   console.log('[SETTLEMENT] Cron job registrado ( sab 00:00)');
 }
 
-module.exports = { start, processarTodasEmpresas, catchUp };
+function stop() {
+  if (cronTask) { cronTask.stop(); cronTask = null; console.log('[SETTLEMENT] Cron job parado'); }
+}
+
+module.exports = { start, stop, processarTodasEmpresas, catchUp };

@@ -108,17 +108,22 @@ exports.criar = asyncHandler(async (req, res) => {
 });
 
 exports.atualizar = asyncHandler(async (req, res) => {
+  const CAMPOS_PERMITIDOS = ['nome', 'telefone', 'whatsapp', 'endereco', 'chavePix', 'username', 'ativo'];
   const prisma = require('../config/prisma');
   const existente = await prisma.entregador.findFirst({ where: { id: Number(req.params.id), empresaId: empresaId(req) } });
   if (!existente) return res.status(404).json({ error: 'Entregador não encontrado' });
-  const entregador = await sql.atualizarEntregador(req.params.id, req.body);
 
-  const changedFields = Object.keys(req.body);
+  const dados = {};
+  for (const k of CAMPOS_PERMITIDOS) if (req.body[k] !== undefined) dados[k] = req.body[k];
+
+  const entregador = await sql.atualizarEntregador(req.params.id, dados);
+
+  const changedFields = Object.keys(dados);
   const before = {};
   const after = {};
   for (const key of changedFields) {
     before[key] = existente[key];
-    after[key] = req.body[key];
+    after[key] = dados[key];
   }
 
   auditService.audit({

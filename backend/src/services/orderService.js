@@ -34,27 +34,31 @@ async function criar(data, empresaId, ctx = {}) {
 async function darBaixaEstoque(pedido, ctx = {}) {
   if (!pedido.itens || pedido.itens.length === 0) return;
   for (const item of pedido.itens) {
-    const produto = await sql.buscarProduto(item.produtoId, pedido.empresaId);
-    if (produto && produto.controlaEstoque) {
-      const novoEstoque = Math.max(0, produto.estoqueAtual - item.quantidade);
-      const updates = { estoqueAtual: novoEstoque };
-      if (novoEstoque === 0 && produto.hideWhenOutOfStock) {
-        updates.status = 'paused';
-      }
-      await sql.atualizarProduto(item.produtoId, updates);
-
+    const res = await sql.baixarEstoque(item.produtoId, pedido.empresaId, item.quantidade);
+    if (res.count === 0) {
       auditService.audit({
         ...ctx,
-        action: 'produto.stock_update',
+        action: 'produto.stock_insufficient',
         module: 'produtos',
         targetType: 'produto',
         targetId: item.produtoId,
-        before: { estoqueAtual: Number(produto.estoqueAtual) },
-        after: { estoqueAtual: novoEstoque },
-        changedFields: Object.keys(updates),
-        metadata: { ...(ctx.metadata || {}), pedidoId: pedido.id },
+        severity: 'warning',
+        metadata: { ...(ctx.metadata || {}), pedidoId: pedido.id, quantidade: item.quantidade },
       });
+      continue;
     }
+    const produto = await sql.buscarProduto(item.produtoId, pedido.empresaId);
+    auditService.audit({
+      ...ctx,
+      action: 'produto.stock_update',
+      module: 'produtos',
+      targetType: 'produto',
+      targetId: item.produtoId,
+      before: { estoqueAtual: Number(produto.estoqueAtual) + Number(item.quantidade) },
+      after: { estoqueAtual: Number(produto.estoqueAtual) },
+      changedFields: ['estoqueAtual'],
+      metadata: { ...(ctx.metadata || {}), pedidoId: pedido.id },
+    });
   }
 }
 
@@ -125,7 +129,7 @@ async function atualizarStatus(id, status, empresaId, ctx = {}) {
   // Baixa de estoque ao confirmar pedido (status = aceito/producao)
   if (['aceito', 'producao'].includes(status)) {
     const pedidoCompleto = await sql.buscarPedido(id, empresaId);
-    darBaixaEstoque(pedidoCompleto, { ...ctx, metadata: { url: ctx.path || null } }).catch(err => console.error('Erro baixa estoque:', err));
+    await darBaixaEstoque(pedidoCompleto, { ...ctx, metadata: { url: ctx.path || null } });
   }
 
   if (['producao', 'pronto', 'em_rota', 'finalizado'].includes(status)) {

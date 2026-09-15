@@ -1,3 +1,11 @@
+// Optional Sentry — only if SENTRY_DSN is set
+if (process.env.SENTRY_DSN) {
+  try {
+    const Sentry = require('@sentry/node');
+    Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV || 'development' });
+  } catch {}
+}
+
 const express = require('express');
 const path = require('path');
 const compression = require('compression');
@@ -39,6 +47,8 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const pricingRoutes = require('./routes/pricingRoutes');
 const entregadorAuthRoutes = require('./routes/entregadorAuthRoutes');
 const entregadorAppRoutes = require('./routes/entregadorAppRoutes');
+const filialPricingRoutesModule = require('./routes/filialPricingRoutes.js');
+const filialPricingRoutes = filialPricingRoutesModule.default ?? filialPricingRoutesModule;
 
 const app = express();
 
@@ -77,20 +87,8 @@ app.use(helmet({
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   crossOriginEmbedderPolicy: false,
 }));
-var corsOrigin = process.env.CORS_ORIGIN;
-if (!corsOrigin) {
-  // Production: require explicit CORS_ORIGIN env var
-  if (process.env.NODE_ENV === 'production') {
-    console.error('CORS_ORIGIN must be set in production');
-    corsOrigin = 'https://placeholder.example.com';
-  } else {
-    corsOrigin = '*';
-  }
-}
-if (typeof corsOrigin === 'string' && corsOrigin.includes(',')) {
-  corsOrigin = corsOrigin.split(',').map(function(s) { return s.trim(); });
-}
-app.use(cors({ origin: corsOrigin }));
+var { corsOriginValidator } = require('./middleware/corsOrigin');
+app.use(cors({ origin: corsOriginValidator, credentials: true }));
 app.use(express.json({ type: ['application/json', 'application/json;charset=utf-8'] }));
 app.use('/api', apiLimiter);
 
@@ -101,6 +99,7 @@ app.use('/api/entregadores', driverRoutes);
 app.use('/api/caixa', cashierRoutes);
 app.use('/api/horarios', scheduleRoutes);
 app.use('/api/proxy', proxyRoutes);
+app.use('/api/admin', filialPricingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
@@ -123,16 +122,16 @@ app.use('/api', pricingRoutes);
 app.use('/api/entregador/auth', entregadorAuthRoutes);
 app.use('/api/entregador', authenticate, authorize('entregador'), validateEntregadorEmpresa, entregadorAppRoutes);
 
+app.get('/live', (req, res) => res.json({ status: 'ok' }));
 app.get('/health', async (req, res) => {
   try {
-    const metrics = await prisma.$metrics.json();
-    const pool = metrics.find(m => m.key === 'prisma_pool_connections_open');
-    res.json({
-      status: 'ok',
-      pool: pool ? { active: pool.labels?.value || 'unknown' } : null,
-    });
-  } catch (e) {
-    res.json({ status: 'ok' });
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('db timeout')), 5000)),
+    ]);
+    return res.json({ status: 'ok', db: 'up' });
+  } catch {
+    return res.status(503).json({ status: 'unavailable', db: 'down' });
   }
 });
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));
@@ -144,7 +143,7 @@ app.get('/api/config', authenticate, (req, res) => {
   });
 });
 
-if (!process.env.VERCEL) {
+if (process.env.SERVE_STATIC) {
   app.use(express.static(path.join(__dirname, '..', '..', 'public'), { maxAge: '1d', index: false }));
   app.use(express.static(path.join(__dirname, '..', '..'), {
     index: false,

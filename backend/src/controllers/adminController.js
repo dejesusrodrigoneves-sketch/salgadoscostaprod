@@ -213,16 +213,26 @@ exports.criarFilial = asyncHandler(async (req, res) => {
     return res.status(409).json({ error: 'Já existe loja com esse nome' });
   }
 
-  // Create filial
-  const filial = await sql.criarFilial({
-    nome: nome.trim(),
-    slug: slugNorm,
+  // Create filial (consent gate + TermoConsent encapsulated in helper)
+  const { criarFilialComConsentimento } = await import('../services/filialBillingService.js');
+  const filial = await criarFilialComConsentimento(
     parentEmpresaId,
-    themeSettingsPai: matriz.themeSettings,
-    status: isSuperadmin ? 'active' : 'pending',
-    createdBy: req.user.id,
-    justificativa: justificativa || null,
-  });
+    {
+      nome: nome.trim(),
+      slug: slugNorm,
+      parentEmpresaId,
+      themeSettingsPai: matriz.themeSettings,
+      status: isSuperadmin ? 'active' : 'pending',
+      createdBy: req.user.id,
+      justificativa: justificativa || null,
+    },
+    {
+      usuarioId: req.user.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      requestId: req.context?.requestId
+    }
+  );
 
   try { invalidateEmpresaCache(slugNorm); } catch (e) {}
   res.status(201).json(filial);
@@ -310,6 +320,18 @@ exports.atualizarParent = asyncHandler(async (req, res) => {
   // Admin: can only update own filiais
   if (req.user.role === 'admin' && empresa.parentEmpresaId !== req.user.empresaId) {
     return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  // Desvinculação por admin (parentEmpresaId null/empty): gate consentimento + TermoConsent
+  if (!parentEmpresaId && req.user.role === 'admin') {
+    const { desvincularComConsentimento } = await import('../services/filialBillingService.js');
+    const atualizada = await desvincularComConsentimento(id, req.user.id, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      requestId: req.context?.requestId
+    });
+    try { invalidateEmpresaCache(empresa.slug); } catch (e) {}
+    return res.json(atualizada);
   }
 
   // Verificar loop se definindo como filial

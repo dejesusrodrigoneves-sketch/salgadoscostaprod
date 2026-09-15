@@ -79,17 +79,30 @@ const pedidoRepository = {
     });
   },
   async criarPedido(data) {
-    const payload = { ...data };
+    const CAMPOS_PERMITIDOS = [
+      'id', 'empresaId', 'clienteNome', 'clienteWhatsapp', 'clienteEndereco',
+      'clienteNumero', 'clienteBairro', 'clienteCep', 'clienteReferencia',
+      'tipoEntrega', 'formaPagamento', 'troco', 'itens',
+    ];
+    const payload = {};
+    for (const k of CAMPOS_PERMITIDOS) if (data[k] !== undefined) payload[k] = data[k];
+
+    if (!payload.empresaId) throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
+
     if (Array.isArray(data.itens)) {
       const produtoIds = data.itens.map(i => Number(i.produtoId));
-      const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds } } });
+      const produtos = await prisma.produto.findMany({ where: { id: { in: produtoIds }, empresaId: payload.empresaId } });
       const produtoMap = new Map(produtos.map(p => [p.id, p]));
+
+      if (produtos.length !== produtoIds.length) {
+        throw Object.assign(new Error('Produto não encontrado nesta loja'), { status: 400 });
+      }
 
       let valoresItens = 0;
       payload.itens = { create: [] };
       for (const item of data.itens) {
         const produto = produtoMap.get(Number(item.produtoId));
-        const preco = Number(produto ? produto.price : 0);
+        const preco = Number(produto.price);
         const qtd = Number(item.quantidade) || 1;
         valoresItens += preco * qtd;
         payload.itens.create.push({
@@ -99,9 +112,9 @@ const pedidoRepository = {
           sabores: item.sabores || null,
         });
       }
-      if (data.valoresItens === undefined || data.valoresItens === null) {
-        payload.valoresItens = valoresItens;
-      }
+      payload.valoresItens = valoresItens;
+      payload.status = 'pendente';
+      payload.paymentStatus = null;
     }
     return prisma.pedido.create({ data: payload, include: { itens: { select: ITENS_SELECT } } });
   },
