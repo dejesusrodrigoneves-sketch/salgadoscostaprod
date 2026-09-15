@@ -1,7 +1,7 @@
 // backend/src/services/whatsappNotifyService.js (ESM)
 import prisma from '../config/prisma.js';
 
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL;
+const EVOLUTION_API_URL = process.env.EVOLUTION_URL || process.env.EVOLUTION_API_URL;
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY;
 
 /**

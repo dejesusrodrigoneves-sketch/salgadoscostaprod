@@ -42,13 +42,13 @@ export async function resolveEmpresa(req, res, next) {
 
   // 1) Origin canônico (frontend <loja>.<base>)
   const originSlug = slugForBase(hostOf(req.headers.origin), base);
-  if (originSlug) return aplicar(req, res, next, originSlug);
+  if (originSlug && !IGNORED.includes(originSlug)) return aplicar(req, res, next, originSlug);
 
   // 2) Host: somente se for host confiável e não for o host da API
   const host = (req.headers.host || '').split(':')[0].toLowerCase();
   if (host && host !== apiHost && trustedHost(host)) {
     const hostSlug = slugForBase(host, base);
-    if (hostSlug) return aplicar(req, res, next, hostSlug);
+    if (hostSlug && !IGNORED.includes(hostSlug)) return aplicar(req, res, next, hostSlug);
   }
 
   // 3) ?slug= somente em dev
