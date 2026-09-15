@@ -534,7 +534,7 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
     try {
       const token = localStorage.getItem('token');
       const empresaId = authUser.empresaId || authUser.id;
-      const res = await fetch(`/api/admin/empresas/${empresaId}`, {
+      const res = await fetch(`${window.getApiBase ? window.getApiBase() : ''}/api/admin/empresas/${empresaId}`, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (!res.ok) return;
@@ -612,7 +612,7 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
       try {
         const token = localStorage.getItem('token');
         const empresaId = authUser.empresaId || authUser.id;
-        const res = await fetch(`/api/admin/empresas/${empresaId}/theme/pending`, {
+        const res = await fetch(`${window.getApiBase ? window.getApiBase() : ''}/api/admin/empresas/${empresaId}/theme/pending`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

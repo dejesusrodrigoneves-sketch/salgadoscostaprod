@@ -83,7 +83,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   btn.disabled = true;
 
   try {
-    const endpoint = isEntregador ? '/api/entregador/auth/login' : '/api/auth/login';
+    const endpoint = (getApiBase() || '') + (isEntregador ? '/api/entregador/auth/login' : '/api/auth/login');
     const body = { username: user, password: pass };
 
     const res = await fetch(endpoint, {

@@ -98,7 +98,7 @@ function carregarRelatoriosDia() {
   if (isLoadingDia) return;
   isLoadingDia = true;
   var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
-  fetch('/api/pedidos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function(r) { return r.json(); }).then(function(pedidos) {
+  fetch((getApiBase() || '') + '/api/pedidos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function(r) { return r.json(); }).then(function(pedidos) {
     let dadosPorDia = {};
     const hojeStr = new Date().toLocaleDateString('pt-BR');
     pedidos.forEach(function(p) {
@@ -147,7 +147,7 @@ function carregarRelatoriosPeriodo(){
   if (!inicio || !fim) { container.innerHTML = '<p style="color:#94a3b8;">Selecione um período válido.</p>'; return; }
 
   var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
-  var url = '/api/pedidos?createdAtFrom=' + encodeURIComponent(inicio + 'T00:00:00') + '&createdAtTo=' + encodeURIComponent(fim + 'T23:59:59') + '&order=asc';
+  var url = (getApiBase() || '') + '/api/pedidos?createdAtFrom=' + encodeURIComponent(inicio + 'T00:00:00') + '&createdAtTo=' + encodeURIComponent(fim + 'T23:59:59') + '&order=asc';
   fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function(r) { return r.json(); }).then(function(pedidos) {
     if (!pedidos || pedidos.length === 0) { container.innerHTML = '<p style="color:#94a3b8;">Nenhum pedido encontrado nesse período.</p>'; return; }
 

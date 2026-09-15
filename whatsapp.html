@@ -48,7 +48,7 @@
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
 <script>
-const API = window.location.origin + '/api';
+const API = (window.getApiBase ? window.getApiBase() : window.location.origin) + '/api';
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 if (!authUser) window.location.href = 'login.html';
 

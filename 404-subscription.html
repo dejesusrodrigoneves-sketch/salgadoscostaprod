@@ -92,7 +92,7 @@
     const slug = params.get('slug');
     
     if (slug) {
-      fetch(`/api/public/empresa/${slug}/contact`)
+      fetch(`${window.getApiBase ? window.getApiBase() : ''}/api/public/empresa/${slug}/contact`)
         .then(r => r.json())
         .then(data => {
           const phone = data.telefone || data.supportWhatsApp;

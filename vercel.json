@@ -2,7 +2,6 @@
   "version": 2,
   "framework": null,
   "builds": [
-    { "src": "backend/api.js", "use": "@vercel/node" },
     { "src": "*.html", "use": "@vercel/static" },
     { "src": "js/**/*.js", "use": "@vercel/static" },
     { "src": "css/**/*.{css,scss}", "use": "@vercel/static" },
@@ -11,8 +10,6 @@
     { "src": "view/**/*", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "backend/api.js" },
-    { "src": "/health", "dest": "backend/api.js" },
     { "src": "/(.*\\.(?:css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot))$", "headers": { "Cache-Control": "public, max-age=31536000, immutable" }, "dest": "/$1" },
     { "src": "/(.*\\.html)$", "headers": { "Cache-Control": "no-cache" }, "dest": "/$1" },
     { "src": "/", "dest": "/login.html", "has": [{ "type": "host", "value": "login-sicia.vercel.app" }] },

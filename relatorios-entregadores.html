@@ -56,7 +56,7 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 </div>
 
 <script>
-const API = window.location.origin + '/api';
+const API = (window.getApiBase ? window.getApiBase() : window.location.origin) + '/api';
 const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 const TOKEN = authUser ? (authUser.token || '') : '';
 

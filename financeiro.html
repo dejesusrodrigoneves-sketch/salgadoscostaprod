@@ -165,7 +165,7 @@
       const contentEl = document.getElementById('consol-content');
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/financeiro/consolidated', {
+        const res = await fetch((getApiBase() || '') + '/api/financeiro/consolidated', {
           headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!res.ok) throw new Error('Erro ao carregar consolidado');

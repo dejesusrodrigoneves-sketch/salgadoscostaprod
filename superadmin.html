@@ -418,7 +418,7 @@ function api(path, opts) {
   var headers = { 'Content-Type': 'application/json' };
   var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  return fetch('/api' + path, { headers: headers, ...opts }).then(function(r) {
+  return fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path, { headers: headers, ...opts }).then(function(r) {
     if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Erro ' + r.status); });
     return r.json();
   });

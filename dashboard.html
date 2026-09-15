@@ -283,7 +283,7 @@ function logout() {
   overlay.querySelector('#confirmLogout').onclick = async () => {
     const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
     try {
-      await fetch('/api/auth/logout', {
+      await fetch((getApiBase() || '') + '/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -356,7 +356,7 @@ async function carregarNomeLoja() {
   try {
     const token = authUser.token;
     if (!token) return;
-    const res = await fetch('/api/loja/settings-admin', {
+    const res = await fetch((getApiBase() || '') + '/api/loja/settings-admin', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     if (!res.ok) return;

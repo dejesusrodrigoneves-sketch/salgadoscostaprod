@@ -96,7 +96,7 @@ async function carregarProdutos() {
   try {
     var authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
     var token = authUser.token || '';
-    var res = await fetch('/api/produtos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+    var res = await fetch((getApiBase() || '') + '/api/produtos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
     if (!res.ok) throw new Error('Erro ao carregar produtos');
     todosProdutos = await res.json();
     todosProdutos = todosProdutos.filter(function(p) { return p.status === 'active'; });
@@ -909,7 +909,7 @@ async function pagar() {
   try {
     const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
     const token = authUser.token || '';
-    const res = await fetch('/api/pedidos', {
+    const res = await fetch((getApiBase() || '') + '/api/pedidos', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
