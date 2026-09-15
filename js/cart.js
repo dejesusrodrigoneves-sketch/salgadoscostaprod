@@ -783,7 +783,7 @@ async function gerarPedidoSequencial() {
 }
 
 async function getLatLon(enderecoCompleto) {
-  const url = `/api/proxy/geoapify?path=/geocode/search&text=${encodeURIComponent(enderecoCompleto)}&format=json`;
+  const url = (window.getApiBase ? window.getApiBase() : '') + `/api/proxy/geoapify?path=/geocode/search&text=${encodeURIComponent(enderecoCompleto)}&format=json`;
 
   try {
     const res = await fetch(url);
@@ -973,7 +973,7 @@ function mostrarPagamentoPix(orderId, pagamento, itens, total) {
 
   // SSE
   try {
-    var es = new EventSource("/api/payment/status/" + encodeURIComponent(orderId));
+    var es = new EventSource((window.getApiBase ? window.getApiBase() : '') + "/api/payment/status/" + encodeURIComponent(orderId));
     es.onmessage = function (ev) {
       var data = JSON.parse(ev.data);
       if (data.status === "pago") {

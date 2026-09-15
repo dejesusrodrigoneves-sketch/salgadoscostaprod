@@ -74,7 +74,7 @@
 
     if (authUser && authUser.token) {
       // Admin page — use authenticated endpoint
-      url = '/api/loja/settings-admin';
+      url = (window.getApiBase ? window.getApiBase() : '') + '/api/loja/settings-admin';
       headers['Authorization'] = 'Bearer ' + authUser.token;
     } else {
       // Public page — detect slug from URL or sessionStorage
@@ -89,7 +89,7 @@
         applyTheme(Object.assign({}, DEFAULT_THEME, { isDark: true }));
         return;
       }
-      url = '/api/loja/settings?slug=' + encodeURIComponent(slug);
+      url = (window.getApiBase ? window.getApiBase() : '') + '/api/loja/settings?slug=' + encodeURIComponent(slug);
     }
 
     fetch(url, { headers: headers })

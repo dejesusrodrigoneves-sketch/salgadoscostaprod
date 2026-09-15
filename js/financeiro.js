@@ -12,7 +12,7 @@ window.Financeiro = (function () {
 
   async function api(path, opts = {}) {
     const a = auth();
-    const res = await fetch(path, {
+    const res = await fetch((window.getApiBase ? window.getApiBase() : '') + path, {
       ...opts,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.token}`, ...(opts.headers || {}) },
     });
