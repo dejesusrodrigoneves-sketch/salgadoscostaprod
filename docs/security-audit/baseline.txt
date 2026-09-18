@@ -1,0 +1,9 @@
+# Baseline - Task 1
+# git rev-parse HEAD
+ab87c211ed69c19530768fa608562a73a76793f5
+
+# prisma migrate diff (from-schema-datasource → to-schema-datamodel)
+# Output: non-empty (schema/datasource mismatch)
+
+-- AlterTable
+ALTER TABLE "WeeklySettlement" DROP COLUMN "asaas_transfer_id";

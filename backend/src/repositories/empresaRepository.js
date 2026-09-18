@@ -33,7 +33,6 @@ const empresaRepository = {
     await prisma.$transaction([
       prisma.loginLog.deleteMany({ where: { usuario: { empresaId } } }),
       prisma.auditLog.deleteMany({ where: { actorId: empresaId } }),
-      prisma.processedWebhook.deleteMany({ where: {} }),
       prisma.whatsAppInstance.deleteMany({ where: { empresaId } }),
       prisma.entregaDiaria.deleteMany({ where: { pedido: { empresaId } } }),
       prisma.itensPedido.deleteMany({ where: { pedido: { empresaId } } }),

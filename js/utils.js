@@ -60,7 +60,7 @@ function blink(el) {
 }
 
 // Auth guard — redirect to login if not authenticated
-function authGuard() {
+function authGuard(requiredRoles) {
   var u = localStorage.getItem('authUser');
   if (!u) { window.location.replace('login.html'); return false; }
   try {
@@ -71,6 +71,13 @@ function authGuard() {
       localStorage.removeItem('authUser');
       window.location.replace('login.html');
       return false;
+    }
+    if (requiredRoles) {
+      var allowed = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+      if (user.role !== 'superadmin' && allowed.indexOf(user.role) === -1) {
+        window.location.replace('login.html');
+        return false;
+      }
     }
     return true;
   } catch (e) {

@@ -11,6 +11,6 @@ window.SIC_API_BASE = _stripTrailingSlash(
 
 window.getApiBase = function () {
   var h = location.hostname;
-  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3000';
+  if (h === 'localhost' || h === '127.0.0.1') return '';
   return _stripTrailingSlash(window.SIC_API_BASE) || '';
 };

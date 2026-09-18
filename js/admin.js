@@ -423,13 +423,13 @@ async function selecionarEntregadorModal(pedidoNome) {
     overlay.innerHTML = `
       <div class="modal-box">
         <h3>Selecionar Entregador</h3>
-        <p style="margin-bottom:16px;">Atribuir entregador para o pedido de <strong>${pedidoNome}</strong></p>
+        <p style="margin-bottom:16px;">Atribuir entregador para o pedido de <strong>${escapeHtml(pedidoNome)}</strong></p>
         <div class="driver-modal-list" id="driverModalList">
           ${drivers.map(d => `
             <div class="driver-option" data-id="${d.id}">
               <div class="driver-info">
-                <span class="driver-name">${d.nome}</span>
-                <span class="driver-detail">📱 ${d.whatsapp || '-'}</span>
+                <span class="driver-name">${escapeHtml(d.nome)}</span>
+                <span class="driver-detail">📱 ${escapeHtml(d.whatsapp || '-')}</span>
               </div>
               <div class="driver-check"><i class="fas fa-check"></i></div>
             </div>
@@ -566,7 +566,7 @@ function modalEditarItens(p) {
     overlay.innerHTML =
       '<div class="modal-box" style="max-width:600px;">' +
         '<h3><i class="fas fa-edit"></i> Editar Itens — Pedido #' + p.id + '</h3>' +
-        '<p style="margin:8px 0 16px;font-size:13px;color:var(--text-muted);">Cliente: ' + (p.clienteNome || p.cliente?.nome || '-') + '</p>' +
+        '<p style="margin:8px 0 16px;font-size:13px;color:var(--text-muted);">Cliente: ' + escapeHtml(p.clienteNome || p.cliente?.nome || '-') + '</p>' +
         '<div class="driver-modal-list" id="listaItens">' + renderLista() + '</div>' +
         '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">' +
           '<h4 style="font-size:14px;margin-bottom:8px;"><i class="fas fa-plus-circle"></i> Adicionar Item</h4>' +

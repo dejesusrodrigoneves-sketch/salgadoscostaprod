@@ -13,11 +13,6 @@
 
 <script src="js/config.js?v=2"></script>
 <script src="js/utils.js"></script>
-<script>
-if(!authGuard()) throw new Error('Redirect');
-var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
-if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
-</script>
 <link rel="stylesheet" href="css/painelstyle.css">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/painelloja-page.css">
@@ -180,7 +175,7 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
             <div class="row">
               <div class="lbl">Sabores</div>
               <div id="listaSabores" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:80px;"></div>
-              <button class="btn ghost" type="button" onclick="adicionarLinhaSabor()" style="align-self:flex-start;"><i class="fas fa-plus"></i> Adicionar sabor</button>
+              <button class="btn ghost" type="button" data-action="adicionarLinhaSaborAction" style="align-self:flex-start;"><i class="fas fa-plus"></i> Adicionar sabor</button>
             </div>
           </div>
           <div id="camposComboAcai" style="display:none;">
@@ -195,7 +190,7 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
             <div class="row">
               <div class="lbl">Acréscimos (nome + preço)</div>
               <div id="listaAcrescimos" style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:80px;"></div>
-              <button class="btn ghost" type="button" onclick="adicionarLinhaAcrescimo()" style="align-self:flex-start;"><i class="fas fa-plus"></i> Adicionar acréscimo</button>
+              <button class="btn ghost" type="button" data-action="adicionarLinhaAcrescimoAction" style="align-self:flex-start;"><i class="fas fa-plus"></i> Adicionar acréscimo</button>
             </div>
           </div>
         </div>
@@ -516,124 +511,10 @@ if(!_au.role || !['admin','superadmin'].includes(_au.role)) { window.location.hr
 </div>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="js/delegator.js"></script>
 <script src="js/comboConfig.js"></script>
 <script src="js/painel.js?=2"></script>
+<script src="js/pages/painelLoja.js" defer></script>
 <script src="js/theme.js" defer></script>
-<script>
-// Task 8: Filial — tema pendente de aprovação
-(function() {
-  const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
-  if (authUser.empresaTipo !== 'filial') return;
-
-  const alertEl = document.getElementById('themePendingAlert');
-  const colorsEl = document.getElementById('themePendingColors');
-  const saveBtn = document.getElementById('btnSalvarTema');
-
-  // Buscar pendingThemeSettings da empresa
-  async function checkPendingTheme() {
-    try {
-      const token = localStorage.getItem('token');
-      const empresaId = authUser.empresaId || authUser.id;
-      const res = await fetch(`${window.getApiBase ? window.getApiBase() : ''}/api/admin/empresas/${empresaId}`, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const empresa = data.empresa || data;
-
-      if (empresa.pendingThemeSettings) {
-        const pending = typeof empresa.pendingThemeSettings === 'string'
-          ? JSON.parse(empresa.pendingThemeSettings)
-          : empresa.pendingThemeSettings;
-
-        // Mostrar alerta
-        alertEl.style.display = 'flex';
-
-        // Renderizar cores pendentes
-        colorsEl.innerHTML = '';
-        const labels = { primary: 'Primária', background: 'Fundo', surface: 'Superfície', text: 'Texto' };
-        Object.entries(labels).forEach(([key, label]) => {
-          if (pending[key]) {
-            const chip = document.createElement('div');
-            chip.style.cssText = 'display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.7);border:1px solid #FDE68A;border-radius:8px;padding:4px 10px 4px 6px;font-size:11px;color:#92400E;';
-            chip.innerHTML = `<div style="width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,0.1);background:${pending[key]};"></div>${label}`;
-            colorsEl.appendChild(chip);
-          }
-        });
-
-        // Alterar botão
-        if (saveBtn) {
-          saveBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar para Aprovação';
-        }
-      } else {
-        alertEl.style.display = 'none';
-        if (saveBtn) {
-          saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Personalização';
-        }
-      }
-    } catch (e) {
-      console.error('Erro ao verificar tema pendente:', e);
-    }
-  }
-
-  // Verificar ao carregar e ao mudar para aba Personalizar
-  document.addEventListener('DOMContentLoaded', () => {
-    checkPendingTheme();
-
-    // Observar mudança de aba
-    const observer = new MutationObserver(() => {
-      const personalizacaoView = document.getElementById('view-personalizacao');
-      if (personalizacaoView && !personalizacaoView.classList.contains('hidden')) {
-        checkPendingTheme();
-      }
-    });
-    const personalizacaoView = document.getElementById('view-personalizacao');
-    if (personalizacaoView) {
-      observer.observe(personalizacaoView, { attributes: true, attributeFilter: ['class'] });
-    }
-  });
-
-  // Interceptar salvamento para filial — enviar para aprovação
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async function(e) {
-      if (authUser.empresaTipo !== 'filial') return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const themeSettings = {
-        primary: document.getElementById('themePrimary')?.value,
-        background: document.getElementById('themeBackground')?.value,
-        surface: document.getElementById('themeSurface')?.value,
-        text: document.getElementById('themeText')?.value,
-        isDark: document.getElementById('themeIsDark')?.checked || false
-      };
-
-      try {
-        const token = localStorage.getItem('token');
-        const empresaId = authUser.empresaId || authUser.id;
-        const res = await fetch(`${window.getApiBase ? window.getApiBase() : ''}/api/admin/empresas/${empresaId}/theme/pending`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify({ pendingThemeSettings: themeSettings })
-        });
-
-        if (res.ok) {
-          alert('Tema enviado para aprovação da matriz!');
-          checkPendingTheme();
-        } else {
-          const err = await res.json();
-          alert('Erro: ' + (err.error || 'Não foi possível enviar tema'));
-        }
-      } catch (err) {
-        alert('Erro de conexão ao enviar tema');
-      }
-    }, true);
-  }
-})();
-</script>
 </body>
 </html>

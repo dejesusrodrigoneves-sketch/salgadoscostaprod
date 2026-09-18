@@ -61,8 +61,8 @@
           '<td>' + escapeHtml(f.slug) + '</td>' +
           '<td><span class="badge ' + statusClass + '">' + statusLabel + '</span></td>' +
           '<td>' +
-            '<button class="btn btn-secondary" onclick="desvincular(' + f.id + ')" style="margin-right:8px;"><i class="fas fa-unlink"></i> Desvincular</button>' +
-            '<button class="btn btn-danger" onclick="excluir(' + f.id + ')"><i class="fas fa-trash"></i> Excluir</button>' +
+            '<button class="btn btn-secondary" data-action="desvincularAction" data-id="' + f.id + '" style="margin-right:8px;"><i class="fas fa-unlink"></i> Desvincular</button>' +
+            '<button class="btn btn-danger" data-action="excluirFilialAction" data-id="' + f.id + '"><i class="fas fa-trash"></i> Excluir</button>' +
           '</td>' +
           '</tr>';
       }).join('');
@@ -71,17 +71,17 @@
     }
   }
 
-  window.abrirModalCriar = function() {
+  window.abrirModalCriarAction = window.abrirModalCriar = function() {
     document.getElementById('modalCriar').classList.add('active');
   };
 
-  window.fecharModal = function() {
+  window.fecharModalAction = window.fecharModal = function() {
     document.getElementById('modalCriar').classList.remove('active');
     document.getElementById('filialNome').value = '';
     document.getElementById('filialJustificativa').value = '';
   };
 
-  window.criarFilial = async function() {
+  window.criarFilialAction = window.criarFilial = async function() {
     var nome = document.getElementById('filialNome').value.trim();
     var justificativa = document.getElementById('filialJustificativa').value.trim();
 

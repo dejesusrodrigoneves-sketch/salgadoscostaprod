@@ -96,7 +96,7 @@
       <span class="overlay-icon" style="background:var(--warning,#F59E0B);">&#9888;</span>
       <h2>Bairro n\u00E3o atendido</h2>
       <p style="margin:16px 0;font-size:15px;line-height:1.5;">Infelizmente n\u00E3o atendemos, por enquanto, o bairro informado, mas iremos trabalhar para que isso seja poss\u00EDvel</p>
-      <button class="overlay-btn" onclick="fecharOverlayBairro()">Ok</button>
+      <button class="overlay-btn" data-action="fecharOverlayBairroAction">Ok</button>
     </div>
   </div>
 
@@ -106,7 +106,7 @@
       <h2>Pedido Confirmado!</h2>
       <p class="overlay-id">Pedido #<span id="overlayOrderId"></span></p>
       <p class="overlay-id">Acompanhe Seu Pedido Pelo Whatsapp</p>
-      <button class="overlay-btn" onclick="fecharOverlay()">Ok</button>
+      <button class="overlay-btn" data-action="fecharOverlayAction">Ok</button>
     </div>
   </div>
 
@@ -118,19 +118,20 @@
       <img id="pixQrImg" alt="QR Code PIX" style="width:200px;height:200px;margin:12px 0;" />
       <p>Código Copia e Cola</p>
       <code id="pixCodeText" style="word-break:break-all;display:block;font-size:12px;margin:8px 0;"></code>
-      <button class="overlay-btn" onclick="copiarPix()">COPIAR CÓDIGO PIX</button>
+      <button class="overlay-btn" data-action="copiarPixAction">COPIAR CÓDIGO PIX</button>
       <p id="pixStatusMsg" style="margin-top:12px;">Aguardando pagamento... O pedido será liberado após a confirmação do pagamento.</p>
-      <button class="overlay-btn" onclick="fecharPix()">Fechar</button>
+      <button class="overlay-btn" data-action="fecharPixAction">Fechar</button>
     </div>
   </div>
 
   <script src="https://code.iconify.design/2/2.2.1/iconify.min.js"></script>
   <script src="../js/config.js?v=2"></script>
+  <script src="../js/delegator.js"></script>
   <script src="../js/utils.js"></script>
   <script src="../js/apiHelper.js"></script>
-</body>
   <script src="../js/comboConfig.js"></script>
   <script src="../js/comboLimite.js"></script>
   <script src="../js/cart.js?=17"></script>
-<script src="../js/theme.js" defer></script>
+  <script src="../js/pages/cart-actions.js"></script>
+  <script src="../js/theme.js" defer></script>
 </html>

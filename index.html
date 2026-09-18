@@ -138,7 +138,7 @@
     <span class="nav-badge" id="cartBadge" style="display:none"></span>
     <span class="nav-label">Carrinho</span>
   </a>
-  <a href="#" class="nav-item" id="navPedidos" onclick="event.preventDefault(); abrirPedidosNav()">
+  <a href="#" class="nav-item" id="navPedidos" data-action="abrirPedidosNavAction">
     <span class="iconify-inline" data-icon="mdi:clipboard-text-outline"></span>
     <span class="nav-label">Pedidos</span>
   </a>
@@ -182,6 +182,7 @@
 </div>
 
 <script src="js/config.js?v=2"></script>
+<script defer src="js/delegator.js"></script>
 <script defer src="js/fetchCache.js"></script>
 <script defer src="js/utils.js"></script>
 <script defer src="js/apiHelper.js"></script>
@@ -190,12 +191,13 @@
 <script defer src="js/comboLimite.js"></script>
 <script defer src="js/menu.js?=9"></script>
 <script defer src="js/navbar.js"></script>
+<script defer src="js/pages/index-actions.js"></script>
 
 <!-- Overlay de Pedidos -->
 <div id="ordersOverlay" class="orders-overlay hidden">
   <div class="orders-box">
     <div class="orders-header">
-      <button id="ordersBackBtn" class="orders-back" onclick="fecharOverlayPedidos()">← Voltar</button>
+      <button id="ordersBackBtn" class="orders-back" data-action="fecharOverlayPedidosAction">← Voltar</button>
       <h3>Meus Pedidos <span id="ordersCount"></span></h3>
     </div>
 
@@ -212,7 +214,7 @@
       </div>
     </div>
 
-    <button class="orders-close" onclick="fecharOverlayPedidos()">Fechar</button>
+    <button class="orders-close" data-action="fecharOverlayPedidosAction">Fechar</button>
   </div>
 </div>
 

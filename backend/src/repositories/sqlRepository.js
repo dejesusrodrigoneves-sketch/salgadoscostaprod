@@ -54,6 +54,7 @@ const sql = {
   async listarPedidos(empresaId, filtros) { return pedidoRepository.listarPedidos(empresaId, filtros); },
   async listarPedidosFiltrados(empresaId, filtros) { return pedidoRepository.listarPedidosFiltrados(empresaId, filtros); },
   async buscarPedido(id, empresaId) { return pedidoRepository.buscarPedido(id, empresaId); },
+  async buscarPedidoPorPublicId(publicId, empresaId) { return pedidoRepository.buscarPedidoPorPublicId(publicId, empresaId); },
   async buscarPedidoComItens(id, empresaId) { return pedidoRepository.buscarPedidoComItens(id, empresaId); },
   async listarPedidosPorIds(ids) { return pedidoRepository.listarPedidosPorIds(ids); },
   async criarPedido(data) { return pedidoRepository.criarPedido(data); },

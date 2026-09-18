@@ -144,6 +144,7 @@ model Produto {
 
 model Pedido {
   id                String        @id
+  publicId          String?       @unique @map("public_id")
   empresaId         Int           @map("empresa_id")
   clienteNome       String        @map("cliente_nome")
   clienteWhatsapp   String?       @map("cliente_whatsapp")

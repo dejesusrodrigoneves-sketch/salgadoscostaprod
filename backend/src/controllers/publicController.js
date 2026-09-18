@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/prisma');
 const sql = require('../repositories/sqlRepository');
@@ -395,6 +396,7 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   const pedido = await prisma.pedido.create({
     data: {
       id: pedidoId,
+      publicId: crypto.randomUUID(),
       empresaId: empId,
       clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia,
       tipoEntrega: tipoEntrega || 'delivery',
@@ -459,13 +461,15 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   res.status(201).json({ id: pedido.id, status: pedido.status });
 });
 
-exports.buscarPedido = asyncHandler(async (req, res) => {
+exports.buscarPedido = [authenticatePublic, asyncHandler(async (req, res) => {
   const empId = requireTenant(req, res);
   if (!empId) return;
-  const pedido = await sql.buscarPedido(req.params.id, empId);
-  if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+  const pedido = await sql.buscarPedidoPorPublicId(req.params.id, empId);
+  if (!pedido || String(pedido.clienteWhatsapp) !== String(req.cliente.telefone)) {
+    return res.status(404).json({ error: 'Pedido não encontrado' });
+  }
   res.json(pedido);
-});
+})];
 
 exports.validarCupom = asyncHandler(async (req, res) => {
   const empId = requireTenant(req, res);

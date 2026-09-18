@@ -31,15 +31,6 @@
 
   <script src="js/config.js?v=2"></script>
   <script src="js/integracoes.js"></script>
-  <script>
-    (async function init() {
-      try {
-        await Integracoes.carregar();
-        document.getElementById('integ-loading').style.display = 'none';
-      } catch (e) {
-        document.getElementById('integ-loading').textContent = 'Erro ao carregar integrações.';
-      }
-    })();
-  </script>
+  <script src="js/pages/integracoes.js" defer></script>
 </body>
 </html>

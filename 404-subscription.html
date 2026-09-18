@@ -87,23 +87,6 @@
     <p id="companyName" class="company-name"></p>
   </div>
 
-  <script>
-    const params = new URLSearchParams(window.location.search);
-    const slug = params.get('slug');
-    
-    if (slug) {
-      fetch(`${window.getApiBase ? window.getApiBase() : ''}/api/public/empresa/${slug}/contact`)
-        .then(r => r.json())
-        .then(data => {
-          const phone = data.telefone || data.supportWhatsApp;
-          if (phone) {
-            const clean = phone.replace(/\D/g, '');
-            document.getElementById('whatsappLink').href = `https://wa.me/55${clean}`;
-            document.getElementById('companyName').textContent = data.nome || '';
-          }
-        })
-        .catch(() => {});
-    }
-  </script>
+  <script src="js/pages/404-subscription.js" defer></script>
 </body>
 </html>

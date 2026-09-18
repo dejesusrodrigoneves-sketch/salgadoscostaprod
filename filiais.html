@@ -35,7 +35,7 @@
 <body>
   <div class="header">
     <h2><i class="fas fa-sitemap"></i> Gerenciar Filiais</h2>
-    <button class="btn btn-primary" onclick="abrirModalCriar()"><i class="fas fa-plus"></i> Criar Filial</button>
+    <button class="btn btn-primary" data-action="abrirModalCriarAction"><i class="fas fa-plus"></i> Criar Filial</button>
   </div>
 
   <table>
@@ -65,13 +65,14 @@
         <textarea id="filialJustificativa" rows="2" placeholder="Ex: expansão bairro X"></textarea>
       </div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="criarFilial()">Criar</button>
+        <button class="btn btn-secondary" data-action="fecharModalAction">Cancelar</button>
+        <button class="btn btn-primary" data-action="criarFilialAction">Criar</button>
       </div>
     </div>
   </div>
 
   <script src="js/config.js?v=2"></script>
+  <script src="js/delegator.js"></script>
   <script src="js/filiais.js"></script>
 </body>
 </html>

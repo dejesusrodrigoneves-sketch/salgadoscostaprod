@@ -47,57 +47,7 @@
 <script src="js/config.js?v=2"></script>
 <script src="js/utils.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
-<script>
-const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
-
-if (!authUser.username || authUser.role === 'superadmin') {
-  window.location.href = 'login.html';
-}
-
-document.getElementById('currentUser').value = authUser.username;
-
-document.getElementById('changePassForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const msg = document.getElementById('msgBox');
-  msg.className = 'msg';
-  msg.textContent = '';
-
-  const currentPass = document.getElementById('currentPass').value.trim();
-  const newPass = document.getElementById('newPass').value.trim();
-  const newPass2 = document.getElementById('newPass2').value.trim();
-
-  if (!currentPass || !newPass) { showMsg('Preencha todos os campos', 'error'); return; }
-  if (newPass.length < 6) { showMsg('Nova senha deve ter 6+ caracteres', 'error'); return; }
-  if (newPass !== newPass2) { showMsg('Nova senha e confirmação não conferem', 'error'); return; }
-
-  try {
-    const snap = await db.collection('usuarios').where('username', '==', authUser.username).get();
-    if (snap.empty) { showMsg('Usuário não encontrado', 'error'); return; }
-
-    const doc = snap.docs[0];
-    const data = doc.data();
-    const match = await bcrypt.compare(currentPass, data.passwordHash);
-    if (!match) { showMsg('Senha atual incorreta', 'error'); return; }
-
-    const hash = await bcrypt.hash(newPass, 10);
-    await db.collection('usuarios').doc(doc.id).update({ passwordHash: hash });
-
-    showMsg('Senha alterada com sucesso!', 'success');
-    document.getElementById('currentPass').value = '';
-    document.getElementById('newPass').value = '';
-    document.getElementById('newPass2').value = '';
-  } catch (err) {
-    console.error(err);
-    showMsg('Erro ao alterar senha', 'error');
-  }
-});
-
-function showMsg(text, type) {
-  const msg = document.getElementById('msgBox');
-  msg.textContent = text;
-  msg.className = `msg show msg-${type}`;
-}
-</script>
+<script src="js/pages/alterar-senha.js" defer></script>
 <script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
 </body>

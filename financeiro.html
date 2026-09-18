@@ -76,10 +76,10 @@
         <ul id="fin-por-plataforma"></ul>
       </div>
       <div class="fin-actions">
-        <button class="btn-financeiro btn-sync" onclick="Financeiro.sincronizar()">
+        <button class="btn-financeiro btn-sync" data-action="financeiroSincronizar">
           <i class="fas fa-sync-alt"></i> Sincronizar Dados
         </button>
-        <button class="btn-financeiro btn-closing" onclick="Financeiro.gerarFechamento()">
+        <button class="btn-financeiro btn-closing" data-action="financeiroGerarFechamento">
           <i class="fas fa-file-invoice-dollar"></i> Gerar Fechamento
         </button>
       </div>
@@ -117,124 +117,8 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="js/config.js?v=2"></script>
+  <script src="js/delegator.js"></script>
   <script src="js/financeiro.js"></script>
-  <script>
-    const authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
-    const isMatriz = authUser.empresaTipo === 'matriz';
-
-    // Formatação BRL
-    function fmtBRL(v) {
-      return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    // Tabs
-    const tabsEl = document.getElementById('fin-tabs');
-    const tabBtns = document.querySelectorAll('.fin-tab');
-    const tabPanels = document.querySelectorAll('.fin-tab-panel');
-
-    if (isMatriz) {
-      tabsEl.style.display = 'flex';
-    }
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabBtns.forEach(b => b.classList.remove('active'));
-        tabPanels.forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('fin-tab-' + btn.dataset.tab).classList.add('active');
-
-        // Carregar consolidado ao clicar na tab
-        if (btn.dataset.tab === 'consolidado' && isMatriz) {
-          carregarConsolidado();
-        }
-      });
-    });
-
-    // Checar URL params para abrir consolidado direto
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('consolidated') === '1' && isMatriz) {
-      tabBtns.forEach(b => b.classList.remove('active'));
-      tabPanels.forEach(p => p.classList.remove('active'));
-      document.querySelector('[data-tab="consolidado"]').classList.add('active');
-      document.getElementById('fin-tab-consolidado').classList.add('active');
-    }
-
-    // Carregar consolidado
-    async function carregarConsolidado() {
-      const loadingEl = document.getElementById('consol-loading');
-      const contentEl = document.getElementById('consol-content');
-      try {
-        const token = localStorage.getItem('token');
-        const res = await fetch((getApiBase() || '') + '/api/financeiro/consolidated', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (!res.ok) throw new Error('Erro ao carregar consolidado');
-        const data = await res.json();
-
-        // Totais
-        document.getElementById('consol-bruto').textContent = fmtBRL(data.bruto);
-        document.getElementById('consol-descontos').textContent = '-' + fmtBRL(data.descontos);
-        document.getElementById('consol-taxas').textContent = '-' + fmtBRL(data.taxas);
-        document.getElementById('consol-liquido').textContent = fmtBRL(data.liquido);
-        document.getElementById('consol-recebido').textContent = fmtBRL(data.recebido);
-        document.getElementById('consol-a-receber').textContent = fmtBRL(data.aReceber);
-
-        // Tabela por filial
-        const tbody = document.getElementById('consol-filiais-tbody');
-        const tfoot = document.getElementById('consol-filiais-tfoot');
-        tbody.innerHTML = '';
-        tfoot.innerHTML = '';
-
-        const filiais = data.filiais || [];
-        let totalBruto = 0, totalLiquido = 0, totalRecebido = 0, totalAReceber = 0;
-
-        filiais.forEach(f => {
-          totalBruto += f.bruto || 0;
-          totalLiquido += f.liquido || 0;
-          totalRecebido += f.recebido || 0;
-          totalAReceber += f.aReceber || 0;
-
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="filial-name">${f.nome || 'Filial'}</td>
-            <td>${fmtBRL(f.bruto)}</td>
-            <td class="positive">${fmtBRL(f.liquido)}</td>
-            <td>${fmtBRL(f.recebido)}</td>
-            <td class="pending">${fmtBRL(f.aReceber)}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        tfoot.innerHTML = `
-          <tr>
-            <td>TOTAL</td>
-            <td>${fmtBRL(totalBruto)}</td>
-            <td style="color:#10b981;">${fmtBRL(totalLiquido)}</td>
-            <td>${fmtBRL(totalRecebido)}</td>
-            <td style="color:#f59e0b;">${fmtBRL(totalAReceber)}</td>
-          </tr>
-        `;
-
-        loadingEl.style.display = 'none';
-        contentEl.style.display = 'block';
-      } catch (e) {
-        loadingEl.textContent = 'Erro ao carregar dados consolidados.';
-        console.error(e);
-      }
-    }
-
-    // Init
-    (async function init() {
-      try {
-        if (typeof Financeiro !== 'undefined' && Financeiro.carregarBalanco) {
-          await Financeiro.carregarBalanco();
-        }
-        document.getElementById('fin-loading').style.display = 'none';
-        document.getElementById('fin-content').style.display = 'block';
-      } catch (e) {
-        document.getElementById('fin-loading').textContent = 'Erro ao carregar dados.';
-      }
-    })();
-  </script>
+  <script src="js/pages/financeiro-page.js" defer></script>
 </body>
 </html>

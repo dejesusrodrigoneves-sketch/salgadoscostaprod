@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const prisma = require('../config/prisma');
 
 const ITENS_SELECT = { id: true, produtoId: true, quantidade: true, precoUnitario: true, sabores: true };
@@ -64,6 +65,11 @@ const pedidoRepository = {
     if (empresaId) where.empresaId = empresaId;
     return prisma.pedido.findUnique({ where, include: { itens: { select: ITENS_SELECT } } });
   },
+  async buscarPedidoPorPublicId(publicId, empresaId) {
+    const where = { publicId };
+    if (empresaId) where.empresaId = empresaId;
+    return prisma.pedido.findFirst({ where, include: { itens: { select: ITENS_SELECT } } });
+  },
   async buscarPedidoComItens(id, empresaId) {
     const where = { id, deletedAt: null };
     if (empresaId) where.empresaId = empresaId;
@@ -116,6 +122,7 @@ const pedidoRepository = {
       payload.status = 'pendente';
       payload.paymentStatus = null;
     }
+    payload.publicId = crypto.randomUUID();
     return prisma.pedido.create({ data: payload, include: { itens: { select: ITENS_SELECT } } });
   },
   async atualizarPedido(id, data) {

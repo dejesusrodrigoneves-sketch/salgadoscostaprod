@@ -40,12 +40,6 @@
           <label for="loginPass">Senha</label>
           <input type="password" id="loginPass" placeholder="Sua senha" required autocomplete="current-password" aria-required="true">
         </div>
-        <div class="form-group" style="margin-top: 8px;">
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer;">
-            <input type="checkbox" id="chkEntregador" style="width: 18px; height: 18px;">
-            Sou entregador
-          </label>
-        </div>
         <button type="submit" class="btn btn-primary" id="btnLogin" aria-label="Entrar no sistema">
           <span class="spinner-btn"></span> Entrar <i class="fas fa-arrow-right" aria-hidden="true"></i>
         </button>
@@ -59,94 +53,8 @@
   <div class="footer">&copy; 2026 @djesus.programmer </div>
 </div>
 
-<script>
-// Handle ?entregador=1 parameter
-const params = new URLSearchParams(window.location.search);
-if (params.get('entregador') === '1') {
-  document.getElementById('chkEntregador').checked = true;
-}
-
-// ========== LOGIN ==========
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const user = document.getElementById('loginUser').value.trim();
-  const pass = document.getElementById('loginPass').value.trim();
-  const isEntregador = document.getElementById('chkEntregador').checked;
-  const error = document.getElementById('loginError');
-  const btn = document.getElementById('btnLogin');
-
-  error.classList.remove('show');
-
-  if (!user || !pass) { error.textContent = 'Preencha todos os campos.'; error.classList.add('show'); return; }
-
-  btn.classList.add('loading');
-  btn.disabled = true;
-
-  try {
-    const endpoint = (getApiBase() || '') + (isEntregador ? '/api/entregador/auth/login' : '/api/auth/login');
-    const body = { username: user, password: pass };
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (isEntregador) {
-        localStorage.setItem('entregador_token', data.token);
-        localStorage.setItem('entregador_refresh', data.refreshToken);
-        localStorage.setItem('entregador_user', JSON.stringify(data.user));
-        localStorage.setItem('entregador_expiry', String(Date.now() + 30 * 60 * 1000));
-        if (data.mustChangePassword) {
-          window.location.href = 'entregador/entregador-app.html#/senha';
-        } else {
-          window.location.href = 'entregador/entregador-app.html';
-        }
-      } else {
-        localStorage.setItem('authUser', JSON.stringify({
-          ...data.user,
-          token: data.token,
-          refreshToken: data.refreshToken,
-          _expiry: Date.now() + 30 * 60 * 1000,
-        }));
-        window.location.href = 'dashboard.html';
-      }
-      return;
-    }
-
-    const errData = await res.json().catch(() => ({}));
-    error.textContent = errData.error || 'Erro no login. Verifique usuário e senha.';
-    error.classList.add('show');
-  } catch (err) {
-    console.error(err);
-    error.textContent = 'Erro de conexão. Tente novamente.';
-    error.classList.add('show');
-  } finally {
-    btn.classList.remove('loading');
-    btn.disabled = false;
-  }
-});
-
-// ========== AUTO CHECK FOR SESSION ==========
-const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
-if (authUser) {
-  const target = 'dashboard.html';
-  if (window.location.pathname.includes('login.html') || window.location.pathname === '/login') {
-    window.location.href = target;
-  }
-}
-
-const entregadorToken = localStorage.getItem('entregador_token');
-const entregadorExpiry = localStorage.getItem('entregador_expiry');
-if (entregadorToken && entregadorExpiry && Date.now() < Number(entregadorExpiry)) {
-  if (window.location.pathname.includes('login.html') || window.location.pathname === '/login') {
-    window.location.href = 'entregador/entregador-app.html';
-  }
-}
-</script>
 <script src="js/config.js?v=2"></script>
+<script src="js/pages/login.js" defer></script>
 <script src="js/password-toggle.js" defer></script>
 <script src="js/theme.js" defer></script>
 </body>

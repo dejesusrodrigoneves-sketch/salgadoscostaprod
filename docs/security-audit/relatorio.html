@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Auditoria de Segurança — SIC-IA</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1a1a1a; line-height: 1.5; }
+  .cover { page-break-after: always; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 90vh; text-align: center; }
+  .cover h1 { font-size: 28px; margin-bottom: 10px; color: #111827; }
+  .cover h2 { font-size: 18px; color: #6b7280; font-weight: 400; margin-bottom: 30px; }
+  .cover .meta { font-size: 13px; color: #9ca3af; }
+  .cover .badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 4px; }
+  .badge-critica { background: #FEE2E2; color: #B91C1C; }
+  .badge-alta { background: #FFF7ED; color: #EA580C; }
+  .badge-media { background: #FFFBEB; color: #D97706; }
+  .badge-baixa { background: #EFF6FF; color: #2563EB; }
+  .badge-info { background: #ECFDF5; color: #059669; }
+  h1 { font-size: 20px; color: #111827; margin: 20px 0 10px; border-bottom: 2px solid #e5e7eb; padding-bottom: 6px; }
+  h2 { font-size: 16px; color: #374151; margin: 16px 0 8px; }
+  h3 { font-size: 13px; color: #4b5563; margin: 12px 0 6px; }
+  p, li { font-size: 11px; margin-bottom: 4px; }
+  ul { padding-left: 18px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 10px; }
+  th { background: #f3f4f6; padding: 6px 8px; text-align: left; font-weight: 600; border: 1px solid #d1d5db; }
+  td { padding: 5px 8px; border: 1px solid #d1d5db; vertical-align: top; }
+  tr:nth-child(even) { background: #f9fafb; }
+  code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 10px; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+  pre { background: #1f2937; color: #e5e7eb; padding: 10px; border-radius: 6px; font-size: 10px; overflow-x: auto; margin: 8px 0; font-family: 'Cascadia Code', monospace; }
+  .section { page-break-inside: avoid; margin-bottom: 16px; }
+  .finding { border-left: 3px solid #d1d5db; padding: 8px 12px; margin: 8px 0; background: #f9fafb; }
+  .finding-critica { border-left-color: #B91C1C; }
+  .finding-alta { border-left-color: #EA580C; }
+  .finding-media { border-left-color: #D97706; }
+  .finding-baixa { border-left-color: #2563EB; }
+  .finding-info { border-left-color: #059669; }
+  .charts { display: flex; gap: 20px; margin: 16px 0; justify-content: center; }
+  .chart-box { text-align: center; }
+  .chart-box canvas { max-width: 280px; }
+  .chart-title { font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+  .strength { border-left: 3px solid #059669; padding: 8px 12px; margin: 6px 0; background: #ECFDF5; }
+  .issue-block { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; margin: 10px 0; page-break-inside: avoid; }
+  .issue-block h4 { font-size: 12px; margin-bottom: 6px; }
+  .issue-block pre { font-size: 9px; }
+  .page-footer { text-align: center; font-size: 9px; color: #9ca3af; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+  .priority { font-weight: 700; }
+  .p1 { color: #B91C1C; }
+  .p2 { color: #EA580C; }
+  .p3 { color: #D97706; }
+</style>
+</head>
+<body>
+
+<!-- CAPA -->
+<div class="cover">
+  <h1>Relatório de Auditoria de Segurança</h1>
+  <h2>SIC-IA — Sistema Inteligente de Cardápio</h2>
+  <p class="meta">Data: 16 de Setembro de 2026</p>
+  <p class="meta">Escopo: Backend (Railway) + Frontend (Vercel) + Cart flow</p>
+  <p class="meta" style="margin-top:20px; max-width:500px;">
+    <strong>Nota Metodológica:</strong> Cada categoria de auditoria foi mapeada para a stack detectada
+    (Node.js + Express 5.2.1 + Prisma 6.5.0 + PostgreSQL/Supabase + JWT + Vanilla JS).
+    O mecanismo de isolamento de tenant identificado é o middleware <code>resolveEmpresa</code> +
+    filtro manual por <code>empresaId</code> em queries Prisma. Não foram encontradas políticas de RLS
+    no Supabase. Auditoria manual de todo o código-fonte, repositório a repositório, linha a linha.
+  </p>
+  <div style="margin-top: 20px;">
+    <span class="badge badge-critica">2 Críticas</span>
+    <span class="badge badge-alta">2 Altas</span>
+    <span class="badge badge-media">5 Médias</span>
+    <span class="badge badge-baixa">2 Baixas</span>
+    <span class="badge badge-info">6 Pontos Fortes</span>
+  </div>
+</div>
+
+<!-- RESUMO EXECUTIVO -->
+<h1>1. Resumo Executivo</h1>
+<div class="charts">
+  <div class="chart-box">
+    <div class="chart-title">Achados por Severidade</div>
+    <canvas id="chartSeverity" width="280" height="200"></canvas>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">Achados por Categoria</div>
+    <canvas id="chartCategory" width="280" height="200"></canvas>
+  </div>
+</div>
+
+<p style="margin-top:10px;">
+  Esta auditoria identificou <strong>11 achados de segurança</strong> no projeto SIC-IA, incluindo
+  <strong>2 vulnerabilidades críticas</strong> que permitem acesso não autenticado a dados pessoais
+  de clientes (IDOR) e destruição de dados cross-tenant. A maioria dos controles de segurança está
+  bem implementada (autenticação JWT, rate limiting, CSP, escapeHtml), mas falhas pontuais criam
+  vetores de exploração significativos.
+</p>
+
+<h2>Pontos Fortes</h2>
+<div class="strength">
+  <strong>SF-1:</strong> Todas as rotas admin/superadmin validam roles no backend com <code>authenticate + authorize('superadmin')</code>.
+  O gateway de permissão no navegador é cosmético — o backend é o guard real.
+</div>
+<div class="strength">
+  <strong>SF-2:</strong> Função <code>escapeHtml()</code> completa (&, &lt;, &gt;, ", ') é usada consistentemente em
+  admin.js, cart.js, menu.js, filiais.js para dados de usuário em innerHTML.
+</div>
+<div class="strength">
+  <strong>SF-3:</strong> Proxy routes (mapbox, geoapify, graphhopper) têm allowlist de paths + rate limit + serviços hardcoded.
+  SSRF mitigado.
+</div>
+<div class="strength">
+  <strong>SF-4:</strong> Webhooks (ASAAS, iFood, Keeta, Food99) verificam tokens em headers. Autenticação adequada.
+</div>
+<div class="strength">
+  <strong>SF-5:</strong> Nenhuma API key ou secret hardcoded no código-fonte. Todos os segredos via <code>process.env</code>.
+</div>
+<div class="strength">
+  <strong>SF-6:</strong> JWT_SECRET não tem default inseguro — <code>env.js:5</code> retorna <code>undefined</code> se não setado.
+  Falha visível no startup.
+</div>
+
+<!-- CATEGORIA 1 -->
+<h1>2. Categoria 1: Banco sem Tranca (Isolamento de Tenant)</h1>
+<p><em>Mecanismo de isolamento: middleware <code>resolveEmpresa</code> + filtro manual <code>empresaId</code> em queries Prisma.
+Sem RLS no Supabase. Isolamento é 100% application-level.</em></p>
+
+<div class="finding finding-critica">
+  <h3><span class="badge badge-critica">CRÍTICA</span> C1-1: Destruição cross-tenant de webhooks</h3>
+  <p><strong>Arquivo:</strong> <code>backend/src/repositories/empresaRepository.js:36</code></p>
+  <pre>prisma.processedWebhook.deleteMany({ where: {} })</pre>
+  <p><strong>Por que é explorável:</strong> Ao deletar uma empresa, TODOS os webhooks processados de TODAS as empresas são deletados.
+  Um admin de empresa A pode causar perda de dados em empresa B ao deletar sua própria empresa.</p>
+  <p><strong>Condição:</strong> Admin autenticado executa exclusão de empresa.</p>
+</div>
+
+<div class="finding finding-alta">
+  <h3><span class="badge badge-alta">ALTA</span> C1-2: Sem RLS no Supabase</h3>
+  <p><strong>Arquivo:</strong> Nenhum arquivo SQL/migration com políticas RLS encontrado.</p>
+  <p><strong>Por que é explorável:</strong> Qualquer falha no middleware resolveEmpresa ou em uma rota que esqueça o filtro
+  resulta em vazamento de dados cross-tenant direto no banco.</p>
+  <p><strong>Condição:</strong> Falha em qualquer rota que não filtre por empresaId.</p>
+</div>
+
+<!-- CATEGORIA 2 -->
+<h1>3. Categoria 2: Permissão Definida no Navegador</h1>
+<p><em>Backend valida roles em TODAS as rotas sensíveis. O frontend tem gates cosméticos.</em></p>
+
+<div class="finding finding-media">
+  <h3><span class="badge badge-media">MÉDIA</span> C2-1: superadmin.html sem validação de role no frontend</h3>
+  <p><strong>Arquivo:</strong> <code>superadmin.html:416</code></p>
+  <pre>if(!authGuard()) throw new Error('Redirect');</pre>
+  <p><strong>Por que é explorável:</strong> <code>authGuard()</code> só verifica autenticação, não role. Qualquer usuário autenticado
+  (admin, user, entregador) pode acessar a página superadmin no frontend.</p>
+  <p><strong>Impacto real:</strong> BAIXO — backend valida <code>authorize('superadmin')</code> em todas as rotas.</p>
+</div>
+
+<div class="finding finding-media">
+  <h3><span class="badge badge-media">MÉDIA</span> C2-2: admin.js sem validação de role no frontend</h3>
+  <p><strong>Arquivo:</strong> <code>js/admin.js:17-28</code></p>
+  <pre>// Apenas redireciona admin para superadmin, não valida role
+if (!isLocal && (sub === 'admin' || sub === 'www')) {
+  window.location.href = '/superadmin.html';
+}</pre>
+  <p><strong>Por que é explorável:</strong> Qualquer usuário autenticado pode acessar admin.html.</p>
+  <p><strong>Impacto real:</strong> BAIXO — backend valida roles em todas as rotas admin.</p>
+</div>
+
+<!-- CATEGORIA 3 -->
+<h1>4. Categoria 3: IDOR</h1>
+
+<div class="finding finding-critica">
+  <h3><span class="badge badge-critica">CRÍTICA</span> C3-1: buscarPedido sem autenticação — IDOR completo</h3>
+  <p><strong>Arquivo:</strong> <code>backend/src/controllers/publicController.js:462-468</code></p>
+  <pre>exports.buscarPedido = asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const pedido = await sql.buscarPedido(req.params.id, empId);
+  if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+  res.json(pedido);
+});</pre>
+  <p><strong>Por que é explorável:</strong> Rota pública sem <code>authenticatePublic</code>. Retorna dados completos do pedido:
+  clienteNome, clienteWhatsapp, clienteEndereco, clienteNumero, clienteBairro, clienteCep, clienteReferencia, itens, preços.</p>
+  <p><strong>IDs sequenciais:</strong> <code>{empresaId}-{001, 002, 003...}</code> — enumerável em segundos.</p>
+  <p><strong>Exemplo:</strong> <code>GET /api/public/pedidos/7-001?slug=salgadoscosta</code> retorna dados do cliente.</p>
+</div>
+
+<div class="finding finding-alta">
+  <h3><span class="badge badge-alta">ALTA</span> C3-2: IDs de pedido sequenciais e previsíveis</h3>
+  <p><strong>Arquivo:</strong> <code>backend/src/repositories/sqlRepository.js:177-184</code></p>
+  <pre>return `${empresaId}-${String(counter.lastValue).padStart(3, '0')}`;</pre>
+  <p><strong>Por que é explorável:</strong> IDs incrementais (7-001, 7-002...) permitem enumeração trivial.
+  Combinado com C3-1, qualquer pessoa pode acessar todos os pedidos.</p>
+</div>
+
+<div class="finding finding-baixa">
+  <h3><span class="badge badge-baixa">BAIXA</span> C3-3: validarCupom sem autenticação</h3>
+  <p><strong>Arquivo:</strong> <code>backend/src/controllers/publicController.js:470-477</code></p>
+  <pre>exports.validarCupom = asyncHandler(async (req, res) => {</pre>
+  <p><strong>Por que é explorável:</strong> Permite validação de cupons sem autenticação. Risco baixo — apenas revela existência e desconto.</p>
+</div>
+
+<!-- CATEGORIA 4 -->
+<h1>5. Categoria 4: Chaves Expostas</h1>
+
+<div class="finding finding-info">
+  <h3><span class="badge badge-info">PONTO FORTE</span> C4-1: Nenhuma chave hardcoded encontrada</h3>
+  <p>Todas as API keys, JWT secrets e tokens são carregados de <code>process.env</code> via <code>env.js</code>.</p>
+</div>
+
+<div class="finding finding-info">
+  <h3><span class="badge badge-info">PONTO FORTE</span> C4-2: JWT_SECRET sem default inseguro</h3>
+  <p><strong>Arquivo:</strong> <code>backend/src/config/env.js:5</code></p>
+  <pre>jwtSecret: process.env.JWT_SECRET,</pre>
+  <p>Retorna <code>undefined</code> se não setado. <code>jwt.sign()</code> falha visivelmente.</p>
+</div>
+
+<!-- CATEGORIA 5 -->
+<h1>6. Categoria 5: Inputs sem Tratamento (XSS)</h1>
+
+<div class="finding finding-media">
+  <h3><span class="badge badge-media">MÉDIA</span> C5-1: innerHTML sem escapeHtml em admin.js (driver modal)</h3>
+  <p><strong>Arquivo:</strong> <code>js/admin.js:426,431,432</code></p>
+  pre>overlay.innerHTML = `
+    ...
+    <p>Atribuir entregador para o pedido de <strong>${pedidoNome}</strong></p>
+    ...
+    <span class="driver-name">${d.nome}</span>
+    <span class="driver-detail">📱 ${d.whatsapp || '-'}</span>`</pre>
+  <p><strong>Por que é explorável:</strong> Se <code>d.nome</code> ou <code>d.whatsapp</code> contiver HTML malicioso, será renderizado.</p>
+  <p><strong>Condição:</strong> Usuário malicioso cria entregador com nome contendo <code>&lt;script&gt;</code>.</p>
+</div>
+
+<div class="finding finding-media">
+  <h3><span class="badge badge-media">MÉDIA</span> C5-2: innerHTML sem escapeHtml em admin.js (edit modal)</h3>
+  <p><strong>Arquivo:</strong> <code>js/admin.js:569</code></p>
+  <pre>'<p>Cliente: ' + (p.clienteNome || p.cliente?.nome || '-') + '</p>'</pre>
+  <p><strong>Por que é explorável:</strong> Nome do cliente inserido sem escape no modal de edição.</p>
+</div>
+
+<div class="finding finding-media">
+  <h3><span class="badge badge-media">MÉDIA</span> C5-3: CSP com unsafe-inline em scriptSrc</h3>
+  <p><strong>Arquivo:</strong> <code>backend/src/app.js:75-76</code></p>
+  <pre>scriptSrc: ["'self'", "'unsafe-inline'", ...],
+scriptSrcAttr: ["'unsafe-inline'"],</pre>
+  <p><strong>Por que é explorável:</strong> Permite XSS via inline scripts e event handlers.</p>
+</div>
+
+<!-- RECOMENDAÇÕES -->
+<h1>7. Recomendações Priorizadas</h1>
+<table>
+  <tr><th>Prioridade</th><th>Achado</th><th>Ação</th><th>Arquivo</th></tr>
+  <tr><td class="priority p1">P1</td><td>C3-1: IDOR buscarPedido</td><td>Adicionar authenticatePublic + filtro por clienteWhatsapp</td><td>publicController.js:462</td></tr>
+  <tr><td class="priority p1">P1</td><td>C1-1: deleteMany cross-tenant</td><td>Filtrar processedWebhook por empresaId</td><td>empresaRepository.js:36</td></tr>
+  <tr><td class="priority p1">P1</td><td>C3-2: IDs sequenciais</td><td>Usar UUID ou hash opaco para IDs de pedido</td><td>sqlRepository.js:177</td></tr>
+  <tr><td class="priority p2">P2</td><td>C1-2: Sem RLS</td><td>Configurar RLS no Supabase como defesa em profundidade</td><td>Supabase Dashboard</td></tr>
+  <tr><td class="priority p2">P2</td><td>C5-1/C5-2: XSS admin.js</td><td>Aplicar escapeHtml em pedidoNome, d.nome, d.whatsapp</td><td>admin.js:426,569</td></tr>
+  <tr><td class="priority p2">P2</td><td>C5-3: CSP unsafe-inline</td><td>Remover unsafe-inline, usar nonces</td><td>app.js:75</td></tr>
+  <tr><td class="priority p3">P3</td><td>C2-1/C2-2: Frontend role gates</td><td>Adicionar verificação de role no authGuard()</td><td>utils.js:63</td></tr>
+  <tr><td class="priority p3">P3</td><td>C3-3: validarCupom sem auth</td><td>Considerar adicionar authenticatePublic</td><td>publicController.js:470</td></tr>
+</table>
+
+<!-- ISSUES PARA GITHUB -->
+<h1>8. Issues para o GitHub</h1>
+
+<div class="issue-block">
+<h4>--- ISSUE 1 ---</h4>
+<h4>[Segurança] IDOR crítico — buscarPedido expõe dados de clientes sem autenticação</h4>
+<p><strong>Labels:</strong> security, critical</p>
+<p><strong>Problema:</strong> A rota <code>GET /api/public/pedidos/:id</code> não possui autenticação. Qualquer pessoa pode
+acessar dados pessoais de qualquer pedido (nome, telefone, endereço, CEP) bastanto incrementar o ID sequencial.</p>
+<p><strong>Evidência:</strong> <code>backend/src/controllers/publicController.js:462-468</code></p>
+<pre>exports.buscarPedido = asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res);
+  if (!empId) return;
+  const pedido = await sql.buscarPedido(req.params.id, empId);
+  if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+  res.json(pedido);  // ← Sem autenticação!
+});</pre>
+<p><strong>Impacto:</strong> Vazamento de dados pessoais de clientes (LGPD). Qualquer pessoa pode enumerar pedidos.</p>
+<p><strong>Sugestão de correção:</strong> Adicionar <code>authenticatePublic</code> e filtrar por <code>clienteWhatsapp</code>.</p>
+<p><strong>Critérios de aceite:</strong></p>
+<ul>
+  <li>[ ] Rota requer Bearer token válido</li>
+  <li>[ ] Usuário só acessa seus próprios pedidos</li>
+  <li>[ ] Teste E2E verifica que pedido de outro usuário retorna 404</li>
+</ul>
+<h4>--- FIM ISSUE 1 ---</h4>
+</div>
+
+<div class="issue-block">
+<h4>--- ISSUE 2 ---</h4>
+<h4>[Segurança] Destruição cross-tenant — deleteMany sem filtro em processedWebhook</h4>
+<p><strong>Labels:</strong> security, critical</p>
+<p><strong>Problema:</strong> Ao deletar uma empresa, <code>processedWebhook.deleteMany({ where: {} })</code> deleta TODOS os
+webhooks processados de TODAS as empresas, causando perda de dados cross-tenant.</p>
+<p><strong>Evidência:</strong> <code>backend/src/repositories/empresaRepository.js:36</code></p>
+<pre>prisma.processedWebhook.deleteMany({ where: {} })  // ← Sem filtro de empresaId!</pre>
+<p><strong>Impacto:</strong> Perda de dados de webhook para todas as empresas. Webhooks podem ser reprocessados.</p>
+<p><strong>Sugestão de correção:</strong> Adicionar filtro <code>{ where: { pedido: { empresaId } } }</code> ou remover esta linha se processedWebhook não tem relação com empresa.</p>
+<p><strong>Critérios de aceite:</strong></p>
+<ul>
+  <li>[ ] deleteMany filtra por empresaId</li>
+  <li>[ ] Teste verifica que deletion não afeta outras empresas</li>
+</ul>
+<h4>--- FIM ISSUE 2 ---</h4>
+</div>
+
+<div class="issue-block">
+<h4>--- ISSUE 3 ---</h4>
+<h4>[Segurança] IDs de pedido sequenciais permitem enumeração trivial</h4>
+<p><strong>Labels:</strong> security, high</p>
+<p><strong>Problema:</strong> IDs de pedido são incrementais (<code>7-001</code>, <code>7-002</code>...), facilitando enumeração.</p>
+<p><strong>Evidência:</strong> <code>backend/src/repositories/sqlRepository.js:177-184</code></p>
+<pre>return `${empresaId}-${String(counter.lastValue).padStart(3, '0')}`;</pre>
+<p><strong>Impacto:</strong> Combinado com C3-1, qualquer pessoa pode acessar todos os pedidos.</p>
+<p><strong>Sugestão de correção:</strong> Usar UUID ou ID opaco (<code>cuid()</code>, <code>uuid()</code>).</p>
+<p><strong>Critérios de aceite:</strong></p>
+<ul>
+  <li>[ ] IDs de pedido são UUIDs ou opacos</li>
+  <li>[ ] Counter interno mantém sequência para display</li>
+  <li>[ ] Teste verifica que IDs antigos não são enumeráveis</li>
+</ul>
+<h4>--- FIM ISSUE 3 ---</h4>
+</div>
+
+<div class="issue-block">
+<h4>--- ISSUE 4 ---</h4>
+<h4>[Segurança] XSS em admin.js — innerHTML sem escapeHtml em modais</h4>
+<p><strong>Labels:</strong> security, medium</p>
+<p><strong>Problema:</strong> Nomes de entregadores e clientes são inseridos em innerHTML sem <code>escapeHtml()</code> em admin.js.</p>
+<p><strong>Evidência:</strong></p>
+<ul>
+  <li><code>js/admin.js:426</code> — <code>${pedidoNome}</code> sem escape</li>
+  <li><code>js/admin.js:431</code> — <code>${d.nome}</code> sem escape</li>
+  <li><code>js/admin.js:432</code> — <code>${d.whatsapp}</code> sem escape</li>
+  <li><code>js/admin.js:569</code> — <code>p.clienteNome</code> sem escape</li>
+</ul>
+<p><strong>Impacto:</strong> Stored XSS se usuário malicioso criar nome com HTML/JS.</p>
+<p><strong>Sugestão de correção:</strong> Aplicar <code>escapeHtml()</code> em todas as interpolações.</p>
+<p><strong>Critérios de aceite:</strong></p>
+<ul>
+  <li>[ ] Todos os dados de usuário em innerHTML usam escapeHtml</li>
+  <li>[ ] Teste verifica que nome com &lt;script&gt; é renderizado como texto</li>
+</ul>
+<h4>--- FIM ISSUE 4 ---</h4>
+</div>
+
+<div class="issue-block">
+<h4>--- ISSUE 5 ---</h4>
+<h4>[Segurança] CSP com unsafe-inline permite XSS</h4>
+<p><strong>Labels:</strong> security, medium</p>
+<p><strong>Problema:</strong> Content-Security-Policy permite <code>'unsafe-inline'</code> em scriptSrc e scriptSrcAttr.</p>
+<p><strong>Evidência:</strong> <code>backend/src/app.js:75-76</code></p>
+<pre>scriptSrc: ["'self'", "'unsafe-inline'", ...],
+scriptSrcAttr: ["'unsafe-inline'"],</pre>
+<p><strong>Impacto:</strong> Permite injeção de scripts inline e event handlers.</p>
+<p><strong>Sugestão de correção:</strong> Remover unsafe-inline, usar nonces para scripts inline.</p>
+<p><strong>Critérios de aceite:</strong></p>
+<ul>
+  <li>[ ] scriptSrc não contém unsafe-inline</li>
+  <li>[ ] scriptSrcAttr não contém unsafe-inline</li>
+  <li>[ ] Scripts inline funcionam com nonces</li>
+</ul>
+<h4>--- FIM ISSUE 5 ---</h4>
+</div>
+
+<div class="issue-block">
+<h4>--- ISSUE 6 ---</h4>
+<h4>[Segurança] Frontend role gates são cosméticos — adicionar verificação no authGuard</h4>
+<p><strong>Labels:</strong> security, low</p>
+<p><strong>Problema:</strong> <code>authGuard()</code> só verifica autenticação, não role. Qualquer usuário autenticado
+pode acessar superadmin.html e admin.html no frontend.</p>
+<p><strong>Evidência:</strong> <code>js/utils.js:63-80</code> — authGuard não verifica role.</p>
+<p><strong>Impacto:</strong> BAIXO — backend valida roles. Mas UI confunde usuários e expõe funcionalidades desnecessárias.</p>
+<p><strong>Sugestão de correção:</strong> Adicionar parâmetro de role em <code>authGuard(requiredRole)</code>.</p>
+<p><strong>Critérios de aceite:</strong></p>
+<ul>
+  <li>[ ] authGuard aceita role opcional</li>
+  <li>[ ] superadmin.html chama authGuard('superadmin')</li>
+  <li>[ ] admin.html chama authGuard('admin')</li>
+</ul>
+<h4>--- FIM ISSUE 6 ---</h4>
+</div>
+
+<div class="page-footer">
+  Relatório de Auditoria de Segurança — SIC-IA — 16/09/2026 — Gerado automaticamente
+</div>
+
+<script>
+// Charts
+function drawPie(canvasId, data, colors) {
+  var canvas = document.getElementById(canvasId);
+  var ctx = canvas.getContext('2d');
+  var cx = 140, cy = 90, r = 70;
+  var total = data.reduce(function(s, d) { return s + d.value; }, 0);
+  var startAngle = -Math.PI / 2;
+  data.forEach(function(d, i) {
+    var sliceAngle = (d.value / total) * 2 * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, startAngle + sliceAngle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i];
+    ctx.fill();
+    // Label
+    var midAngle = startAngle + sliceAngle / 2;
+    var lx = cx + (r * 0.6) * Math.cos(midAngle);
+    var ly = cy + (r * 0.6) * Math.sin(midAngle);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (d.value > 0) ctx.fillText(d.label + ': ' + d.value, lx, ly);
+    startAngle += sliceAngle;
+  });
+}
+
+function drawBar(canvasId, data, colors) {
+  var canvas = document.getElementById(canvasId);
+  var ctx = canvas.getContext('2d');
+  var barWidth = 30, gap = 12, startX = 20, startY = 170;
+  var maxVal = Math.max.apply(null, data.map(function(d) { return d.value; }));
+  data.forEach(function(d, i) {
+    var barHeight = (d.value / maxVal) * 120;
+    var x = startX + i * (barWidth + gap);
+    var y = startY - barHeight;
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.fillStyle = '#374151';
+    ctx.font = '9px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(d.value, x + barWidth / 2, y - 4);
+    ctx.save();
+    ctx.translate(x + barWidth / 2, startY + 10);
+    ctx.rotate(-0.3);
+    ctx.font = '8px Arial';
+    ctx.fillText(d.label, 0, 0);
+    ctx.restore();
+  });
+}
+
+drawPie('chartSeverity', [
+  { label: 'Crítica', value: 2 },
+  { label: 'Alta', value: 2 },
+  { label: 'Média', value: 5 },
+  { label: 'Baixa', value: 2 }
+], ['#B91C1C', '#EA580C', '#D97706', '#2563EB']);
+
+drawBar('chartCategory', [
+  { label: 'Banco', value: 2 },
+  { label: 'Permissões', value: 2 },
+  { label: 'IDOR', value: 3 },
+  { label: 'Chaves', value: 0 },
+  { label: 'XSS', value: 3 }
+], ['#B91C1C', '#EA580C', '#D97706', '#2563EB', '#7C3AED']);
+</script>
+
+</body>
+</html>
