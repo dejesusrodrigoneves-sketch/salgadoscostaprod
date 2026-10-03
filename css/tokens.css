@@ -18,6 +18,7 @@
   --z-overlay:  200;
   --z-modal:    300;
   --z-toast:    400;
+  --z-loading:  500;
 
   /* Status Colors (usados em admin.html, etc) */
   --danger-bg:       #FEF2F2;
@@ -90,4 +91,49 @@
 
 .skip-link:focus {
   top: 0;
+}
+
+/* ─── LOADING OVERLAY ─── */
+#loadingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-loading, 500);
+  pointer-events: all;
+}
+
+.loading-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.loading-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--primary, #F26D3D);
+  animation: loading-bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes loading-bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+.loading-label {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--text, #1e293b);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-dot { animation: none; }
 }

@@ -66,7 +66,7 @@ const pedidoRepository = {
     return prisma.pedido.findUnique({ where, include: { itens: { select: ITENS_SELECT } } });
   },
   async buscarPedidoPorPublicId(publicId, empresaId) {
-    const where = { publicId };
+    const where = { publicId, deletedAt: null };
     if (empresaId) where.empresaId = empresaId;
     return prisma.pedido.findFirst({ where, include: { itens: { select: ITENS_SELECT } } });
   },
@@ -89,11 +89,14 @@ const pedidoRepository = {
       'id', 'empresaId', 'clienteNome', 'clienteWhatsapp', 'clienteEndereco',
       'clienteNumero', 'clienteBairro', 'clienteCep', 'clienteReferencia',
       'tipoEntrega', 'formaPagamento', 'troco', 'itens',
+      'taxasEntrega', 'taxasCartao', 'desconto',
     ];
     const payload = {};
     for (const k of CAMPOS_PERMITIDOS) if (data[k] !== undefined) payload[k] = data[k];
 
     if (!payload.empresaId) throw Object.assign(new Error('empresaId obrigatório'), { status: 400 });
+
+    if (payload.tipoEntrega === 'balcao') payload.tipoEntrega = 'retirada';
 
     if (Array.isArray(data.itens)) {
       const produtoIds = data.itens.map(i => Number(i.produtoId));
@@ -122,6 +125,10 @@ const pedidoRepository = {
       payload.status = 'pendente';
       payload.paymentStatus = null;
     }
+    payload.total = Number(payload.valoresItens || 0)
+      + Number(payload.taxasEntrega || 0)
+      + Number(payload.taxasCartao || 0)
+      - Number(payload.desconto || 0);
     payload.publicId = crypto.randomUUID();
     return prisma.pedido.create({ data: payload, include: { itens: { select: ITENS_SELECT } } });
   },

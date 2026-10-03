@@ -19,24 +19,36 @@ export async function syncSaas(empresaId) {
     select: { id: true, empresaId: true, total: true, desconto: true, taxasEntrega: true, taxasCartao: true, createdAt: true },
   });
 
+  const pedidoIds = pedidos.map(p => p.id);
+  if (pedidoIds.length === 0) return { created: 0, updated: 0 };
+
+  // Batch: all pagamentos for these pedidos (single query, not N)
+  const todosPagamentos = await prisma.pagamento.findMany({
+    where: { pedidoId: { in: pedidoIds }, status: 'pago' },
+    select: { pedidoId: true, valor: true },
+  });
+  const somaPorPedido = new Map();
+  for (const pg of todosPagamentos) {
+    somaPorPedido.set(pg.pedidoId, (somaPorPedido.get(pg.pedidoId) || 0) + Number(pg.valor));
+  }
+
+  // Batch: all existing financial entries (single query, not N)
+  const existentes = await prisma.financialEntry.findMany({
+    where: { empresaId, source: PLATFORMS.SAAS, externalId: { in: pedidoIds } },
+    select: { externalId: true },
+  });
+  const existSet = new Set(existentes.map(e => e.externalId));
+
   let created = 0;
   let updated = 0;
   for (const pedido of pedidos) {
-    const pagamentos = await prisma.pagamento.findMany({
-      where: { pedidoId: pedido.id, status: 'pago' },
-      select: { valor: true },
-    });
-    const recebido = pagamentos.length
-      ? pagamentos.reduce((s, p) => s + Number(p.valor), 0)
+    const soma = somaPorPedido.get(pedido.id);
+    const recebido = soma != null
+      ? soma
       : Number(pedido.total || 0) - Number(pedido.desconto || 0) - Number(pedido.taxasEntrega || 0) - Number(pedido.taxasCartao || 0);
-
     const normalized = normalizePedido(pedido, recebido);
-    const existing = await prisma.financialEntry.findUnique({
-      where: { empresaId_source_externalId: { empresaId, source: PLATFORMS.SAAS, externalId: pedido.id } },
-      select: { id: true },
-    });
     await upsertEntry(normalized);
-    if (existing) updated += 1;
+    if (existSet.has(pedido.id)) updated += 1;
     else created += 1;
   }
   return { created, updated };

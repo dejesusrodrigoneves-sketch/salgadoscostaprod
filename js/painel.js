@@ -12,22 +12,30 @@ const authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
 const TOKEN = authUser?.token || '';
 
 async function apiRequest(path, options = {}) {
-  const url = API_BASE + path;
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
-  if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-  if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-    options.body = JSON.stringify(options.body);
+  const skip = options.skipLoading === true;
+  const opts = { ...options };
+  delete opts.skipLoading;
+  if (!skip && typeof showLoading === 'function') showLoading();
+  try {
+    const url = API_BASE + path;
+    const headers = { 'Content-Type': 'application/json', ...opts.headers };
+    if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+    if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+      opts.body = JSON.stringify(opts.body);
+    }
+    const res = await fetch(url, { ...opts, headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
+      throw new Error(err.error || 'Erro HTTP ' + res.status);
+    }
+    return res.json();
+  } finally {
+    if (!skip && typeof hideLoading === 'function') hideLoading();
   }
-  const res = await fetch(url, { ...options, headers });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
-    throw new Error(err.error || 'Erro HTTP ' + res.status);
-  }
-  return res.json();
 }
 
 // ===== Tabs =====
-const tabs = ['horarios', 'produtos', 'categorias', 'config', 'personalizacao', 'financeiro', 'pagamentos'];
+const tabs = ['horarios', 'produtos', 'categorias', 'config', 'personalizacao'];
 function selectTab(which){
   tabs.forEach(t => {
     const btn = document.getElementById('tab-' + t);
@@ -41,8 +49,6 @@ document.getElementById('tab-produtos')?.addEventListener('click', () => { selec
 document.getElementById('tab-categorias')?.addEventListener('click', () => { selectTab('categorias'); carregarCategorias(); });
 document.getElementById('tab-config')?.addEventListener('click', () => { selectTab('config'); carregarConfigLoja(); });
 document.getElementById('tab-personalizacao')?.addEventListener('click', () => { selectTab('personalizacao'); carregarTema(); });
-document.getElementById('tab-financeiro')?.addEventListener('click', () => { selectTab('financeiro'); carregarFinanceiro(); });
-document.getElementById('tab-pagamentos')?.addEventListener('click', () => { selectTab('pagamentos'); carregarPaymentConfig(); });
 
 // ===== produtos congelados =====
 const fCongelado = document.getElementById('prodCongelado');
@@ -74,7 +80,7 @@ function linhaHorario(dia, dados){
 
 async function carregarHorarios(){
   try {
-    var settings = await apiRequest('/loja/settings-admin');
+    var settings = await apiRequest('/loja/settings-admin', { skipLoading: true });
     var workingDays = Array.isArray(settings.workingDays) ? settings.workingDays : [];
     var data = {};
     DIAS.forEach(function(d) { data[d] = { inicio: settings.openingTime || '', fim: settings.closingTime || '', fechado: !workingDays.includes(d) }; });
@@ -124,7 +130,7 @@ const DIAS_SEMANA = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
 
 async function carregarLojaConfig() {
   try {
-    const settings = await apiRequest('/loja/settings-admin');
+    const settings = await apiRequest('/loja/settings-admin', { skipLoading: true });
     document.getElementById('lojaOpeningTime').value = settings.openingTime || '';
     document.getElementById('lojaClosingTime').value = settings.closingTime || '';
     document.getElementById('lojaManualOverride').checked = settings.manualOverride || false;
@@ -163,7 +169,7 @@ let categoriasCache = [];
 
 async function carregarCategorias() {
   try {
-    categoriasCache = await apiRequest('/categorias');
+    categoriasCache = await apiRequest('/categorias', { skipLoading: true });
     const list = document.getElementById('categoriaList');
     if (!categoriasCache.length) {
       list.innerHTML = '<p class="tip" style="padding:16px;text-align:center;">Nenhuma categoria cadastrada.</p>';
@@ -400,7 +406,7 @@ function hideSkeleton(){ skeletonArea.innerHTML = ''; }
 async function carregarProdutosApi(){
   showSkeleton();
   try {
-    cacheProdutos = await apiRequest('/produtos');
+    cacheProdutos = await apiRequest('/produtos', { skipLoading: true });
     cacheProdutos.forEach(p => {
       if (p.controlaEstoque && p.estoqueAtual !== null && p.estoqueMinimo !== null && p.estoqueAtual <= p.estoqueMinimo) {
         window.parent.postMessage({ tipo: "estoqueBaixo", produto: p.name }, window.location.origin);
@@ -703,7 +709,7 @@ function escapeHtml(str){ return String(str).replace(/[&<>"']/g, s => ({'&':'&am
 // ===== Configurações da Loja (backend API) =====
 async function carregarConfigLoja() {
   try {
-    const settings = await apiRequest('/loja/settings-admin');
+    const settings = await apiRequest('/loja/settings-admin', { skipLoading: true });
     document.getElementById('confNome').value = settings.nome || '';
     document.getElementById('confTelefone').value = settings.telefone || '';
     document.getElementById('confDescricao').value = settings.descricao || '';
@@ -935,7 +941,7 @@ function previewTema() {
 
 async function carregarTema() {
   try {
-    var settings = await apiRequest('/loja/settings-admin');
+    var settings = await apiRequest('/loja/settings-admin', { skipLoading: true });
     var t = settings.themeSettings || {};
     var p = document.getElementById('themePrimary');
     var bg = document.getElementById('themeBackground');
@@ -989,7 +995,7 @@ const btnRemoveSound = document.getElementById('btnRemoveSound');
 // Load current sound on page load
 (async function() {
   try {
-    const settings = await apiRequest('/loja/settings-admin');
+    const settings = await apiRequest('/loja/settings-admin', { skipLoading: true });
     const soundUrl = settings.notificationSound || (settings.themeSettings && settings.themeSettings.notificationSound);
     if (soundUrl && notifSoundAudio) {
       notifSoundAudio.src = soundUrl;
@@ -1083,208 +1089,3 @@ document.getElementById('btnResetarTema')?.addEventListener('click', async funct
 
 (function init(){ carregarHorarios(); carregarLojaConfig(); listenProdutos(); carregarCategorias(); })();
 
-async function carregarFinanceiro() {
-  try {
-    var actual = await apiRequest('/empresa/settlement/actual');
-    var card = document.getElementById('settlementCard');
-    if (actual.message) {
-      card.innerHTML = '<p style="color:var(--text-muted)">Nenhum settlement nesta semana</p>';
-    } else {
-      var statusColors = { processando: '#F59E0B', pendente: '#3B82F6', pago: '#10B981', erro: '#EF4444' };
-      var cor = statusColors[actual.status] || '#666';
-      var periodo = new Date(actual.weekStart).toLocaleDateString('pt-BR') + ' - ' + new Date(actual.weekEnd).toLocaleDateString('pt-BR');
-      card.innerHTML = '<p><strong>Periodo:</strong> ' + periodo + '</p>' +
-        '<p><strong>Pedidos:</strong> ' + actual.totalPedidos + '</p>' +
-        '<p><strong>Bruto:</strong> R$ ' + Number(actual.totalBruto).toFixed(2) + '</p>' +
-        '<p><strong>Liquido:</strong> R$ ' + Number(actual.totalLiquido).toFixed(2) + '</p>' +
-        '<p><strong>Status:</strong> <span style="color:' + cor + ';font-weight:600">' + actual.status + '</span></p>';
-    }
-  } catch(e) {
-    document.getElementById('settlementCard').innerHTML = '<p style="color:var(--text-muted)">Nenhum settlement nesta semana</p>';
-  }
-
-  try {
-    var history = await apiRequest('/empresa/settlement/history');
-    var container = document.getElementById('settlementHistory');
-    if (!history.settlements || !history.settlements.length) {
-      container.innerHTML = '<p style="color:var(--text-muted)">Nenhum settlement anterior</p>';
-      return;
-    }
-    container.innerHTML = history.settlements.map(function(s) {
-      var periodo = new Date(s.weekStart).toLocaleDateString('pt-BR') + ' - ' + new Date(s.weekEnd).toLocaleDateString('pt-BR');
-      var cor = s.status === 'pago' ? '#10B981' : '#F59E0B';
-      return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border,#eee)">' +
-        '<span>' + periodo + '</span>' +
-        '<span>R$ ' + Number(s.totalLiquido).toFixed(2) + '</span>' +
-        '<span style="color:' + cor + ';font-weight:600">' + s.status + '</span>' +
-        '</div>';
-    }).join('');
-  } catch(e) {
-    document.getElementById('settlementHistory').innerHTML = '<p style="color:var(--text-muted)">Nenhum settlement anterior</p>';
-  }
-}
-
-// ===== Pagamentos (PIX) =====
-
-function validatePaymentForm() {
-  var email = (document.getElementById('payEmail') || {}).value || '';
-  var cpfCnpj = (document.getElementById('payCpfCnpj') || {}).value || '';
-  var pixKey = (document.getElementById('payPixKey') || {}).value || '';
-  var pixKeyType = (document.getElementById('payPixKeyType') || {}).value || '';
-
-  // Email validation
-  var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRe.test(email)) {
-    return { ok: false, msg: 'E-mail inválido.' };
-  }
-
-  // CPF/CNPJ validation (basic: strip non-digits, check length)
-  var digits = cpfCnpj.replace(/\D/g, '');
-  if (digits.length !== 11 && digits.length !== 14) {
-    return { ok: false, msg: 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.' };
-  }
-
-  // PIX key validation based on type
-  if (!pixKey.trim()) {
-    return { ok: false, msg: 'Chave PIX é obrigatória.' };
-  }
-  if (pixKeyType === 'cpf') {
-    var pkDigits = pixKey.replace(/\D/g, '');
-    if (pkDigits.length !== 11) return { ok: false, msg: 'Chave PIX CPF deve ter 11 dígitos.' };
-  } else if (pixKeyType === 'cnpj') {
-    var pkDigits2 = pixKey.replace(/\D/g, '');
-    if (pkDigits2.length !== 14) return { ok: false, msg: 'Chave PIX CNPJ deve ter 14 dígitos.' };
-  } else if (pixKeyType === 'email') {
-    if (!emailRe.test(pixKey)) return { ok: false, msg: 'Chave PIX e-mail inválida.' };
-  } else if (pixKeyType === 'phone') {
-    var pkDigits3 = pixKey.replace(/\D/g, '');
-    if (pkDigits3.length < 10 || pkDigits3.length > 13) return { ok: false, msg: 'Chave PIX telefone inválida.' };
-  }
-
-  return { ok: true };
-}
-
-function renderPaymentState(empresa) {
-  var statusBox = document.getElementById('payment-status-box');
-  var statusContent = document.getElementById('payment-status-content');
-  var formContainer = document.getElementById('payment-form-container');
-  var errorDiv = document.getElementById('payment-error');
-  var btnAtivar = document.getElementById('btnAtivarPayment');
-  var btnAtualizar = document.getElementById('btnAtualizarPayment');
-  var btnDesativar = document.getElementById('btnDesativarPayment');
-
-  if (errorDiv) errorDiv.style.display = 'none';
-
-  if (!empresa || !empresa.pixKey) {
-    // No payment configured
-    statusBox.style.display = 'none';
-    btnAtivar.style.display = '';
-    btnAtualizar.style.display = 'none';
-    btnDesativar.style.display = 'none';
-    return;
-  }
-
-  // Payment active
-  statusBox.style.display = 'block';
-  var nextMonday = empresa.nextMonday ? new Date(empresa.nextMonday).toLocaleDateString('pt-BR') : '—';
-  var statusColor = empresa.status === 'active' ? '#10B981' : '#F59E0B';
-  statusContent.innerHTML =
-    '<p style="margin:0;"><strong>Status:</strong> <span style="color:' + statusColor + ';">' + (empresa.status || 'active') + '</span></p>' +
-    '<p style="margin:4px 0 0 0;"><strong>Chave PIX:</strong> ' + escapeHtml(empresa.pixKey) + ' (' + escapeHtml(empresa.pixKeyType || '') + ')</p>' +
-    '<p style="margin:4px 0 0 0;"><strong>Próximo pagamento:</strong> ' + nextMonday + '</p>';
-  statusBox.style.borderColor = statusColor;
-  statusBox.style.background = statusColor + '10';
-
-  // Fill form with current values
-  if (empresa.email) document.getElementById('payEmail').value = empresa.email;
-  if (empresa.cpfCnpj) document.getElementById('payCpfCnpj').value = empresa.cpfCnpj;
-  if (empresa.pixKey) document.getElementById('payPixKey').value = empresa.pixKey;
-  if (empresa.pixKeyType) document.getElementById('payPixKeyType').value = empresa.pixKeyType;
-
-  btnAtivar.style.display = 'none';
-  btnAtualizar.style.display = '';
-  btnDesativar.style.display = '';
-}
-
-async function carregarPaymentConfig() {
-  try {
-    var data = await apiRequest('/empresa/payment/status');
-    renderPaymentState(data);
-  } catch (e) {
-    // Not configured yet — show empty form
-    renderPaymentState(null);
-  }
-}
-
-async function ativarPayment() {
-  var validation = validatePaymentForm();
-  if (!validation.ok) {
-    var errDiv = document.getElementById('payment-error');
-    errDiv.textContent = validation.msg;
-    errDiv.style.display = 'block';
-    return;
-  }
-
-  var payload = {
-    email: document.getElementById('payEmail').value.trim(),
-    cpfCnpj: document.getElementById('payCpfCnpj').value.replace(/\D/g, ''),
-    pixKey: document.getElementById('payPixKey').value.trim(),
-    pixKeyType: document.getElementById('payPixKeyType').value,
-  };
-
-  try {
-    await apiRequest('/empresa/payment/setup', { method: 'POST', body: payload });
-    blink(document.getElementById('btnAtivarPayment'));
-    toast('Pagamentos ativados com sucesso!');
-    carregarPaymentConfig();
-  } catch (e) {
-    var errDiv = document.getElementById('payment-error');
-    errDiv.textContent = e.message;
-    errDiv.style.display = 'block';
-  }
-}
-
-async function atualizarPayment() {
-  var validation = validatePaymentForm();
-  if (!validation.ok) {
-    var errDiv = document.getElementById('payment-error');
-    errDiv.textContent = validation.msg;
-    errDiv.style.display = 'block';
-    return;
-  }
-
-  var pixKey = document.getElementById('payPixKey').value.trim();
-  var pixKeyType = document.getElementById('payPixKeyType').value;
-
-  try {
-    await apiRequest('/empresa/payment', { method: 'PUT', body: { pixKey: pixKey, pixKeyType: pixKeyType } });
-    blink(document.getElementById('btnAtualizarPayment'));
-    toast('Chave PIX atualizada!');
-    carregarPaymentConfig();
-  } catch (e) {
-    var errDiv = document.getElementById('payment-error');
-    errDiv.textContent = e.message;
-    errDiv.style.display = 'block';
-  }
-}
-
-async function desativarPayment() {
-  var confirmed = await confirmModal('Desativar pagamentos? Você não receberá transferências automaticamente.');
-  if (!confirmed) return;
-
-  try {
-    await apiRequest('/empresa/payment', { method: 'DELETE' });
-    toast('Pagamentos desativados.');
-    document.getElementById('payPixKey').value = '';
-    document.getElementById('payPixKeyType').value = 'cpf';
-    carregarPaymentConfig();
-  } catch (e) {
-    var errDiv = document.getElementById('payment-error');
-    errDiv.textContent = e.message;
-    errDiv.style.display = 'block';
-  }
-}
-
-document.getElementById('btnAtivarPayment')?.addEventListener('click', ativarPayment);
-document.getElementById('btnAtualizarPayment')?.addEventListener('click', atualizarPayment);
-document.getElementById('btnDesativarPayment')?.addEventListener('click', desativarPayment);

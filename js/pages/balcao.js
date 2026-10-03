@@ -64,7 +64,7 @@
     var grid = document.querySelector('.grid-produtos');
     grid.innerHTML = '';
     var produtosFiltrados = typeAtual
-      ? todosProdutos.filter(function (p) { return (p.category && p.category.nome) || 'Sem categoria' === typeAtual; })
+      ? todosProdutos.filter(function (p) { return ((p.category && p.category.nome) || 'Sem categoria') === typeAtual; })
       : todosProdutos;
     produtosFiltrados.forEach(function (produto) {
       var div = document.createElement('div');
@@ -102,6 +102,10 @@
       '<label><input type="radio" name="pagamento" value="pix" data-action-change="calcularTotalFinalBridge"> Pix</label>' +
       '<label><input type="radio" name="pagamento" value="debito" data-action-change="calcularTotalFinalBridge"> Cartão Débito (+2%)</label>' +
       '<label><input type="radio" name="pagamento" value="credito" data-action-change="calcularTotalFinalBridge"> Cartão Crédito (+6%)</label>' +
+      '<div id="trocoBox" style="display:none">' +
+      '<label for="trocoPara">Troco para:</label>' +
+      '<input type="number" id="trocoPara" aria-label="Troco para" placeholder="Valor em R$" step="0.01" min="0">' +
+      '</div>' +
       '</div>';
 
     if (tipo === 'delivery') {
@@ -137,6 +141,7 @@
       '<button id="finalizarSabores" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;transition:0.2s;">Finalizar</button>' +
       '</div>';
     document.body.appendChild(modal);
+    bindModalDismiss(modal);
 
     var lista = modal.querySelector('.lista-sabores');
     var contadorTotal = modal.querySelector('#contadorTotal');
@@ -197,6 +202,7 @@
       '<p id="contadorTotal" style="margin:10px 0;font-weight:600;text-align:right;">Selecionados: 0/' + cfg.unidades + '</p>' +
       '<button id="finalizarSabores" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;">Finalizar</button></div>';
     document.body.appendChild(modal);
+    bindModalDismiss(modal);
     var lista = modal.querySelector('.lista-sabores');
     var contador = modal.querySelector('#contadorTotal');
     cfg.sabores.filter(function (s) { return !s.pausado; }).forEach(function (sabor) {
@@ -241,6 +247,7 @@
       '<p id="contadorAcai" style="margin:10px 0;font-weight:600;text-align:right;">Escolhidos: 0</p>' +
       '<button id="finalizarSabores" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;">Finalizar</button></div>';
     document.body.appendChild(modal);
+    bindModalDismiss(modal);
     var lista = modal.querySelector('.lista-sabores');
     var contador = modal.querySelector('#contadorAcai');
     cfg.acrescimos.forEach(function (op) {
@@ -420,6 +427,7 @@
       '<p id="contadorTotal" style="margin:10px 0;font-weight:600;text-align:right;">Selecionados: 0</p>' +
       '<button id="finalizarAvulso" style="width:100%;padding:12px;border:none;border-radius:10px;background:#16a34a;color:white;font-weight:600;cursor:pointer;transition:0.2s;">Finalizar</button></div>';
     document.body.appendChild(modal);
+    bindModalDismiss(modal);
     var lista = modal.querySelector('.lista-sabores');
     var contadorTotal = modal.querySelector('#contadorTotal');
     function atualizarContador() {
@@ -464,6 +472,8 @@
       if (formaPagamento.value === 'debito') totalFinal += subtotal * 0.02;
       if (formaPagamento.value === 'credito') totalFinal += subtotal * 0.06;
     }
+    var trocoBox = document.getElementById('trocoBox');
+    if (trocoBox) trocoBox.style.display = (formaPagamento && formaPagamento.value === 'dinheiro') ? 'block' : 'none';
     document.getElementById('total').innerText = 'R$ ' + totalFinal.toFixed(2);
   }
 
@@ -471,7 +481,7 @@
 
   async function pagar() {
     if (carrinho.length === 0) { toast('Carrinho vazio. Adicione produtos antes de finalizar.', 'warning'); return; }
-    var tipoEntrega = (document.querySelector('input[name="tipoEntrega"]:checked') || {}).value || 'balcao';
+    var tipoEntrega = (document.querySelector('input[name="tipoEntrega"]:checked') || {}).value || 'retirada';
     var formaPagamento = (document.querySelector('input[name="pagamento"]:checked') || {}).value || 'dinheiro';
     var nomeCliente = (document.getElementById('nomeCliente') || {}).value || '';
     var whatsappCliente = ((document.getElementById('whatsappCliente') || {}).value || '').replace(/\D/g, '');
@@ -497,6 +507,7 @@
       itens: carrinho.map(function (item) { return { produtoId: item.id, quantidade: item.qtd, sabores: formatarSabores(item.sabores) }; }),
       taxasEntrega: 0, taxasCartao: taxaCartao, desconto: 0, total: totalFinal,
     };
+    if (typeof showLoading === 'function') showLoading();
     try {
       var authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
       var token = authUser.token || '';
@@ -514,6 +525,8 @@
     } catch (error) {
       console.error('Erro ao finalizar venda:', error);
       toast(error.message || 'Erro ao finalizar venda.', 'danger');
+    } finally {
+      if (typeof hideLoading === 'function') hideLoading();
     }
   }
 
@@ -545,4 +558,25 @@
 
   // Expose needed to delegator
   window.pagar = pagar;
+  window.pagarAction = function (ds) {
+    if (typeof window.pagar === 'function') return window.pagar(ds);
+    console.warn('[delegator] handler not ready:', 'pagarAction');
+  };
+
+  function bindModalDismiss(modal) {
+    function onKey(e) {
+      if (!modal.isConnected) { document.removeEventListener('keydown', onKey); return; }
+      if (e.key !== 'Escape') return;
+      var all = document.querySelectorAll('.modal-sabores');
+      if (all.length && all[all.length - 1] !== modal) return;
+      modal.remove();
+      document.removeEventListener('keydown', onKey);
+    }
+    document.addEventListener('keydown', onKey);
+    modal.addEventListener('click', function (e) {
+      if (e.target !== modal) return;
+      modal.remove();
+      document.removeEventListener('keydown', onKey);
+    });
+  }
 })();

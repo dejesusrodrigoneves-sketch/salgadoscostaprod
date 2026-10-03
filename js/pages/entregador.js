@@ -6,19 +6,27 @@
 
   var authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
   var API_BASE = (window.getApiBase ? window.getApiBase() : window.location.origin) + '/api';
-  var TOKEN = authUser ? (authUser.token || '') : localStorage.getItem('token') || '';
+  var TOKEN = (authUser && authUser.token) || (typeof safeGetToken === 'function' ? safeGetToken() : '');
 
   async function apiRequest(path, options) {
     options = options || {};
-    var url = API_BASE + path;
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
-    if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-    var res = await fetch(url, Object.assign({}, options, { headers: headers }));
-    if (!res.ok) {
-      var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
-      throw new Error(err.error || 'Erro HTTP ' + res.status);
+    const skip = options.skipLoading === true;
+    const opts = { ...options };
+    delete opts.skipLoading;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      var url = API_BASE + path;
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      if (!res.ok) {
+        var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
+        throw new Error(err.error || 'Erro HTTP ' + res.status);
+      }
+      return res.json();
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
     }
-    return res.json();
   }
 
   // CRUD Entregadores
@@ -140,7 +148,7 @@
     var entregadores = [];
 
     try {
-      entregadores = await apiRequest('/entregadores?sort=criadoEm');
+      entregadores = await apiRequest('/entregadores?sort=criadoEm', { skipLoading: true });
     } catch (e) { /* ignore */ }
 
     if (!entregadores.length) {
@@ -185,6 +193,18 @@
   };
   window.abrirModalResetAction = function (ds) {
     window.abrirModalReset(ds.id, ds.nome);
+  };
+  window.salvarEntregadorAction = function (ds) {
+    if (typeof window.salvarEntregador === 'function') return window.salvarEntregador(ds);
+    console.warn('[delegator] handler not ready:', 'salvarEntregadorAction');
+  };
+  window.fecharModalResetAction = function (ds) {
+    if (typeof window.fecharModalReset === 'function') return window.fecharModalReset(ds);
+    console.warn('[delegator] handler not ready:', 'fecharModalResetAction');
+  };
+  window.confirmarResetSenhaAction = function (ds) {
+    if (typeof window.confirmarResetSenha === 'function') return window.confirmarResetSenha(ds);
+    console.warn('[delegator] handler not ready:', 'confirmarResetSenhaAction');
   };
 
   // Poll drivers

@@ -1,6 +1,7 @@
 // backend/src/controllers/webhookAsaasController.js (CJS)
 const subscriptionService = require('../services/subscriptionService.js');
-const prisma = require('../config/prisma.js').default;
+const subscriptionPaymentService = require('../services/subscriptionPaymentService.js');
+const prisma = require('../config/prisma.js');
 const logger = require('../config/logger');
 
 async function webhookAsaasController(req, res) {
@@ -10,6 +11,19 @@ async function webhookAsaasController(req, res) {
     logger.info('[Asaas Webhook] Evento recebido');
     
     if (event === 'PAYMENT_RECEIVED') {
+      // Fatura da mensalidade (extrato): PIX avulso não tem payment.subscription,
+      // então tenta marcar pelo id do pagamento ANTES do lookup legado.
+      const marked = await subscriptionPaymentService.markPaidByAsaasPaymentId(
+        payment.id || payment.asaasPaymentId,
+        {
+          paidAt: payment.paymentDate ? new Date(payment.paymentDate) : new Date(),
+          total: Number(payment.value),
+        }
+      );
+      if (marked) {
+        logger.info('[Asaas Webhook] Fatura de mensalidade marcada como paga');
+      }
+
       const subscription = await prisma.subscription.findFirst({
         where: { asaasSubscriptionId: payment.subscription }
       });

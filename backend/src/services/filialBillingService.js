@@ -221,6 +221,12 @@ export async function desvincularComConsentimento(filialId, usuarioId, contexto 
 
   const atualizada = await sql.atualizarParent(filialId, null);
 
+  // Set trial mode: filial enters trial after unlinking (reversible effect)
+  await prisma.empresa.update({
+    where: { id: filialId },
+    data: { status: 'trial', statusReason: 'desvinculacao' },
+  });
+
   if (matrizId) {
     await registrarConsentimento(matrizId, 'desvinculacao_filial', 'accepted', usuarioId, {
       filialId,

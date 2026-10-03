@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
+const { hashPassword, verifyPassword } = require('../utils/password');
 const prisma = require('../config/prisma');
 const sql = require('../repositories/sqlRepository');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -54,31 +54,8 @@ function setCache(res, seconds) {
   res.set('Cache-Control', 'public, max-age=' + seconds + ', s-maxage=' + seconds);
 }
 
-async function authenticatePublic(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Token não fornecido' });
-  }
-  try {
-    const token = authHeader.split(' ')[1];
-    const decoded = tokenService.verificarToken(token);
-    // Cross-tenant: token cunhado em empresa A não vale em empresa B
-    if (decoded.empresaId && req.ctx?.empresaId && decoded.empresaId !== req.ctx.empresaId) {
-      return res.status(403).json({ error: 'Acesso negado: empresa não corresponde' });
-    }
-    const cliente = await sql.buscarClientePorId(decoded.id);
-    if (!cliente) {
-      return res.status(401).json({ error: 'Conta não encontrada ou removida' });
-    }
-    if (cliente.consentimentoRevogadoAt) {
-      return res.status(401).json({ error: 'Consentimento revogado. Reautorize os dados para continuar' });
-    }
-    req.cliente = decoded;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Token inválido ou expirado' });
-  }
-}
+// Auth publica compartilhada (suporta Bearer e ?token= para SSE)
+const authenticatePublic = require('../middleware/authenticatePublic');
 
 exports.listarProdutos = asyncHandler(async (req, res) => {
   const empId = requireTenant(req, res);
@@ -140,7 +117,7 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
     });
     return res.status(409).json({ error: 'Cliente já cadastrado com este telefone' });
   }
-  const passwordHash = password ? await bcrypt.hash(password, SALT_ROUNDS) : null;
+  const passwordHash = password ? await hashPassword(password) : null;
   const cliente = await sql.criarCliente({
     empresaId: empId,
     nome, telefone, endereco, numero, bairro, cep, pontoReferencia, passwordHash,
@@ -162,14 +139,14 @@ exports.registrarCliente = asyncHandler(async (req, res) => {
     changedFields: ['nome', 'telefone', 'passwordHash', 'consentimentoAt', 'politicaVersao'],
   });
 
-  res.status(201).json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone } });
-  // Set httpOnly cookie for additional security
+  // cookie ANTES do json (cookie após send → ERR_HTTP_HEADERS_SENT → 500 + keep-alive morto)
   res.cookie('clientToken_' + empId, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   });
+  res.status(201).json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone } });
 });
 
 exports.revogarConsentimento = [authenticatePublic, asyncHandler(async (req, res) => {
@@ -225,7 +202,7 @@ exports.loginCliente = asyncHandler(async (req, res) => {
   }
 
   const base = { ...getCtx(req), module: 'clientes' };
-  const cliente = await sql.buscarCliente(telefone, empId);
+  const cliente = await findClienteByTelefone(empId, telefone); // bidx tenant-bound + fallback (login cliente)
   if (!cliente) {
     recordClientFailedAttempt(lockoutKey);
     auditService.audit({
@@ -238,8 +215,14 @@ exports.loginCliente = asyncHandler(async (req, res) => {
     });
     return res.status(401).json({ error: 'Credenciais inválidas' });
   }
+
+  // Spec O1: hash NULL = PENDENTE_PRIMEIRO_ACESSO — login exige primeiro acesso (OTP), sem bypass por telefone
+  if (!cliente.passwordHash) {
+    return res.status(401).json({ error: 'Credenciais inválidas' });
+  }
+
   if (cliente.passwordHash && password) {
-    const match = await bcrypt.compare(password, cliente.passwordHash);
+    const match = await verifyPassword(password, cliente.passwordHash);
     if (!match) {
       recordClientFailedAttempt(lockoutKey);
       auditService.audit({
@@ -273,13 +256,13 @@ exports.loginCliente = asyncHandler(async (req, res) => {
     targetId: cliente.id,
   });
 
-  res.json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia } });
   res.cookie('clientToken_' + empId, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 24 * 60 * 60 * 1000,
   });
+  res.json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia } });
 });
 
 exports.clientePerfil = [authenticatePublic, asyncHandler(async (req, res) => {
@@ -320,7 +303,7 @@ exports.listarPedidosCliente = [authenticatePublic, asyncHandler(async (req, res
   const empId = requireTenant(req, res);
   if (!empId) return;
   const pedidos = await prisma.pedido.findMany({
-    where: { empresaId: empId, clienteWhatsapp: req.cliente.telefone },
+    where: { empresaId: empId, clienteWhatsapp: req.cliente.telefone, deletedAt: null },
     orderBy: { createdAt: 'desc' },
     include: { itens: { select: { id: true, produtoId: true, quantidade: true, precoUnitario: true, sabores: true, produto: { select: { id: true, name: true, price: true, img: true } } } } },
   });
@@ -379,15 +362,13 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   } catch (err) {
     return res.status(err.status || 400).json({ error: err.message });
   }
-  const taxasCartao = 0; // derive from empresa config if needed
+  const taxasCartao = pricingPolicy.calcularTaxaCartao(formaPagamento, valoresItens);
 
-  // Coupon validation + atomic consumption
+  // Coupon validation (consumption happens after pedido create — N3)
   let desconto = 0;
   if (cupomCodigo) {
     const cupom = await sql.buscarCupom(cupomCodigo, empId);
     if (!cupom || cupom.usado) return res.status(400).json({ error: 'Cupom inválido' });
-    const consumido = await sql.consumirCupom(cupomCodigo, empId);
-    if (consumido.count === 0) return res.status(400).json({ error: 'Cupom já utilizado' });
     desconto = pricingPolicy.calcularDesconto(cupom.desconto, valoresItens + taxasEntrega);
   }
 
@@ -415,6 +396,14 @@ exports.criarPedido = asyncHandler(async (req, res) => {
     include: { itens: true },
   });
 
+  if (cupomCodigo) {
+    const consumido = await sql.consumirCupom(cupomCodigo, empId);
+    if (consumido.count === 0) {
+      await prisma.pedido.delete({ where: { id: pedido.id } });
+      return res.status(400).json({ error: 'Cupom já utilizado' });
+    }
+  }
+
   auditService.audit({
     ...getCtx(req),
     action: 'pedido.create',
@@ -434,28 +423,34 @@ exports.criarPedido = asyncHandler(async (req, res) => {
   });
 
   if (ehPix) {
-    const paymentService = (await import('../services/paymentService.js')).default;
-    const pagamento = await paymentService.criarPixPedido(pedido.id, {
-      cliente: {
-        id: req.cliente?.id || null,
-        nome: clienteNome,
-        cpf: String(cpf).replace(/\D/g, ''),
-        telefone: clienteWhatsapp,
-        asaasCustomerId: null,
-      },
-      valor: Number(pedido.total),
-    });
-    return res.status(201).json({
-      id: pedido.id,
-      status: pedido.status,
-      pagamento: {
-        id: pagamento.id,
-        pixCode: pagamento.pixCode,
-        pixQrCode: pagamento.pixQrCode,
-        expiresAt: pagamento.expiresAt,
-        taxaServico: pagamento.taxaServico,
-      },
-    });
+    try {
+      const paymentService = (await import('../services/paymentService.js')).default;
+      const pagamento = await paymentService.criarPixPedido(pedido.id, {
+        cliente: {
+          id: req.cliente?.id || null,
+          nome: clienteNome,
+          cpf: String(cpf).replace(/\D/g, ''),
+          telefone: clienteWhatsapp,
+          asaasCustomerId: null,
+        },
+        valor: Number(pedido.total),
+      });
+      return res.status(201).json({
+        id: pedido.id,
+        status: pedido.status,
+        pagamento: {
+          id: pagamento.id,
+          pixCode: pagamento.pixCode,
+          pixQrCode: pagamento.pixQrCode,
+          expiresAt: pagamento.expiresAt,
+          taxaServico: pagamento.taxaServico,
+        },
+      });
+    } catch (err) {
+      console.error('[PIX] Falha ao criar PIX:', err.message, { pedidoId: pedido.id, empresaId: req.context?.empresaId });
+      await prisma.pedido.delete({ where: { id: pedido.id } });
+      return res.status(502).json({ error: 'Falha ao gerar PIX. Tente novamente.' });
+    }
   }
 
   res.status(201).json({ id: pedido.id, status: pedido.status });
@@ -479,3 +474,57 @@ exports.validarCupom = asyncHandler(async (req, res) => {
   if (cupom.usado) return res.status(400).json({ error: 'Cupom já utilizado' });
   res.json({ codigo: cupom.codigo, desconto: Number(cupom.desconto) });
 });
+
+// --- Task 9: primeiro acesso do cliente (OTP) — spec §41-45 ---
+const otpService = require('../services/otpService');
+const otpRepo = require('../repositories/clienteOtpRepository');
+const { findClienteByTelefone } = require('../repositories/piiRepository');
+
+exports.solicitarPrimeiroAcesso = [asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res); if (!empId) return;
+  const { telefone } = req.body;
+  const cliente = telefone ? await findClienteByTelefone(empId, telefone) : null;
+  if (cliente && !cliente.passwordHash) {
+    const svc = otpService.buildOtpService({
+      repo: otpRepo,
+      // falha/ausência de canal WhatsApp não afeta resposta (uniformidade, anti-enumeração)
+      sendOtp: (tel, code) => { require('../services/whatsappNotifyService').sendOtp(tel, code).catch(() => {}); },
+    });
+    const result = await svc.request(empId, cliente.id, telefone);
+    auditService.audit({
+      ...getCtx(req), module: 'clientes',
+      action: 'cliente.otp_requested', actorType: 'cliente',
+      actorId: cliente.id, targetType: 'cliente', targetId: cliente.id,
+    });
+    const body = { ok: true };
+    if (process.env.E2E_OTP_ECHO === '1' && process.env.NODE_ENV !== 'production') body._devOtp = result.code;
+    return res.status(200).json(body); // uniforme em produção (anti-enumeração)
+  }
+  return res.status(200).json({ ok: true }); // uniforme (anti-enumeração)
+})];
+
+exports.confirmarPrimeiroAcesso = [asyncHandler(async (req, res) => {
+  const empId = requireTenant(req, res); if (!empId) return;
+  const { telefone, otp, novaSenha } = req.body;
+  const cliente = telefone ? await findClienteByTelefone(empId, telefone) : null;
+  if (!cliente || cliente.passwordHash) return res.status(401).json({ error: 'Credenciais inválidas' });
+  if (!novaSenha || String(novaSenha).length < 6) return res.status(400).json({ error: 'Senha deve ter 6+ caracteres' });
+  const svc = otpService.buildOtpService({ repo: otpRepo, sendOtp: async () => {} });
+  const ok = await svc.verify(empId, cliente.id, otp);
+  if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
+  await sql.atualizarCliente(cliente.id, { passwordHash: await hashPassword(novaSenha) });
+  auditService.audit({
+    ...getCtx(req), module: 'clientes',
+    action: 'cliente.first_access_completed', actorType: 'cliente',
+    actorId: cliente.id, targetType: 'cliente', targetId: cliente.id,
+  });
+  // emite token de sessão (spec §45) — espelha loginCliente
+  const token = tokenService.gerarToken({ id: cliente.id, empresaId: empId, telefone: cliente.telefone, nome: cliente.nome });
+  res.cookie('clientToken_' + empId, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+  return res.status(200).json({ token, cliente: { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco, numero: cliente.numero, bairro: cliente.bairro, cep: cliente.cep, pontoReferencia: cliente.pontoReferencia } });
+})];

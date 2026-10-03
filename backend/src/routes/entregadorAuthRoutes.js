@@ -55,7 +55,7 @@ router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(400).json({ error: 'refreshToken obrigatório' });
   const tokenService = require('../services/tokenService');
-  const decoded = tokenService.verificarRefreshToken(refreshToken);
+  const decoded = await tokenService.verificarRefreshToken(refreshToken);
   if (decoded.role !== 'entregador') {
     return res.status(403).json({ error: 'Token inválido para entregador' });
   }
@@ -67,7 +67,7 @@ router.post('/refresh', refreshLimiter, asyncHandler(async (req, res) => {
     lojaNome: decoded.lojaNome,
   };
   const newToken = tokenService.gerarToken(payload);
-  const newRefreshToken = tokenService.gerarRefreshToken(payload);
+  const newRefreshToken = await tokenService.gerarRefreshToken(payload);
   res.json({ token: newToken, refreshToken: newRefreshToken });
 }));
 

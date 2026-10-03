@@ -149,6 +149,7 @@ async function carregarAudit(novaPagina) {
   carregando = true;
   page = novaPagina || 1;
   const container = el('timeline');
+  if (typeof showLoading === 'function') showLoading();
   try {
     const filtros = readFiltros();
     filtros.page = page;
@@ -175,6 +176,7 @@ async function carregarAudit(novaPagina) {
     }
   } finally {
     carregando = false;
+    if (typeof hideLoading === 'function') hideLoading();
   }
 }
 

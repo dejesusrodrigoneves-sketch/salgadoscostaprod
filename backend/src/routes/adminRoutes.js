@@ -16,6 +16,7 @@ router.get('/empresas/:id/filiais', authenticate, authorize('superadmin', 'admin
 router.put('/filiais/:id/approve', authenticate, authorize('superadmin'), adminController.aprovarFilial);
 router.delete('/filiais/:id', authenticate, authorize('superadmin', 'admin'), adminController.deletarFilial);
 router.put('/empresas/:id/parent', authenticate, authorize('superadmin', 'admin'), adminController.atualizarParent);
+router.get('/empresas/:id/next-due-date', authenticate, authorize('superadmin', 'admin'), adminController.obterNextDueDate);
 
 router.get('/pedidos/preview-limpeza', authenticate, authorize('superadmin', 'admin'), orderController.previewLimpeza);
 router.post('/pedidos/limpar-expirados', authenticate, authorize('superadmin', 'admin'), orderController.executarLimpeza);

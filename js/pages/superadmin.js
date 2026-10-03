@@ -11,14 +11,34 @@
     }
   }
   if (!authGuard('superadmin')) throw new Error('Redirect');
+  if (typeof startIdleTimer === 'function') startIdleTimer();
 
-  function api(path, opts) {
+  function _doFetch(path, opts) {
     var headers = { 'Content-Type': 'application/json' };
     var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    return fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path, { headers: headers, method: opts ? opts.method : undefined, body: opts ? opts.body : undefined }).then(function (r) {
+    return fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path, {
+      headers: headers,
+      method: opts ? opts.method : undefined,
+      body: opts ? opts.body : undefined
+    });
+  }
+
+  function api(path, opts) {
+    var skip = opts && opts.skipLoading === true;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    return _doFetch(path, opts).then(function (r) {
+      if (r.status === 401) {
+        // Token inválido/expirado — hard logout (sem refresh; sessão não revive).
+        // NÃO redirecionar aqui: o redirect é o passo 4 do contrato, feito por hardLogout
+        // DEPOIS do revoke + wipe. Redirect imediato abortaria a cadeia (unload) e criaría loop.
+        if (typeof window.hardLogout === 'function') window.hardLogout('401');
+        throw new Error('Sessão expirada');
+      }
       if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Erro ' + r.status); });
       return r.json();
+    }).finally(function () {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
     });
   }
   window.api = api;
@@ -116,35 +136,79 @@
     if (tab === 'registros' && window.superadminAudit) superadminAudit.carregarAudit(1);
     if (tab === 'clientes') carregarClientes();
     if (tab === 'empresas') carregarEmpresas();
-    if (tab === 'filiais') carregarFiliais();
+    if (tab === 'filiais') { carregarFiliais(); try { document.getElementById('mainFrame').contentWindow.popularDataCiclo(); } catch (e) {} }
     if (tab === 'billing' && window.loadBillingDashboard) loadBillingDashboard();
     if (tab === 'settlements') carregarSettlements();
     if (tab === 'integracoes' && window.SuperIntegracoes) SuperIntegracoes.carregar();
   }
   window.switchTab = switchTab;
 
+  var filtroSelect = document.getElementById('filtroEmpresaClientes');
+  if (filtroSelect) filtroSelect.addEventListener('change', function () { window.filtrarClientes(); });
+
+  var filtroUsuariosSelect = document.getElementById('filtroEmpresaUsuarios');
+  if (filtroUsuariosSelect) filtroUsuariosSelect.addEventListener('change', function () { window.filtrarUsuarios(); });
+
+  var usuariosEmpresas = [];
+  var usuariosEmpresaMap = {};
+
   async function carregarUsuarios() {
     var tbody = document.getElementById('userTableBody');
     var select = document.getElementById('userSelect');
     select.innerHTML = '<option value="">Selecione um usuário</option>';
     try {
-      var usuarios = await api('/usuarios');
-      if (!usuarios || usuarios.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;">Nenhum usuário cadastrado</td></tr>';
-        return;
+      var [usuarios, empresas] = await Promise.all([api('/usuarios', { skipLoading: true }), api('/admin', { skipLoading: true })]);
+      usuariosEmpresas = usuarios || [];
+      usuariosEmpresaMap = {};
+      (empresas || []).forEach(function(e) { usuariosEmpresaMap[e.id] = e.nome; });
+
+      // Populate filter select
+      var filtroSelect = document.getElementById('filtroEmpresaUsuarios');
+      if (filtroSelect && empresas && empresas.length > 0) {
+        var prevFiltro = filtroSelect.value;
+        filtroSelect.innerHTML = '<option value="">Todas as empresas</option>';
+        empresas.forEach(function(e) {
+          filtroSelect.innerHTML += '<option value="' + e.id + '">' + escapeHtml(e.nome || '-') + '</option>';
+        });
+        if (prevFiltro) filtroSelect.value = prevFiltro;
       }
-      tbody.innerHTML = '';
-      var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', user: 'Usuário' };
-      usuarios.forEach(function (u) {
-        var roleClass = u.role === 'superadmin' ? ' style="color:#f97316;font-weight:700;"' : '';
-        var usernameEsc = escapeHtml(u.username);
-        tbody.innerHTML += '<tr><td><strong>' + usernameEsc + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || escapeHtml(u.role)) + '</td><td>' + escapeHtml(u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" aria-label="Excluir usuário" data-action="excluirUsuarioAction" data-id="' + u.id + '"><i class="fas fa-trash"></i></button></td></tr>';
-        select.innerHTML += '<option value="' + u.id + '">' + usernameEsc + '</option>';
-      });
+
+      renderUsuarios(usuariosEmpresas, usuariosEmpresaMap);
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;">Erro ao carregar usuários</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;text-align:center;">Erro ao carregar usuários</td></tr>';
     }
   }
+
+  function renderUsuarios(lista, empresaMap) {
+    var tbody = document.getElementById('userTableBody');
+    if (!lista || lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;text-align:center;">Nenhum usuário cadastrado</td></tr>';
+      return;
+    }
+    var roleLabels = { superadmin: 'Super Admin', admin: 'Admin', user: 'Usuário' };
+    tbody.innerHTML = '';
+    lista.forEach(function (u) {
+      var roleClass = u.role === 'superadmin' ? ' style="color:#f97316;font-weight:700;"' : '';
+      var usernameEsc = escapeHtml(u.username);
+      var empresaNome = empresaMap[u.empresaId] || '—';
+      tbody.innerHTML += '<tr><td><strong>' + usernameEsc + '</strong></td><td' + roleClass + '>' + (roleLabels[u.role] || escapeHtml(u.role)) + '</td><td>' + escapeHtml(empresaNome) + '</td><td>' + escapeHtml(u.lojaNome || '-') + '</td><td>' + (u.createdAt ? new Date(u.createdAt).toLocaleDateString('pt-BR') : '-') + '</td><td><button class="btn btn-danger btn-sm" aria-label="Excluir usuário" data-action="excluirUsuarioAction" data-id="' + u.id + '"><i class="fas fa-trash"></i></button></td></tr>';
+    });
+    // Also update password select
+    var select = document.getElementById('userSelect');
+    if (select) {
+      select.innerHTML = '<option value="">Selecione um usuário</option>';
+      lista.forEach(function (u) {
+        select.innerHTML += '<option value="' + u.id + '">' + escapeHtml(u.username) + '</option>';
+      });
+    }
+  }
+
+  window.filtrarUsuarios = function() {
+    var emp = document.getElementById('filtroEmpresaUsuarios').value;
+    if (!emp) { renderUsuarios(usuariosEmpresas, usuariosEmpresaMap); return; }
+    var empNum = Number(emp);
+    renderUsuarios(usuariosEmpresas.filter(function(u) { return u.empresaId === empNum; }), usuariosEmpresaMap);
+  };
 
   window.cadastrarUsuario = async function () {
     var username = document.getElementById('newUsername').value.trim();
@@ -204,31 +268,56 @@
   var clienteEditandoId = null;
   var clienteSenhaId = null;
 
+  var todosClientes = [];
+
   async function carregarClientes() {
     var tbody = document.getElementById('clientesTableBody');
+    var select = document.getElementById('filtroEmpresaClientes');
     try {
-      var clientes = await api('/admin/clientes');
-      if (!clientes || clientes.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;">Nenhum cliente cadastrado</td></tr>';
-        return;
+      var [clientes, empresas] = await Promise.all([api('/admin/clientes'), api('/admin')]);
+      todosClientes = clientes || [];
+      if (empresas && empresas.length > 0) {
+        var prev = select.value;
+        select.innerHTML = '<option value="">Todas as empresas</option>';
+        empresas.forEach(function (e) {
+          select.innerHTML += '<option value="' + e.id + '">' + escapeHtml(e.nome || '-') + '</option>';
+        });
+        if (prev) select.value = prev;
       }
-      tbody.innerHTML = '';
-      clientes.forEach(function (c) {
-        tbody.innerHTML += '<tr>'
-          + '<td><strong>' + escapeHtml(c.nome || '-') + '</strong></td>'
-          + '<td>' + escapeHtml(c.telefone || '-') + '</td>'
-          + '<td>' + escapeHtml(c.bairro || '-') + '</td>'
-          + '<td>' + (c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '-') + '</td>'
-          + '<td style="white-space:nowrap;">'
-          + '<button class="btn btn-primary btn-sm" aria-label="Editar cliente" data-action="abrirModalEditarAction" data-id="' + c.id + '"><i class="fas fa-pen"></i></button> '
-          + '<button class="btn btn-secondary btn-sm" aria-label="Trocar senha" data-action="abrirModalSenhaAction" data-id="' + c.id + '"><i class="fas fa-key"></i></button> '
-          + '<button class="btn btn-danger btn-sm" aria-label="Excluir cliente" data-action="excluirClienteAction" data-id="' + c.id + '"><i class="fas fa-trash"></i></button>'
-          + '</td></tr>';
-      });
+      renderClientes(todosClientes);
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="5" style="color:#dc2626;text-align:center;">Erro ao carregar clientes: ' + e.message + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#dc2626;text-align:center;">Erro ao carregar clientes: ' + e.message + '</td></tr>';
     }
   }
+
+  function renderClientes(lista) {
+    var tbody = document.getElementById('clientesTableBody');
+    if (!lista || lista.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:#94a3b8;text-align:center;">Nenhum cliente cadastrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    lista.forEach(function (c) {
+      tbody.innerHTML += '<tr>'
+        + '<td><strong>' + escapeHtml(c.nome || '-') + '</strong></td>'
+        + '<td>' + escapeHtml(c.telefone || '-') + '</td>'
+        + '<td>' + escapeHtml(c.bairro || '-') + '</td>'
+        + '<td>' + escapeHtml(c.empresaNome || '-') + '</td>'
+        + '<td>' + (c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR') : '-') + '</td>'
+        + '<td style="white-space:nowrap;">'
+        + '<button class="btn btn-primary btn-sm" aria-label="Editar cliente" data-action="abrirModalEditarAction" data-id="' + c.id + '"><i class="fas fa-pen"></i></button> '
+        + '<button class="btn btn-secondary btn-sm" aria-label="Trocar senha" data-action="abrirModalSenhaAction" data-id="' + c.id + '"><i class="fas fa-key"></i></button> '
+        + '<button class="btn btn-danger btn-sm" aria-label="Excluir cliente" data-action="excluirClienteAction" data-id="' + c.id + '"><i class="fas fa-trash"></i></button>'
+        + '</td></tr>';
+    });
+  }
+
+  window.filtrarClientes = function () {
+    var emp = document.getElementById('filtroEmpresaClientes').value;
+    if (!emp) { renderClientes(todosClientes); return; }
+    var empNum = Number(emp);
+    renderClientes(todosClientes.filter(function (c) { return Number(c.empresaId) === empNum; }));
+  };
 
   window.abrirModalEditarAction = function (ds) { window.abrirModalEditar(Number(ds.id)); };
   window.abrirModalModalEditar = function (id) { window.abrirModalEditar(id); };
@@ -530,6 +619,39 @@
   window.fecharModalAction = function (ds) {
     var modalId = ds && ds.modal ? ds.modal : null;
     if (modalId) fecharModal(modalId);
+  };
+
+  window.cadastrarUsuarioAction = function (ds) {
+    if (typeof window.cadastrarUsuario === 'function') return window.cadastrarUsuario(ds);
+    console.warn('[delegator] handler not ready:', 'cadastrarUsuarioAction');
+  };
+  window.alterarSenhaAction = function (ds) {
+    if (typeof window.alterarSenha === 'function') return window.alterarSenha(ds);
+    console.warn('[delegator] handler not ready:', 'alterarSenhaAction');
+  };
+  window.salvarEdicaoClienteAction = function (ds) {
+    if (typeof window.salvarEdicaoCliente === 'function') return window.salvarEdicaoCliente(ds);
+    console.warn('[delegator] handler not ready:', 'salvarEdicaoClienteAction');
+  };
+  window.salvarSenhaClienteAction = function (ds) {
+    if (typeof window.salvarSenhaCliente === 'function') return window.salvarSenhaCliente(ds);
+    console.warn('[delegator] handler not ready:', 'salvarSenhaClienteAction');
+  };
+  window.cadastrarEmpresaAction = function (ds) {
+    if (typeof window.cadastrarEmpresa === 'function') return window.cadastrarEmpresa(ds);
+    console.warn('[delegator] handler not ready:', 'cadastrarEmpresaAction');
+  };
+  window.salvarEdicaoEmpresaAction = function (ds) {
+    if (typeof window.salvarEdicaoEmpresa === 'function') return window.salvarEdicaoEmpresa(ds);
+    console.warn('[delegator] handler not ready:', 'salvarEdicaoEmpresaAction');
+  };
+  window.desativarSplitAction = function (ds) {
+    if (typeof window.desativarSplit === 'function') return window.desativarSplit(ds);
+    console.warn('[delegator] handler not ready:', 'desativarSplitAction');
+  };
+  window.savePricingAction = function (ds) {
+    if (typeof window.savePricing === 'function') return window.savePricing(ds);
+    console.warn('[delegator] handler not ready:', 'savePricingAction (superadminBilling.js loaded?)');
   };
 
   // External scripts (superadminDashboard.js, superadminBilling.js) define:

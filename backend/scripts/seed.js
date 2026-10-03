@@ -2,7 +2,7 @@
 // Uso: node scripts/seed.js
 // Requer DATABASE_URL configurada
 
-const bcrypt = require('bcryptjs');
+const { hashPassword } = require('../src/utils/password');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -16,7 +16,7 @@ async function seed() {
 
   console.log('Criando superadmin...');
   const senha = process.env.SUPERADMIN_PASSWORD || 'tsa110594';
-  const hash = await bcrypt.hash(senha, 10);
+  const hash = await hashPassword(senha);
   await prisma.usuario.upsert({
     where: { empresaId_username: { empresaId: empresa.id, username: 'djesus' } },
     update: {},

@@ -3,14 +3,20 @@ import paymentService from '../services/paymentService.js';
 import sql from '../repositories/sqlRepository.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { authenticate, authorize } from '../middleware/auth.js';
+import authenticatePublic from '../middleware/authenticatePublic.js';
 
 const paymentRouter = Router();
 
-// SSE: authenticated payment status tracking
-paymentRouter.get('/status/:pedidoId', authenticate, asyncHandler(async (req, res) => {
-  // Validate pedido belongs to user's empresa
+// SSE: authenticated payment status tracking (aceita ?token= para EventSource do cliente)
+paymentRouter.get('/status/:pedidoId', (req, res, next) => (req.query.token ? authenticatePublic : authenticate)(req, res, next), asyncHandler(async (req, res) => {
+  // Validate pedido belongs to user's empresa (admin) ou ao cliente autenticado
   const empId = req.ctx?.empresaId || req.user?.empresaId;
-  if (empId) {
+  if (req.cliente) {
+    const pedido = await sql.buscarPedido(req.params.pedidoId);
+    if (!pedido || String(pedido.clienteWhatsapp) !== String(req.cliente.telefone)) {
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+  } else if (empId) {
     const pedido = await sql.buscarPedido(req.params.pedidoId, empId);
     if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
   }

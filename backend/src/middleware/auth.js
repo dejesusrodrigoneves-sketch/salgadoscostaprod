@@ -1,6 +1,7 @@
 const tokenService = require('../services/tokenService');
 const auditService = require('../services/auditService');
 const sql = require('../repositories/sqlRepository');
+const { userApiLimiter } = require('./rateLimit');
 
 // empresaCache — CJS module, requires prisma
 const empresaCache = require('../config/empresaCache.js');
@@ -9,12 +10,12 @@ const empresaCache = require('../config/empresaCache.js');
 const TOKEN_CACHE_TTL = 60 * 1000; // 1 minute
 const tokenDecodeCache = new Map();
 
-function cachedVerify(token) {
+async function cachedVerify(token) {
   const entry = tokenDecodeCache.get(token);
   if (entry && Date.now() - entry.ts < TOKEN_CACHE_TTL) {
     return entry.decoded;
   }
-  const decoded = tokenService.verificarToken(token);
+  const decoded = await tokenService.verificarToken(token);
   // Evict if cache grows too large (>500 entries)
   if (tokenDecodeCache.size > 500) {
     tokenDecodeCache.clear();
@@ -30,7 +31,7 @@ async function authenticate(req, res, next) {
   }
   try {
     const token = authHeader.split(' ')[1];
-    const decoded = cachedVerify(token);
+    const decoded = await cachedVerify(token);
     if (!decoded.role || !['superadmin', 'admin', 'user', 'entregador'].includes(decoded.role)) {
       return res.status(401).json({ error: 'Token inválido' });
     }
@@ -41,7 +42,10 @@ async function authenticate(req, res, next) {
     // Superadmin com empresaId null: acesso global
     if (decoded.role === 'superadmin' && decoded.empresaId === null) {
       req.user = decoded;
-      return next();
+      let gateOk = false;
+      require('./mustChangePassword')(req, res, () => { gateOk = true; });
+      if (!gateOk) return; // gate respondeu 403 must_change_password
+      return userApiLimiter(req, res, next);
     }
 
     // Admin/user: empresaId deve existir
@@ -71,6 +75,11 @@ async function authenticate(req, res, next) {
 
     req.user = decoded;
 
+    // Gate mustChangePassword (claim mcp): bloqueia tudo exceto ALLOW
+    let gateOk = false;
+    require('./mustChangePassword')(req, res, () => { gateOk = true; });
+    if (!gateOk) return; // gate respondeu 403 must_change_password
+
     // Verificar se empresa está ativa (usando regra central)
     if (decoded.empresaId) {
       const empresa = await empresaCache.getEmpresaFromIdCache(decoded.empresaId);
@@ -79,9 +88,13 @@ async function authenticate(req, res, next) {
       }
     }
 
-    // Suspensão de filial por pendência de aceite de reajuste
-    const { filialSuspendedCheck } = require('./filialSuspended.js');
-    await filialSuspendedCheck(req, res, next);
+    // Per-user rate limiting (after req.user is set)
+    return userApiLimiter(req, res, (err) => {
+      if (err || res.headersSent) return;
+      // Suspensão de filial por pendência de aceite de reajuste
+      const { filialSuspendedCheck } = require('./filialSuspended.js');
+      filialSuspendedCheck(req, res, next);
+    });
   } catch (err) {
     return res.status(401).json({ error: 'Token inválido' });
   }

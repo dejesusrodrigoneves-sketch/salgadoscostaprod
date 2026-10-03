@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+const { hashPassword, verifyPassword } = require('../utils/password');
 const sql = require('../repositories/sqlRepository');
 const tokenService = require('./tokenService');
 const auditService = require('./auditService');
@@ -7,29 +7,57 @@ const prisma = require('../config/prisma');
 const SALT_ROUNDS = 10;
 const ROLES_VALIDOS = ['user', 'admin', 'superadmin', 'entregador'];
 
-// Account lockout: track failed attempts per username
-const failedAttempts = new Map();
+// Account lockout: Redis-backed with in-memory fallback
 const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const LOCKOUT_DURATION = 15 * 60; // seconds (15 minutes)
+const LOCKOUT_KEY_PREFIX = 'lockout:';
+const failedAttempts = new Map(); // fallback only
 
-function isLockedOut(username) {
+async function isLockedOut(username) {
+  try {
+    const { isRedisAvailable, getRedis } = require('../config/redis');
+    if (isRedisAvailable()) {
+      const count = await getRedis().get(`${LOCKOUT_KEY_PREFIX}${username}`);
+      return count !== null && parseInt(count, 10) >= LOCKOUT_THRESHOLD;
+    }
+  } catch {}
+  // Fallback: in-memory
   const record = failedAttempts.get(username);
   if (!record) return false;
-  if (Date.now() - record.lastAttempt > LOCKOUT_DURATION) {
+  if (Date.now() - record.lastAttempt > LOCKOUT_DURATION * 1000) {
     failedAttempts.delete(username);
     return false;
   }
   return record.count >= LOCKOUT_THRESHOLD;
 }
 
-function recordFailedAttempt(username) {
+async function recordFailedAttempt(username) {
+  try {
+    const { isRedisAvailable, getRedis } = require('../config/redis');
+    if (isRedisAvailable()) {
+      const key = `${LOCKOUT_KEY_PREFIX}${username}`;
+      const count = await getRedis().incr(key);
+      if (count === 1) {
+        await getRedis().expire(key, LOCKOUT_DURATION);
+      }
+      return;
+    }
+  } catch {}
+  // Fallback: in-memory
   const record = failedAttempts.get(username) || { count: 0, lastAttempt: 0 };
   record.count++;
   record.lastAttempt = Date.now();
   failedAttempts.set(username, record);
 }
 
-function clearFailedAttempts(username) {
+async function clearFailedAttempts(username) {
+  try {
+    const { isRedisAvailable, getRedis } = require('../config/redis');
+    if (isRedisAvailable()) {
+      await getRedis().del(`${LOCKOUT_KEY_PREFIX}${username}`);
+      return;
+    }
+  } catch {}
   failedAttempts.delete(username);
 }
 
@@ -42,7 +70,7 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
   };
 
   // Account lockout check
-  if (isLockedOut(username)) {
+  if (await isLockedOut(username)) {
     throw Object.assign(new Error('Conta temporariamente bloqueada. Tente novamente em 15 minutos.'), { status: 429 });
   }
 
@@ -67,11 +95,11 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
       severity: 'warning',
       reason: 'usuario_nao_encontrado',
     });
-    recordFailedAttempt(username);
+    await recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
-  const match = await bcrypt.compare(password, user.passwordHash);
+  const match = await verifyPassword(password, user.passwordHash);
   if (!match) {
     auditService.audit({
       ...base,
@@ -84,12 +112,12 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
       severity: 'warning',
       reason: 'senha_incorreta',
     });
-    recordFailedAttempt(username);
+    await recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
   // Clear failed attempts on successful login
-  clearFailedAttempts(username);
+  await clearFailedAttempts(username);
 
   // Superadmin sempre empresaId null (acesso global)
   const payload = {
@@ -98,9 +126,10 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
     role: user.role,
     empresaId: user.role === 'superadmin' ? null : user.empresaId,
     lojaNome: user.lojaNome || null,
+    mcp: !!user.mustChangePassword,
   };
-  const token = tokenService.gerarToken(payload);
-  const refreshToken = tokenService.gerarRefreshToken(payload);
+  const token = tokenService.gerarToken(payload, user.mustChangePassword ? '15m' : undefined);
+  const refreshToken = await tokenService.gerarRefreshToken(payload);
 
   // Fetch empresa for empresaTipo
   let empresaTipo = null;
@@ -121,6 +150,7 @@ async function login(username, password, empresaId, ip, userAgent, ctx = {}) {
 
   return {
     token, refreshToken,
+    mustChangePassword: !!user.mustChangePassword,
     user: {
       id: user.id, username: user.username, role: user.role,
       lojaNome: user.lojaNome || null,
@@ -154,7 +184,7 @@ async function criarUsuario(data, ctx = {}) {
   if (data.password && data.password.length >= 6 && (!/[A-Z]/.test(data.password) || !/[a-z]/.test(data.password) || !/[0-9]/.test(data.password))) {
     throw Object.assign(new Error('Senha deve conter maiúscula, minúscula e número'), { status: 400 });
   }
-  const hash = await bcrypt.hash(data.password, SALT_ROUNDS);
+  const hash = await hashPassword(data.password);
   const user = await sql.criarUsuario({ ...data, role: roleNorm, passwordHash: hash });
 
   auditService.audit({
@@ -190,7 +220,7 @@ async function alterarSenha(userId, senhaAtual, novaSenha, ctx = {}) {
     metadata: { url: ctx.path || null },
   };
 
-  const match = await bcrypt.compare(senhaAtual, user.passwordHash);
+  const match = await verifyPassword(senhaAtual, user.passwordHash);
   if (!match) {
     auditService.audit({
       ...base,
@@ -201,14 +231,14 @@ async function alterarSenha(userId, senhaAtual, novaSenha, ctx = {}) {
     });
     throw Object.assign(new Error('Senha atual incorreta'), { status: 400 });
   }
-  const hash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-  await sql.atualizarUsuario(userId, { passwordHash: hash });
+  const hash = await hashPassword(novaSenha);
+  await sql.atualizarUsuario(userId, { passwordHash: hash, mustChangePassword: false });
 
   auditService.audit({
     ...base,
     action: 'auth.change_password',
     module: 'auth',
-    changedFields: ['passwordHash'],
+    changedFields: ['passwordHash', 'mustChangePassword'],
   });
 }
 
@@ -235,7 +265,7 @@ async function criarConta({ username, password, lojaNome, empresaId }, ctx = {})
     throw Object.assign(new Error('Usuário já existe'), { status: 409 });
   }
 
-  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const hash = await hashPassword(password);
   const user = await sql.criarUsuario({
     empresaId,
     username,
@@ -275,7 +305,7 @@ async function loginEntregador(username, password, empresaId, ip, userAgent, ctx
   };
 
   // Account lockout check
-  if (isLockedOut(username)) {
+  if (await isLockedOut(username)) {
     throw Object.assign(new Error('Conta temporariamente bloqueada. Tente novamente em 15 minutos.'), { status: 429 });
   }
 
@@ -299,11 +329,11 @@ async function loginEntregador(username, password, empresaId, ip, userAgent, ctx
       severity: 'warning',
       reason: 'entregador_nao_encontrado',
     });
-    recordFailedAttempt(username);
+    await recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
-  const match = await bcrypt.compare(password, entregador.passwordHash);
+  const match = await verifyPassword(password, entregador.passwordHash);
   if (!match) {
     auditService.audit({
       ...base,
@@ -316,11 +346,11 @@ async function loginEntregador(username, password, empresaId, ip, userAgent, ctx
       severity: 'warning',
       reason: 'senha_incorreta',
     });
-    recordFailedAttempt(username);
+    await recordFailedAttempt(username);
     throw Object.assign(new Error('Credenciais inválidas'), { status: 401 });
   }
 
-  clearFailedAttempts(username);
+  await clearFailedAttempts(username);
 
   const payload = {
     id: entregador.id,
@@ -328,9 +358,10 @@ async function loginEntregador(username, password, empresaId, ip, userAgent, ctx
     role: 'entregador',
     empresaId: entregador.empresaId,
     lojaNome: entregador.nome,
+    mcp: !!entregador.mustChangePassword,
   };
-  const token = tokenService.gerarToken(payload);
-  const refreshToken = tokenService.gerarRefreshToken(payload);
+  const token = tokenService.gerarToken(payload, entregador.mustChangePassword ? '15m' : undefined);
+  const refreshToken = await tokenService.gerarRefreshToken(payload);
 
   auditService.audit({
     ...base,
@@ -355,12 +386,12 @@ async function changePasswordEntregador(entregadorId, currentPassword, newPasswo
   const entregador = await prisma.entregador.findUnique({ where: { id: entregadorId } });
   if (!entregador) throw Object.assign(new Error('Entregador não encontrado'), { status: 404 });
 
-  const match = await bcrypt.compare(currentPassword, entregador.passwordHash);
+  const match = await verifyPassword(currentPassword, entregador.passwordHash);
   if (!match) {
     throw Object.assign(new Error('Senha atual incorreta'), { status: 400 });
   }
 
-  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  const hash = await hashPassword(newPassword);
   await prisma.entregador.update({
     where: { id: entregadorId },
     data: { passwordHash: hash, mustChangePassword: false },

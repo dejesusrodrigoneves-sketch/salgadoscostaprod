@@ -2,6 +2,7 @@
 import prisma from '../config/prisma.js';
 import { enviarWhatsApp, getEmpresaWhatsApp } from './whatsappNotifyService.js';
 import asaasClient from './asaasClient.js';
+import { firstDueDate } from './subscriptionCycle.js';
 
 const TRIAL_DAYS = 14;
 const INTEREST_RATE_DAILY = 0.01; // 1% ao dia
@@ -18,7 +19,8 @@ export async function createTrialSubscription(empresaId) {
       status: 'TRIAL',
       value: 100,
       billingType: 'PIX',
-      nextDueDate: trialEndsAt,
+      // 1º vencimento: dia 10 do mês seguinte ao cadastro (trial segue em trialEndsAt)
+      nextDueDate: firstDueDate(new Date()),
       trialEndsAt
     }
   });
@@ -40,7 +42,13 @@ export async function updateSubscriptionStatus(empresaId, status) {
 export async function processPayment(empresaId) {
   const subscription = await getSubscriptionByEmpresaId(empresaId);
   if (!subscription) return null;
-  
+
+  // Guard: reject payment for deleted filiais
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+  if (empresa?.status === 'deleted') {
+    return { error: 'Esta filial foi excluída permanentemente. Para continuar, crie uma nova loja no sistema.' };
+  }
+
   // Criar assinatura recorrente no Asaas (se ainda não existe)
   if (!subscription.asaasSubscriptionId) {
     const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });

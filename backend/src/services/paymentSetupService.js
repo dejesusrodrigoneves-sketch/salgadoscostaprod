@@ -41,6 +41,7 @@ async function setup(empresaId, { email, cpfCnpj, pixKey, pixKeyType }, deps = d
   const empresa = await sql.buscarEmpresa(empresaId);
   if (!empresa) throw Object.assign(new Error('Empresa não encontrada'), { status: 404 });
   if (empresa.deletedAt) throw Object.assign(new Error('Empresa inativa'), { status: 400 });
+  if (empresa.status === 'deleted') throw Object.assign(new Error('Esta filial foi excluída permanentemente. Para continuar, crie uma nova loja no sistema.'), { status: 400 });
   if (empresa.asaasOnboarded) throw Object.assign(new Error('Empresa já possui split configurado'), { status: 409 });
 
   // Check email collision before creating subconta

@@ -16,6 +16,7 @@ export default defineConfig({
         entregador: resolve(__dirname, 'entregador.html'),
         login: resolve(__dirname, 'login.html'),
         painelLoja: resolve(__dirname, 'painelLoja.html'),
+        pagamentos: resolve(__dirname, 'pagamentos.html'),
         relatorios: resolve(__dirname, 'relatorios.html'),
         superadmin: resolve(__dirname, 'superadmin.html'),
         'alterar-senha': resolve(__dirname, 'alterar-senha.html'),

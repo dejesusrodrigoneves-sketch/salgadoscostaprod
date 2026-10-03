@@ -1,5 +1,10 @@
 // backend/src/controllers/subscriptionController.js (CJS)
+const fs = require('node:fs');
+const path = require('node:path');
 const subscriptionService = require('../services/subscriptionService.js');
+const subscriptionPaymentService = require('../services/subscriptionPaymentService.js');
+const { buildSimplePdf } = require('../utils/simplePdf.js');
+const prisma = require('../config/prisma.js');
 
 async function getSubscriptionController(req, res) {
   try {
@@ -17,20 +22,29 @@ async function getMySubscriptionController(req, res) {
   try {
     const empresaId = req.user.empresaId || req.user.empresa?.id;
     if (!empresaId) return res.status(400).json({ error: 'Empresa não identificada' });
-    
+
+    const payment = await subscriptionPaymentService.getCurrentInvoice(empresaId);
     const subscription = await subscriptionService.getSubscriptionByEmpresaId(empresaId);
-    if (!subscription) return res.status(404).json({ error: 'Assinatura não encontrada' });
-    
-    const daysOverdue = subscriptionService.getDaysOverdue(subscription.nextDueDate);
-    const interest = subscriptionService.calculateInterest(subscription.value, daysOverdue);
-    const accessLevel = subscriptionService.getAccessLevel(subscription);
-    
-    res.json({
-      ...subscription,
-      daysOverdue,
-      interest,
-      accessLevel,
-      totalDue: Number(subscription.value) + interest
+
+    return res.json({
+      // campos legados (overlay existente)
+      value: subscription ? Number(subscription.value) : null,
+      daysOverdue: payment.daysOverdue ?? 0,
+      interest: payment.interest ?? 0,
+      totalDue: payment.totalDue ?? 0,
+      accessLevel: payment.accessLevel ?? subscriptionService.getAccessLevel(subscription),
+      // contrato novo (Pagamentos)
+      aplicavel: payment.aplicavel,
+      status: payment.status,
+      mesRef: payment.mesRef ?? null,
+      breakdown: payment.breakdown,
+      dueDate: payment.dueDate ?? null,
+      cycleOpenAt: payment.cycleOpenAt ?? null,
+      canPay: payment.canPay,
+      canPayReason: payment.canPayReason,
+      hasInterest: Number(payment.daysOverdue) > 0,
+      paidAt: payment.paidAt ?? null,
+      receiptUrl: payment.receiptUrl ?? null,
     });
   } catch (e) {
     console.error('Subscription get error:', e);
@@ -65,8 +79,18 @@ async function payController(req, res) {
   try {
     const empresaId = req.user.empresaId || req.user.empresa?.id;
     if (!empresaId) return res.status(400).json({ error: 'Empresa não identificada' });
-    
-    const empresa = await require('../config/prisma.js').default.empresa.findUnique({
+
+    // Guarda do ciclo (primeiro: responde 409 mesmo sem conta Asaas configurada)
+    const invoice = await subscriptionPaymentService.getCurrentInvoice(empresaId);
+    if (!invoice.canPay) {
+      return res.status(409).json({
+        error: 'pagamento_nao_liberado',
+        reason: invoice.canPayReason,
+        cycleOpenAt: invoice.cycleOpenAt,
+      });
+    }
+
+    const empresa = await prisma.empresa.findUnique({
       where: { id: empresaId }
     });
     
@@ -76,11 +100,11 @@ async function payController(req, res) {
     
     const subscription = await subscriptionService.getSubscriptionByEmpresaId(empresaId);
     if (!subscription) return res.status(404).json({ error: 'Assinatura não encontrada' });
-    
-    // Calcular valor total com juros
-    const daysOverdue = subscriptionService.getDaysOverdue(subscription.nextDueDate);
-    const interest = subscriptionService.calculateInterest(subscription.value, daysOverdue);
-    const totalDue = Number(subscription.value) + interest;
+
+    // Valores calculados no servidor (fatura do ciclo corrente)
+    const totalDue = invoice.totalDue;
+    const interest = invoice.interest;
+    const daysOverdue = invoice.daysOverdue;
     
     // Criar pagamento PIX com valor fixo (valor + juros)
     const asaasClient = require('../services/asaasClient.js').default;
@@ -95,12 +119,23 @@ async function payController(req, res) {
         : `Assinatura ${empresa.nome}`,
       dueDate: dueDate.toISOString().slice(0, 10),
     });
+
+    // Registra a fatura do ciclo com o PIX vinculado (extrato server-side)
+    await subscriptionPaymentService.ensurePendingInvoice(empresaId, {
+      mesRef: invoice.mesRef,
+      dueDate: new Date(invoice.dueDate),
+      base: invoice.breakdown.total,
+      interest,
+      total: totalDue,
+      asaasPaymentId: pix.paymentId,
+    });
     
     res.json({ 
       pixCode: pix.pixCode,
       pixQrCode: pix.pixQrCode,
       expiresAt: pix.expiresAt,
-      value: Number(subscription.value),
+      mesRef: invoice.mesRef,
+      value: invoice.breakdown.total,
       interest,
       totalDue,
       daysOverdue,
@@ -140,6 +175,68 @@ async function listAllSubscriptionsController(req, res) {
   }
 }
 
+async function listMyPaymentsController(req, res) {
+  try {
+    const empresaId = req.user.empresaId || req.user.empresa?.id;
+    if (!empresaId) return res.status(400).json({ error: 'Empresa não identificada' });
+    const invoice = await subscriptionPaymentService.getCurrentInvoice(empresaId);
+    if (!invoice.aplicavel) return res.status(403).json({ error: 'nao_aplicavel' });
+    const page = parseInt(req.query.page, 10) || 1;
+    res.json(await subscriptionPaymentService.listPayments(empresaId, { page, mesRef: req.query.mesRef }));
+  } catch (e) {
+    console.error('Subscription payments error:', e);
+    res.status(500).json({ error: 'Erro ao listar faturas' });
+  }
+}
+
+async function receiptController(req, res) {
+  try {
+    const empresaId = req.user.empresaId || req.user.empresa?.id;
+    if (!empresaId) return res.status(400).json({ error: 'Empresa não identificada' });
+
+    const row = await subscriptionPaymentService.getOwnedPaidPayment(empresaId, req.params.id);
+    if (!row) return res.status(404).json({ error: 'Comprovante indisponível' });
+
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: empresaId }, select: { nome: true },
+    });
+    const brl = (v) => 'R$ ' + Number(v).toFixed(2).replace('.', ',');
+
+    // Cache em receiptPath (spec §5.4): gera uma vez, reusa o arquivo
+    let pdf;
+    if (row.receiptPath && fs.existsSync(row.receiptPath)) {
+      pdf = fs.readFileSync(row.receiptPath);
+    } else {
+      pdf = buildSimplePdf([
+        'Comprovante de pagamento',
+        `Loja: ${empresa?.nome || empresaId}`,
+        `Fatura: ${row.mesRef}`,
+        `Vencimento: ${row.dueDate.toISOString().slice(0, 10)}`,
+        `Base: ${brl(row.base)}`,
+        `Juros: ${brl(row.interest)}`,
+        `Total: ${brl(row.total)}`,
+        `Pago em: ${row.paidAt ? row.paidAt.toISOString().slice(0, 10) : '-'}`,
+      ], { title: `Fatura ${row.mesRef}` });
+      try {
+        const dir = path.join(__dirname, '..', '..', 'uploads', 'receipts');
+        fs.mkdirSync(dir, { recursive: true });
+        const file = path.join(dir, `fatura-${row.id}.pdf`);
+        fs.writeFileSync(file, pdf);
+        await prisma.subscriptionPayment.update({ where: { id: row.id }, data: { receiptPath: file } });
+      } catch (cacheErr) {
+        console.error('Subscription receipt cache error:', cacheErr.message);
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="fatura-${row.mesRef}.pdf"`);
+    res.send(pdf);
+  } catch (e) {
+    console.error('Subscription receipt error:', e);
+    res.status(500).json({ error: 'Erro ao gerar comprovante' });
+  }
+}
+
 module.exports = {
   getSubscriptionController,
   getMySubscriptionController,
@@ -147,5 +244,7 @@ module.exports = {
   updateStatusController,
   payController,
   cancelController,
-  listAllSubscriptionsController
+  listAllSubscriptionsController,
+  listMyPaymentsController,
+  receiptController
 };

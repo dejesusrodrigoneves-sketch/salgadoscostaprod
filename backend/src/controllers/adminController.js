@@ -55,10 +55,12 @@ exports.criar = asyncHandler(async (req, res) => {
   }
   try { invalidateEmpresaCache(slugNorm); } catch (e) {}
   
-  // Auto-create subscription (trial)
+  // Auto-create subscription (trial) — apenas matriz/independente; filial não paga mensalidade
   try {
-    const { createTrialSubscription } = require('../services/subscriptionService.js');
-    await createTrialSubscription(empresa.id);
+    if (empresa.parentEmpresaId == null) {
+      const { createTrialSubscription } = require('../services/subscriptionService.js');
+      await createTrialSubscription(empresa.id);
+    }
   } catch (e) {
     console.error('[Empresa] Erro ao criar assinatura trial:', e.message);
   }
@@ -279,9 +281,26 @@ exports.deletarFilial = asyncHandler(async (req, res) => {
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
-  await sql.softDeleteEmpresa(id);
+  // Mark pending delete (executed after next billing cycle)
+  const prisma = require('../config/prisma.js');
+  await prisma.empresa.update({
+    where: { id },
+    data: { pendingDeleteAt: new Date() },
+  });
+
+  // Record consent for audit trail
+  try {
+    const { registrarConsentimento } = await import('../services/filialBillingService.js');
+    await registrarConsentimento(filial.parentEmpresaId || id, 'exclusao_filial', 'accepted', req.user.id, {
+      filialId: id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      requestId: req.context?.requestId,
+    });
+  } catch (e) { /* consent recording is best-effort */ }
+
   try { invalidateEmpresaCache(filial.slug); } catch (e) {}
-  res.json({ success: true, message: 'Filial removida (soft delete)' });
+  res.json({ success: true, message: 'Filial marcada para exclusão (após próximo ciclo)' });
 });
 
 exports.listarFiliaisPendentes = asyncHandler(async (req, res) => {
@@ -418,4 +437,59 @@ exports.aprovarTema = asyncHandler(async (req, res) => {
   });
 
   res.json(atualizada);
+});
+
+function proximoDiaUtil(data) {
+  var d = new Date(data);
+  // Se weekend, avançar para segunda
+  var dow = d.getDay();
+  if (dow === 6) d.setDate(d.getDate() + 2);
+  else if (dow === 0) d.setDate(d.getDate() + 1);
+  else d.setDate(d.getDate() + 1);
+  // Garantir que não caiu em fim de semana após avançar
+  dow = d.getDay();
+  if (dow === 6) d.setDate(d.getDate() + 2);
+  else if (dow === 0) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+exports.obterNextDueDate = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
+
+  const empresa = await sql.buscarEmpresa(id);
+  if (!empresa) {
+    return res.status(404).json({ error: 'Empresa não encontrada' });
+  }
+
+  // Admin: só pode ver própria empresa ou suas filiais
+  if (req.user.role === 'admin' && empresa.parentEmpresaId !== req.user.empresaId && id !== req.user.empresaId) {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const prisma = require('../config/prisma.js');
+
+  // Buscar subscription: própria ou da matriz
+  const sub = await prisma.subscription.findFirst({
+    where: {
+      OR: [
+        { empresaId: id },
+        empresa.parentEmpresaId ? { empresaId: empresa.parentEmpresaId } : { empresaId: -1 },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  let nextDate;
+
+  if (sub && sub.nextDueDate) {
+    nextDate = sub.nextDueDate;
+  } else {
+    // Fallback: próximo dia útil a partir de hoje
+    nextDate = proximoDiaUtil(new Date());
+  }
+
+  res.json({ nextDueDate: nextDate.toISOString().slice(0, 10) });
 });

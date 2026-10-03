@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const sql = require('../repositories/sqlRepository');
 const whatsapp = require('./whatsappService');
 const auditService = require('./auditService');
+const pricingPolicy = require('./pricingPolicy');
 
 async function listar(filtros, empresaId) {
   return sql.listarPedidos(empresaId, filtros);
@@ -15,7 +16,12 @@ async function buscar(id, empresaId) {
 
 async function criar(data, empresaId, ctx = {}) {
   const pedidoId = await sql.nextPedidoId(empresaId);
-  const pedido = { ...data, id: pedidoId, empresaId };
+  const tipoEntrega = data.tipoEntrega === 'delivery' ? 'delivery' : 'retirada';
+  const empresa = await sql.buscarEmpresa(empresaId);
+  const taxasEntrega = tipoEntrega === 'delivery'
+    ? pricingPolicy.calcularTaxaEntrega(empresa, data.clienteBairro, tipoEntrega)
+    : 0;
+  const pedido = { ...data, id: pedidoId, empresaId, tipoEntrega, taxasEntrega };
   await sql.criarPedido(pedido);
 
   auditService.audit({
@@ -24,7 +30,7 @@ async function criar(data, empresaId, ctx = {}) {
     module: 'pedidos',
     targetType: 'pedido',
     targetId: pedidoId,
-    after: { clienteNome: data.clienteNome, total: Number(data.total), status: 'pendente' },
+    after: { clienteNome: data.clienteNome, total: Number(data.total) || 0, status: 'pendente' },
     changedFields: ['clienteNome', 'total', 'status'],
   });
 

@@ -11,6 +11,8 @@ router.get('/loja/status', controller.statusLoja);
 router.get('/loja/settings', controller.settingsLoja);
 router.post('/clientes/register', registerLimiter, controller.registrarCliente);
 router.post('/clientes/login', authLimiter, controller.loginCliente);
+router.post('/clientes/primeiro-acesso/solicitar', authLimiter, controller.solicitarPrimeiroAcesso);
+router.post('/clientes/primeiro-acesso/confirmar', authLimiter, controller.confirmarPrimeiroAcesso);
 router.get('/clientes/me', controller.clientePerfil);
 router.put('/clientes/me', controller.atualizarCliente);
 router.delete('/clientes/me', controller.excluirConta);

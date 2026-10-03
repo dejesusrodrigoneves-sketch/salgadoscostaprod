@@ -32,3 +32,9 @@ exports.globalSettlements = asyncHandler(async (req, res) => {
   const result = await settlementService.listarSettlementsGlobais(page, 20, empresaId);
   res.json(result);
 });
+
+// E2E/cron: fecha a semana de TODAS as empresas de uma vez
+exports.run = asyncHandler(async (req, res) => {
+  const results = await settlementService.processarTodasEmpresas();
+  res.json({ processed: results.length, results });
+});

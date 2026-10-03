@@ -91,3 +91,8 @@ export async function enviarWhatsAppLote(telefones, mensagem, delayMs = 4000, lo
   
   return enviados;
 }
+
+// OTP de primeiro acesso do cliente (Task 9)
+export async function sendOtp(telefone, code) {
+  return enviarWhatsApp(telefone, `Seu código de acesso: ${code}. Válido por 10 minutos.`);
+}

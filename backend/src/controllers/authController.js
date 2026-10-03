@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const tokenService = require('../services/tokenService');
 const { asyncHandler } = require('../middleware/errorHandler');
 
 exports.login = asyncHandler(async (req, res) => {
@@ -67,16 +68,17 @@ exports.refreshToken = asyncHandler(async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(400).json({ error: 'refreshToken obrigatório' });
   const tokenService = require('../services/tokenService');
-  const decoded = tokenService.verificarRefreshToken(refreshToken);
+  const decoded = await tokenService.verificarRefreshToken(refreshToken);
   const payload = {
     id: decoded.id,
     username: decoded.username,
     role: decoded.role,
     empresaId: decoded.empresaId,
     lojaNome: decoded.lojaNome,
+    mcp: !!decoded.mcp,
   };
-  const newToken = tokenService.gerarToken(payload);
-  const newRefreshToken = tokenService.gerarRefreshToken(payload);
+  const newToken = tokenService.gerarToken(payload, decoded.mcp ? '15m' : undefined);
+  const newRefreshToken = await tokenService.gerarRefreshToken(payload);
   res.json({ token: newToken, refreshToken: newRefreshToken });
 });
 
@@ -87,13 +89,31 @@ exports.logout = asyncHandler(async (req, res) => {
   // Revoke access token
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
-    tokenService.revogarToken(token);
+    await tokenService.revogarToken(token);
   }
 
   // Revoke refresh token
   if (refreshToken) {
-    tokenService.revogarRefreshToken(refreshToken);
+    await tokenService.revogarRefreshToken(refreshToken);
   }
 
   res.json({ success: true });
+});
+
+// Limpa TODOS os cookies httpOnly clientToken_* definidos pelo servidor.
+// Complementa wipeBrowserStorage() do frontend: document.cookie não alcança httpOnly.
+// Sem autenticação de propósito — precisa funcionar após expirar a sessão.
+exports.wipeCookies = asyncHandler(async (req, res) => {
+  const raw = req.headers.cookie || '';
+  const names = raw
+    .split(';')
+    .map((c) => (c.split('=')[0] || '').trim())
+    .filter((n) => n && n.startsWith('clientToken_'));
+
+  const secure = process.env.NODE_ENV === 'production';
+  names.forEach((name) => {
+    res.clearCookie(name, { httpOnly: true, secure, sameSite: 'strict', path: '/' });
+  });
+
+  res.json({ success: true, cleared: names.length });
 });

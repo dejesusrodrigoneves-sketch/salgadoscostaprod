@@ -16,7 +16,7 @@ function empresaId(req) {
 router.get('/', authenticate, controller.listar);
 router.get('/nao-concluidos', authenticate, controller.listarNaoConcluidos);
 router.get('/:id', authenticate, requireOwnership('pedido'), controller.buscar);
-router.post('/', authenticate, controller.criar);
+router.post('/', authenticate, authorize('superadmin', 'admin', 'user'), controller.criar);
 router.patch('/:id/status', authenticate, requireOwnership('pedido'), controller.atualizarStatus);
 router.delete('/:id', authenticate, requireOwnership('pedido'), controller.deletar);
 router.post('/:id/finalizar', authenticate, requireOwnership('pedido'), controller.finalizar);

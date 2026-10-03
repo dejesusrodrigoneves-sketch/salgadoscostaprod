@@ -54,8 +54,11 @@ model Empresa {
   webhookEvents       WebhookEvent[]
   oauthStates         OAuthState[]
   email             String?            @unique
+  emailBidx         String?            @map("email_bidx")
   cpfCnpj           String?            @map("cpf_cnpj")
+  cpfCnpjEnc        String?            @map("cpf_cnpj_enc")
   pixKey            String?            @map("pix_key")
+  pixKeyEnc         String?            @map("pix_key_enc")
   pixKeyType        String?            @map("pix_key_type")
   asaasSubcontaId   String?            @map("asaas_subconta_id")
   asaasWalletId     String?            @map("asaas_wallet_id")
@@ -67,7 +70,9 @@ model Empresa {
    billingType          String?  @default("PIX") @map("billing_type")
    nextDueDate          DateTime? @map("next_due_date")
    subscription         Subscription?
+   subscriptionPayments SubscriptionPayment[]
    deletedAt DateTime?
+   pendingDeleteAt DateTime? @map("pending_delete_at")
    parentEmpresaId         Int?      @map("parent_empresa_id")
    parentEmpresa           Empresa?  @relation("EmpresaFilial", fields: [parentEmpresaId], references: [id])
    filiais                 Empresa[] @relation("EmpresaFilial")
@@ -86,6 +91,7 @@ status          String    @default("active") @map("status")
    billingSnapshots      BillingSnapshot[]
    billingOperations     BillingOperation[]
 
+   @@unique([emailBidx])
    @@map("empresas")
 }
 
@@ -113,6 +119,7 @@ empresa      Empresa      @relation(fields: [empresaId], references: [id])
     entregador   Entregador?
    createdFiliais  Empresa[] @relation("FilialCreator")
    termoConsents   TermoConsent[]
+   mustChangePassword Boolean @default(false) @map("must_change_password")
 
    @@unique([username])
   @@map("usuarios")
@@ -139,6 +146,7 @@ model Produto {
   category           Categoria?    @relation(fields: [categoryId], references: [id])
   empresa            Empresa       @relation(fields: [empresaId], references: [id])
 
+  @@index([empresaId])
   @@map("produtos")
 }
 
@@ -153,6 +161,12 @@ model Pedido {
   clienteBairro     String?       @map("cliente_bairro")
   clienteCep        String?       @map("cliente_cep")
   clienteReferencia String?       @map("cliente_referencia")
+  clienteNomeEnc       String?    @map("cliente_nome_enc")
+  clienteWhatsappEnc   String?    @map("cliente_whatsapp_enc")
+  clienteWhatsappBidx  String?    @map("cliente_whatsapp_bidx")
+  clienteWhatsappBidxKeyVer String? @map("cliente_whatsapp_bidx_key_ver")
+  clienteEnderecoEnc   String?    @map("cliente_endereco_enc")
+  clienteNumeroEnc     String?    @map("cliente_numero_enc")
   tipoEntrega       String        @default("delivery") @map("tipo_entrega")
   formaPagamento    String?       @map("forma_pagamento")
   troco             Decimal?      @db.Decimal(10, 2)
@@ -179,8 +193,10 @@ model Pedido {
   @@index([paymentStatus])
   @@index([deletedAt])
   @@index([empresaId])
+  @@index([empresaId, status])
   @@index([empresaId, createdAt(sort: Desc)])
   @@index([clienteWhatsapp])
+  @@index([empresaId, clienteWhatsappBidxKeyVer, clienteWhatsappBidx])
   @@map("pedidos")
 }
 
@@ -247,12 +263,21 @@ model Entregador {
   passwordHash        String?         @map("password_hash")
   mustChangePassword  Boolean         @default(true) @map("must_change_password")
   fcmToken            String?         @map("fcm_token")
+  telefoneEnc         String?         @map("telefone_enc")
+  telefoneBidx        String?         @map("telefone_bidx")
+  telefoneBidxKeyVer  String?         @map("telefone_bidx_key_ver")
+  enderecoEnc         String?         @map("endereco_enc")
+  whatsappEnc         String?         @map("whatsapp_enc")
+  chavePixEnc         String?         @map("chave_pix_enc")
+  fcmTokenEnc         String?         @map("fcm_token_enc")
   createdAt           DateTime        @default(now()) @map("criado_em")
   empresa             Empresa         @relation(fields: [empresaId], references: [id])
   entregas            EntregaDiaria[]
   usuario             Usuario?        @relation(fields: [usuarioId], references: [id])
 
   @@unique([empresaId, telefone])
+  @@unique([empresaId, telefoneBidx])
+  @@index([empresaId, telefoneBidxKeyVer, telefoneBidx])
   @@map("entregadores")
 }
 
@@ -272,6 +297,7 @@ model EntregaDiaria {
   entregador   Entregador @relation(fields: [entregadorId], references: [id])
 
   @@index([pedidoId])
+  @@index([empresaId, data])
   @@index([data])
   @@index([entregadorId])
   @@map("entregas_diarias")
@@ -293,6 +319,7 @@ model CaixaDiario {
   fechadoEm         DateTime? @map("fechado_em")
   empresa           Empresa   @relation(fields: [empresaId], references: [id])
 
+  @@index([empresaId, data])
   @@index([data])
   @@map("caixa_diario")
 }
@@ -335,9 +362,18 @@ model Cliente {
   consentimentoAt DateTime? @map("consentimento_em")
   consentimentoRevogadoAt DateTime? @map("consentimento_revogado_em")
   politicaVersao  Int?      @default(1) @map("politica_versao")
+  telefoneEnc        String?  @map("telefone_enc")
+  telefoneBidx       String?  @map("telefone_bidx")
+  telefoneBidxKeyVer String?  @map("telefone_bidx_key_ver")
+  enderecoEnc        String?  @map("endereco_enc")
+  numeroEnc          String?  @map("numero_enc")
+  cepEnc             String?  @map("cep_enc")
+  pontoReferenciaEnc String?  @map("ponto_referencia_enc")
   empresa         Empresa  @relation(fields: [empresaId], references: [id])
 
   @@unique([empresaId, telefone])
+  @@unique([empresaId, telefoneBidx])
+  @@index([empresaId, telefoneBidxKeyVer, telefoneBidx])
   @@map("clientes")
 }
 
@@ -355,10 +391,13 @@ model LoginLog {
   id        Int      @id @default(autoincrement())
   usuarioId Int      @map("usuario_id")
   username  String
-  ip        String?
-  userAgent String?  @map("user_agent")
+  ip                   String?
+  ipEnc                String?  @map("ip_enc")
+  userAgent            String?  @map("user_agent")
   loggedAt  DateTime @default(now()) @map("logado_em")
 
+  @@index([usuarioId])
+  @@index([loggedAt])
   @@map("login_logs")
 }
 
@@ -415,6 +454,7 @@ model WhatsAppInstance {
   connectionStatus String   @default("disconnected") @map("connection_status")
   phoneNumber      String?  @map("phone_number")
   qrCode           String?  @map("qr_code")
+  qrCodeEnc        String?  @map("qr_code_enc")
   isActive         Boolean  @default(false) @map("is_active")
   createdAt        DateTime @default(now()) @map("criado_em")
   updatedAt        DateTime @updatedAt @map("atualizado_em")
@@ -617,6 +657,27 @@ model Subscription {
   @@map("subscriptions")
 }
 
+model SubscriptionPayment {
+  id             Int       @id @default(autoincrement())
+  empresaId      Int       @map("empresa_id")
+  mesRef         String    @map("mes_ref")
+  dueDate        DateTime  @map("due_date")
+  base           Decimal   @db.Decimal(10, 2)
+  interest       Decimal   @default(0) @db.Decimal(10, 2)
+  total          Decimal   @db.Decimal(10, 2)
+  status         String    @default("PENDING")
+  asaasPaymentId String?   @unique @map("asaas_payment_id")
+  paidAt         DateTime? @map("paid_at")
+  receiptPath    String?   @map("receipt_path")
+  createdAt      DateTime  @default(now()) @map("criado_em")
+  updatedAt      DateTime  @updatedAt @map("atualizado_em")
+  empresa        Empresa   @relation(fields: [empresaId], references: [id])
+
+  @@unique([empresaId, mesRef])
+  @@index([empresaId, status])
+  @@map("subscription_payments")
+}
+
 model PricingConfig {
   id              Int      @id @default(autoincrement())
   value           Decimal  @db.Decimal(10, 2)
@@ -665,6 +726,7 @@ model TermoConsent {
   termosCopyId         String?   @map("termos_copy_id")
   usuarioId            Int?      @map("usuario_id")
   ip                   String?
+  ipEnc                String?   @map("ip_enc")
   userAgent            String?   @map("user_agent")
   requestId            String?   @map("request_id")
   agreedAt             DateTime? @map("agreed_at")
@@ -739,4 +801,25 @@ model BillingOperation {
   @@index([status])
   @@index([empresaId, status])
   @@map("billing_operations")
+}
+
+model ClienteOtp {
+  id         Int       @id @default(autoincrement())
+  empresaId  Int       @map("empresa_id")
+  clienteId  Int       @map("cliente_id")
+  otpHash    String    @map("otp_hash")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  @@index([empresaId, clienteId])
+  @@index([expiresAt])
+  @@map("cliente_otp")
+}
+
+model SystemFlag {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("system_flags")
 }

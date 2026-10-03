@@ -1,11 +1,21 @@
 const app = require('./src/app');
 const config = require('./src/config/env');
 const logger = require('./src/config/logger');
+const { validateAtBoot } = require('./src/config/cryptoKeys');
+validateAtBoot();
 
-let pixJob, settlementJob, filialBillingWorker;
+let pixJob, settlementJob, filialBillingWorker, deferredDeleteWorker;
 
-app.listen(config.port, async () => {
+const server = app.listen(config.port, async () => {
   logger.info(`Servidor iniciado na porta ${config.port}`);
+
+  // Connect Redis (fallback memória se indisponível)
+  try {
+    const { connectRedis } = require('./src/config/redis');
+    await connectRedis();
+  } catch (err) {
+    logger.error('Redis connect falhou:', err.message);
+  }
 
   // Ensure PIX/Asaas columns + tables (idempotent)
   try {
@@ -62,34 +72,86 @@ app.listen(config.port, async () => {
     logger.error('Filial billing worker falhou ao registrar:', err.message);
   }
 
-  // Audit cleanup: purge client logs + enforce 90-day retention
+  // Deferred delete worker: processes pending filial deletes daily at 03:00
+  try {
+    deferredDeleteWorker = require('./src/jobs/deferredDeleteWorker');
+    deferredDeleteWorker.start();
+  } catch (err) {
+    logger.error('Deferred delete worker falhou:', err.message);
+  }
+
+  // BullMQ workers (audit, whatsapp, fcm, webhook, financial-sync)
+  try {
+    const { startAllWorkers } = require('./src/workers/index');
+    startAllWorkers();
+  } catch (err) {
+    logger.error('BullMQ workers falhou:', err.message);
+  }
+
+  // Audit cleanup: purge client logs + enforce 90-day retention + webhook event cleanup
   try {
     const { deleteClienteLogs, deleteOldLogs } = require('./src/repositories/auditRepository');
+    const sql = require('./src/repositories/sqlRepository');
     const deletedClientes = await deleteClienteLogs();
     const deletedOld = await deleteOldLogs(90);
+    const deletedWebhooks = await sql.cleanupOldWebhookEvents(7);
     if (deletedClientes > 0) logger.info(`Audit cleanup: ${deletedClientes} logs de clientes removidos`);
     if (deletedOld > 0) logger.info(`Audit cleanup: ${deletedOld} logs com 90+ dias removidos`);
-    if (deletedClientes === 0 && deletedOld === 0) logger.info('Audit cleanup: nenhum log para remover');
+    if (deletedWebhooks > 0) logger.info(`Audit cleanup: ${deletedWebhooks} webhook events com 7+ dias removidos`);
+    if (deletedClientes === 0 && deletedOld === 0 && deletedWebhooks === 0) logger.info('Audit cleanup: nenhum registro para remover');
   } catch (err) {
     logger.error('Audit cleanup falhou:', err.message);
   }
 });
 
 // Graceful shutdown
+let shuttingDown = false;
 async function shutdown(signal) {
-  logger.info(`${signal} recebido. Encerrando jobs...`);
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info(`${signal} recebido. Iniciando shutdown graceful...`);
+
+  // 1. parar de aceitar novas conexões + drenar in-flight
+  server.close(() => logger.info('HTTP server fechado'));
+
+  // 2. parar jobs/workers
   try { if (pixJob) pixJob.stop(); } catch {}
   try { if (settlementJob) settlementJob.stop(); } catch {}
   try { if (filialBillingWorker && filialBillingWorker.stop) filialBillingWorker.stop(); } catch {}
   try { if (filialBillingWorker && filialBillingWorker.stopBillingWorker) filialBillingWorker.stopBillingWorker(); } catch {}
+  try { if (deferredDeleteWorker) deferredDeleteWorker.stop(); } catch {}
+  try {
+    const { stopAllWorkers } = require('./src/workers/index');
+    await stopAllWorkers();
+    logger.info('BullMQ workers parados');
+  } catch {}
+  try {
+    const { closeQueues } = require('./src/queue/index');
+    await closeQueues();
+    logger.info('BullMQ queues fechadas');
+  } catch {}
 
+  // 3. flush audit queue (evita perda de logs)
+  try {
+    const { flushNow } = require('./src/services/auditQueue');
+    await flushNow();
+    logger.info('Audit queue flushed');
+  } catch (e) { logger.error('Falha flush audit:', e.message); }
+
+  // 4. fechar Prisma + Redis
   try {
     const prisma = require('./src/config/prisma');
     await prisma.$disconnect();
     logger.info('Prisma desconectado');
   } catch {}
+  try {
+    const { disconnectRedis } = require('./src/config/redis');
+    await disconnectRedis();
+    logger.info('Redis desconectado');
+  } catch {}
 
-  process.exit(0);
+  // 5. timeout de segurança (força saída se algo travar)
+  setTimeout(() => process.exit(0), 10000).unref();
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));

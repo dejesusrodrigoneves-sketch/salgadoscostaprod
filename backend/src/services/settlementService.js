@@ -57,7 +57,7 @@ async function fecharSemana(empresaId, referenceDate = new Date()) {
 
   // Lookup empresa + schedule transfer
   const empresa = await sql.buscarEmpresa(empresaId);
-  const splitStatus = (empresa && empresa.asaasOnboarded) ? 'auto' : 'manual';
+  let splitStatus = (empresa && empresa.asaasOnboarded) ? 'auto' : 'manual';
 
   let transferId = null;
   let transferStatus = null;
@@ -97,6 +97,9 @@ async function fecharSemana(empresaId, referenceDate = new Date()) {
       splitError = err.message;
     }
   }
+
+  // Coerencia: auto so com transferencia efetiva; erro quando falhou (N4)
+  splitStatus = splitError ? 'erro' : (transferId ? 'auto' : 'manual');
 
   // Persist split + transfer fields
   await sql.atualizarSettlement(settlement.id, {
@@ -208,6 +211,24 @@ async function confirmarPagamento(settlementId, asaasTransferId = null) {
   return { success: true };
 }
 
+/**
+ * Fecha a semana de todas as empresas ativas (cron/E2E).
+ */
+async function processarTodasEmpresas(referenceDate = new Date()) {
+  const empresas = await sql.listarEmpresasAtivas();
+  const results = [];
+  for (const empresa of empresas) {
+    try {
+      const settlement = await fecharSemana(empresa.id, referenceDate);
+      results.push({ empresaId: empresa.id, ok: true, settlementId: settlement?.id ?? null });
+    } catch (err) {
+      logger.error({ err, empresaId: empresa.id }, 'fecharSemana failed');
+      results.push({ empresaId: empresa.id, ok: false, error: err.message });
+    }
+  }
+  return results;
+}
+
 export {
   getWeekRange,
   fecharSemana,
@@ -216,6 +237,7 @@ export {
   buscarDetalhe,
   listarSettlementsGlobais,
   confirmarPagamento,
+  processarTodasEmpresas,
 };
 
 export default {
@@ -226,4 +248,5 @@ export default {
   buscarDetalhe,
   listarSettlementsGlobais,
   confirmarPagamento,
+  processarTodasEmpresas,
 };

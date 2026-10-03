@@ -8,15 +8,23 @@
 
   async function apiRequest(path, options) {
     options = options || {};
-    var url = API + path;
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
-    if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-    var res = await fetch(url, Object.assign({}, options, { headers: headers }));
-    if (!res.ok) {
-      var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
-      throw new Error(err.error || 'Erro');
+    const skip = options.skipLoading === true;
+    const opts = { ...options };
+    delete opts.skipLoading;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      var url = API + path;
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      if (!res.ok) {
+        var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
+        throw new Error(err.error || 'Erro');
+      }
+      return res.json();
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
     }
-    return res.json();
   }
 
   function toast(msg, type) {
@@ -50,7 +58,7 @@
 
   async function carregarInstancias() {
     try {
-      var instancias = await apiRequest('/whatsapp');
+      var instancias = await apiRequest('/whatsapp', { skipLoading: true });
       var container = document.getElementById('instancesContainer');
 
       if (!instancias.length) {
@@ -140,7 +148,7 @@
       document.getElementById('inputInstanceName').value = '';
       document.getElementById('inputPhoneNumber').value = '';
       carregarInstancias();
-      var instancias = await apiRequest('/whatsapp');
+      var instancias = await apiRequest('/whatsapp', { skipLoading: true });
       if (instancias.length > 0) gerarQR(instancias[0].id);
     } catch (e) {
       toast(e.message, 'danger');
@@ -202,7 +210,7 @@
     if (qrPollingId) clearInterval(qrPollingId);
     qrPollingId = setInterval(async function () {
       try {
-        var res = await apiRequest('/whatsapp/' + id + '/status');
+        var res = await apiRequest('/whatsapp/' + id + '/status', { skipLoading: true });
         if (res.connectionStatus === 'connected' || res.connectionStatus === 'open') {
           clearInterval(qrPollingId);
           qrPollingId = null;
@@ -240,7 +248,7 @@
 
   window.atualizarStatusAction = async function (ds) {
     try {
-      var res = await apiRequest('/whatsapp/' + ds.instid + '/status');
+      var res = await apiRequest('/whatsapp/' + ds.instid + '/status', { skipLoading: true });
       toast('Status: ' + (res.connectionStatus || 'desconhecido'), 'info');
       carregarInstancias();
     } catch (e) {

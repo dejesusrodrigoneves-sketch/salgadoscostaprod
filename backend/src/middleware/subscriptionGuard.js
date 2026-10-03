@@ -8,6 +8,13 @@ async function subscriptionGuard(req, res, next) {
     
     const empresaId = req.user?.empresaId || req.user?.empresa?.id;
     if (!empresaId) return next();
+
+    // Filial não paga mensalidade: não passa por guarda de assinatura
+    const empresa = await require('../config/prisma.js').empresa.findUnique({
+      where: { id: empresaId },
+      select: { empresaTipo: true },
+    });
+    if (empresa?.empresaTipo === 'filial') return next();
     
     const subscription = await subscriptionService.getSubscriptionByEmpresaId(empresaId);
     if (!subscription) return next();

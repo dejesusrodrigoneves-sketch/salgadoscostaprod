@@ -13,15 +13,23 @@ window.carregarRelatorioAction = function () { carregarRelatorio(); };
 
   async function apiRequest(path, options) {
     options = options || {};
-    var url = API + path;
-    var headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
-    if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-    var res = await fetch(url, Object.assign({}, options, { headers: headers }));
-    if (!res.ok) {
-      var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
-      throw new Error(err.error || 'Erro');
+    const skip = options.skipLoading === true;
+    const opts = { ...options };
+    delete opts.skipLoading;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      var url = API + path;
+      var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
+      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      if (!res.ok) {
+        var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
+        throw new Error(err.error || 'Erro');
+      }
+      return res.json();
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
     }
-    return res.json();
   }
 
   function fmtMoeda(v) {
@@ -40,7 +48,7 @@ window.carregarRelatorioAction = function () { carregarRelatorio(); };
 
   async function carregarEntregadores() {
     try {
-      var list = await apiRequest('/entregadores?ativo=true');
+      var list = await apiRequest('/entregadores?ativo=true', { skipLoading: true });
       var sel = document.getElementById('filtroEntregador');
       list.forEach(function (d) {
         var opt = document.createElement('option');

@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { createRequire } from 'module';
 import prisma from '../config/prisma.js';
 import sql from '../repositories/sqlRepository.js';
 import asaasClient from './asaasClient.js';
@@ -7,8 +8,52 @@ import auditService from './auditService.js';
 import env from '../config/env.js';
 import logger from '../config/logger.js';
 
+const require = createRequire(import.meta.url);
+
 const paymentEvents = new EventEmitter();
 paymentEvents.setMaxListeners(0);
+
+// Redis pub/sub for multi-instance SSE
+let redisSub = null;
+let redisPub = null;
+function setupPaymentPubSub() {
+  try {
+    const { isRedisAvailable, getRedis } = require('../config/redis');
+    if (!isRedisAvailable()) return;
+    const Redis = require('ioredis');
+    let url = process.env.REDIS_URL?.startsWith('redis') ? process.env.REDIS_URL : (process.env.REDIS_URL ? `redis://${process.env.REDIS_URL}` : null);
+    if (url && process.env.REDIS_PASSWORD) {
+      try {
+        const u = new URL(url);
+        if (!u.password) { u.password = process.env.REDIS_PASSWORD; url = u.toString(); }
+      } catch { /* keep url as-is */ }
+    }
+    if (!url) return;
+    redisSub = new Redis(url);
+    redisPub = new Redis(url);
+    redisSub.on('message', (channel, message) => {
+      try {
+        const pedidoId = channel.replace('payment:', '');
+        const data = JSON.parse(message);
+        paymentEvents.emit(pedidoId, data);
+      } catch {}
+    });
+    // Subscribe to all payment events using pattern
+    redisSub.psubscribe('payment:*', () => {});
+    logger.info('[payment] Redis pub/sub ativo para SSE');
+  } catch (err) {
+    logger.warn('[payment] Redis pub/sub indisponível, SSE local apenas:', err.message);
+  }
+}
+setupPaymentPubSub();
+
+// Emit to local EventEmitter + Redis pub/sub
+function emitPaymentEvent(pedidoId, data) {
+  paymentEvents.emit(pedidoId, data);
+  if (redisPub) {
+    redisPub.publish(`payment:${pedidoId}`, JSON.stringify(data)).catch(() => {});
+  }
+}
 
 function registrarLog(tipo, meta, level = 'info') {
   auditService.appLog({ level, message: tipo, module: 'pagamentos', meta });
@@ -43,7 +88,7 @@ async function criarPixPedido(pedidoId, { cliente, valor }) {
   let pix;
   if (empresa && empresa.asaasOnboarded && empresa.asaasWalletId) {
     pixPayload.splits = [{ walletId: empresa.asaasWalletId, percentualValue: 98 }];
-    pix = await asaasClient.criarPixComSplit(pixPayload);
+      pix = await asaasClient.criarPix(pixPayload);
     registrarLog('PIX_SPLIT_CREATED', { pedidoId, empresaId, walletId: empresa.asaasWalletId });
   } else {
     pix = await asaasClient.criarPix(pixPayload);
@@ -79,7 +124,7 @@ async function marcarExpirado(pedido, pagamento) {
   if (pagamento.status !== 'aguardando_pagamento') return;
   await prisma.pagamento.update({ where: { id: pagamento.id }, data: { status: 'expirado' } });
   await prisma.pedido.update({ where: { id: pedido.id }, data: { paymentStatus: 'expirado' } });
-  paymentEvents.emit(pedido.id, { status: 'expirado' });
+  emitPaymentEvent(pedido.id, { status: 'expirado' });
   registrarLog('PIX_EXPIRED', { pedidoId: pedido.id });
 }
 
@@ -111,9 +156,9 @@ async function confirmarPagamento(pedido, pagamento, asaas) {
     return;
   }
   await prisma.pagamento.update({ where: { id: pagamento.id }, data: { status: 'pago', paidAt: new Date() } });
-  await prisma.pedido.update({ where: { id: pedido.id }, data: { paymentStatus: 'pago', paymentMethod: 'pix' } });
-  await liberarPedido(pedido);
-  paymentEvents.emit(pedido.id, { status: 'pago' });
+  await prisma.pedido.update({ where: { id: pedido.id }, data: { status: 'pago', paymentStatus: 'pago', paymentMethod: 'pix' } });
+  registrarLog('PIX_CONFIRMED', { pedidoId: pedido.id });
+  emitPaymentEvent(pedido.id, { status: 'pago' });
 }
 
 async function consultarESincronizar(pedidoId) {
@@ -141,39 +186,55 @@ async function consultarESincronizar(pedidoId) {
 }
 
 async function processarWebhook(evento) {
-  const { id: eventId, event, payment } = evento;
+  const { id: eventId, event, payment, dateCreated } = evento;
   if (!payment && event !== 'TRANSFER_RECEIVED') return { received: true };
 
-  const jaVisto = await sql.buscarEventoWebhook(eventId);
-  if (jaVisto) {
+  // Replay window: reject events older than 24 hours
+  if (dateCreated) {
+    const eventAge = Date.now() - new Date(dateCreated).getTime();
+    const REPLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+    if (eventAge > REPLAY_WINDOW_MS) {
+      registrarLog('WEBHOOK_REPLAY_WINDOW_EXCEEDED', { eventId, dateCreated, ageHours: Math.round(eventAge / 3600000) });
+      return { received: true, reason: 'replay_window_exceeded' };
+    }
+  }
+
+  // Atomic dedup: INSERT returns null if already exists (P2002)
+  const created = await sql.criarEventoWebhook(eventId);
+  if (!created) {
     registrarLog('WEBHOOK_DUPLICATE', { eventId });
     return { received: true };
   }
-  await sql.criarEventoWebhook(eventId);
 
-  if (event === 'TRANSFER_RECEIVED') {
-    const asaasTransferId = evento.transferId || evento.id;
-    const settlement = await sql.buscarSettlementByTransferId(asaasTransferId);
-    if (settlement) {
-      await sql.atualizarSettlement(settlement.id, { status: 'pago' });
-      logger.info({ settlementId: settlement.id }, 'Settlement marked as paid via transfer');
+  try {
+    if (event === 'TRANSFER_RECEIVED') {
+      const asaasTransferId = evento.transferId || evento.id;
+      const settlement = await sql.buscarSettlementByTransferId(asaasTransferId);
+      if (settlement) {
+        await sql.atualizarSettlement(settlement.id, { status: 'pago' });
+        logger.info({ settlementId: settlement.id }, 'Settlement marked as paid via transfer');
+      }
+      return { received: true };
     }
+
+    if (event !== 'PAYMENT_RECEIVED') return { received: true };
+
+    const pagamento = await prisma.pagamento.findUnique({ where: { asaasPaymentId: payment.id } });
+    if (!pagamento) {
+      registrarLog('WEBHOOK_ORFAO', { paymentId: payment.id }, 'warning');
+      try { await asaasClient.reembolsar(payment.id); } catch (e) { /* noop */ }
+      return { received: true };
+    }
+
+    const pedido = await sql.buscarPedido(pagamento.pedidoId);
+    const asaas = await asaasClient.consultarPayment(payment.id);
+    await confirmarPagamento(pedido, pagamento, asaas);
     return { received: true };
+  } catch (err) {
+    // Processamento falhou: remove dedup para Asaas reentregar o evento (retry-safe)
+    await sql.removerEventoWebhook(eventId);
+    throw err;
   }
-
-  if (event !== 'PAYMENT_RECEIVED') return { received: true };
-
-  const pagamento = await prisma.pagamento.findUnique({ where: { asaasPaymentId: payment.id } });
-  if (!pagamento) {
-    registrarLog('WEBHOOK_ORFAO', { paymentId: payment.id }, 'warning');
-    try { await asaasClient.reembolsar(payment.id); } catch (e) { /* noop */ }
-    return { received: true };
-  }
-
-  const pedido = await sql.buscarPedido(pagamento.pedidoId);
-  const asaas = await asaasClient.consultarPayment(payment.id);
-  await confirmarPagamento(pedido, pagamento, asaas);
-  return { received: true };
 }
 
 async function reembolsar(pagamentoId) {

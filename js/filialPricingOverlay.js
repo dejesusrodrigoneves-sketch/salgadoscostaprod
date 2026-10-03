@@ -194,6 +194,7 @@
     }
 
     document.getElementById('fpAcceptBtn').addEventListener('click', async () => {
+      if (typeof showLoading === 'function') showLoading();
       try {
         const authUser = getAuthUser();
         const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/accept', {
@@ -210,10 +211,13 @@
       } catch (e) {
         console.error('Accept error:', e);
         alert('Erro ao aceitar alteração.');
+      } finally {
+        if (typeof hideLoading === 'function') hideLoading();
       }
     });
 
     document.getElementById('fpRejectBtn').addEventListener('click', async () => {
+      if (typeof showLoading === 'function') showLoading();
       try {
         const authUser = getAuthUser();
         const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/reject', {
@@ -230,6 +234,8 @@
       } catch (e) {
         console.error('Reject error:', e);
         alert('Erro ao rejeitar alteração.');
+      } finally {
+        if (typeof hideLoading === 'function') hideLoading();
       }
     });
 

@@ -1,9 +1,4 @@
 // js/pages/relatorios.js — extracted from relatorios.html inline scripts
-// Delegator bridge functions
-window.abrirAbaResumo = function () { abrirAba(null, 'abaResumo'); };
-window.abrirAbaPeriodo = function () { abrirAba(null, 'abaPeriodo'); };
-window.carregarRelatoriosDiaAction = function () { carregarRelatoriosDia(); };
-window.carregarRelatoriosPeriodoAction = function () { carregarRelatoriosPeriodo(); };
 
 (function () {
   if (!authGuard()) throw new Error('Redirect');
@@ -18,6 +13,16 @@ window.carregarRelatoriosPeriodoAction = function () { carregarRelatoriosPeriodo
     else document.querySelector('[data-aba="' + abaId + '"]').classList.add('active');
   }
   window.abrirAba = abrirAba;
+  window.abrirAbaResumo = function (ds) { abrirAba(null, 'abaResumo'); };
+  window.abrirAbaPeriodo = function (ds) { abrirAba(null, 'abaPeriodo'); };
+  window.carregarRelatoriosDiaAction = function (ds) {
+    if (typeof carregarRelatoriosDia === 'function') return carregarRelatoriosDia(ds);
+    console.warn('[delegator] handler not ready:', 'carregarRelatoriosDiaAction');
+  };
+  window.carregarRelatoriosPeriodoAction = function (ds) {
+    if (typeof carregarRelatoriosPeriodo === 'function') return carregarRelatoriosPeriodo(ds);
+    console.warn('[delegator] handler not ready:', 'carregarRelatoriosPeriodoAction');
+  };
 
   var tabela = document.getElementById('relatoriosTabela');
   var ctxDia = document.getElementById('graficoFaturamentoDia').getContext('2d');
@@ -27,6 +32,7 @@ window.carregarRelatoriosPeriodoAction = function () { carregarRelatoriosPeriodo
   function carregarRelatoriosDia() {
     if (isLoadingDia) return;
     isLoadingDia = true;
+    if (typeof showLoading === 'function') showLoading();
     var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
     fetch((getApiBase() || '') + '/api/pedidos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function (r) { return r.json(); }).then(function (pedidos) {
       var dadosPorDia = {};
@@ -57,7 +63,7 @@ window.carregarRelatoriosPeriodoAction = function () { carregarRelatoriosPeriodo
         data: { labels: labels, datasets: [{ label: 'Valor total (R$)', data: valores, backgroundColor: '#f97316', borderRadius: 4 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true } } }
       });
-    }).catch(function (e) { console.error('Erro carregar relatorios:', e); }).finally(function () { isLoadingDia = false; });
+    }).catch(function (e) { console.error('Erro carregar relatorios:', e); }).finally(function () { isLoadingDia = false; if (typeof hideLoading === 'function') hideLoading(); });
   }
   carregarRelatoriosDia();
 
@@ -78,6 +84,7 @@ window.carregarRelatoriosPeriodoAction = function () { carregarRelatoriosPeriodo
 
     var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
     var url = (getApiBase() || '') + '/api/pedidos?createdAtFrom=' + encodeURIComponent(inicio + 'T00:00:00') + '&createdAtTo=' + encodeURIComponent(fim + 'T23:59:59') + '&order=asc';
+    if (typeof showLoading === 'function') showLoading();
     fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function (r) { return r.json(); }).then(function (pedidos) {
       if (!pedidos || pedidos.length === 0) { container.innerHTML = '<p style="color:#94a3b8;">Nenhum pedido encontrado nesse período.</p>'; return; }
 
@@ -113,7 +120,7 @@ window.carregarRelatoriosPeriodoAction = function () { carregarRelatoriosPeriodo
         data: { labels: labelsPeriodo, datasets: [{ label: 'Valor diário (R$)', data: valoresPeriodo, backgroundColor: '#f97316', borderRadius: 4 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true } } }
       });
-    }).catch(function (e) { container.innerHTML = '<p style="color:#94a3b8;">Erro ao carregar: ' + e.message + '</p>'; });
+    }).catch(function (e) { container.innerHTML = '<p style="color:#94a3b8;">Erro ao carregar: ' + e.message + '</p>'; }).finally(function () { if (typeof hideLoading === 'function') hideLoading(); });
   }
 
   // Cleanup charts on page unload

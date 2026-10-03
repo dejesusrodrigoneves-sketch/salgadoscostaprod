@@ -11,7 +11,7 @@
     e.preventDefault();
     var user = document.getElementById('loginUser').value.trim();
     var pass = document.getElementById('loginPass').value.trim();
-    var isEntregador = document.getElementById('chkEntregador').checked;
+    var isEntregador = document.getElementById('chkEntregador');
     var error = document.getElementById('loginError');
     var btn = document.getElementById('btnLogin');
 
@@ -26,6 +26,7 @@
       var endpoint = (getApiBase() || '') + (isEntregador ? '/api/entregador/auth/login' : '/api/auth/login');
       var body = { username: user, password: pass };
 
+      if (typeof showLoading === 'function') showLoading();
       var res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -63,6 +64,7 @@
       error.textContent = 'Erro de conexão. Tente novamente.';
       error.classList.add('show');
     } finally {
+      if (typeof hideLoading === 'function') hideLoading();
       btn.classList.remove('loading');
       btn.disabled = false;
     }

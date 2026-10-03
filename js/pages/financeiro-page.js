@@ -50,7 +50,7 @@ window.financeiroGerarFechamento = function () { if (typeof Financeiro !== 'unde
     var loadingEl = document.getElementById('consol-loading');
     var contentEl = document.getElementById('consol-content');
     try {
-      var token = localStorage.getItem('token');
+      var token = (typeof safeGetToken === 'function' ? safeGetToken() : '');
       var res = await fetch((getApiBase() || '') + '/api/financeiro/consolidated', {
         headers: { 'Authorization': 'Bearer ' + token }
       });

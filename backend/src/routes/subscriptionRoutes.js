@@ -9,7 +9,9 @@ const {
   updateStatusController,
   payController,
   cancelController,
-  listAllSubscriptionsController
+  listAllSubscriptionsController,
+  listMyPaymentsController,
+  receiptController
 } = require('../controllers/subscriptionController.js');
 const { webhookAsaasController } = require('../controllers/webhookAsaasController.js');
 const asaasClient = require('../services/asaasClient.js').default;
@@ -25,6 +27,8 @@ router.put('/admin/subscription/:empresaId/status', authenticate, authorize('sup
 // Empresa routes (admin only)
 router.get('/empresa/subscription/status', authenticate, authorize('admin'), subscriptionGuard, getMySubscriptionController);
 router.post('/empresa/subscription/pay', authenticate, authorize('admin'), subscriptionGuard, payController);
+router.get('/empresa/subscription/payments', authenticate, authorize('admin'), subscriptionGuard, listMyPaymentsController);
+router.get('/empresa/subscription/payments/:id/receipt', authenticate, authorize('admin'), receiptController);
 router.delete('/empresa/subscription/cancel', authenticate, authorize('admin'), subscriptionGuard, cancelController);
 
 // Asaas webhook (token validated)

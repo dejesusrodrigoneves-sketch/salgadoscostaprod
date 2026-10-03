@@ -9,6 +9,7 @@ router.use(authenticate, authorize('superadmin', 'admin'));
 router.get('/actual', controller.actual);
 router.get('/history', controller.history);
 router.get('/global', authorize('superadmin'), controller.globalSettlements);
+router.post('/run', authorize('superadmin'), controller.run);
 router.get('/:id', controller.detalhe);
 
 module.exports = router;

@@ -1,12 +1,12 @@
 const sqlRepo = require('../repositories/sqlRepository');
-const bcrypt = require('bcryptjs');
+const { hashPassword } = require('../utils/password');
 const auditService = require('./auditService');
 
 const DEFAULT_SALT_ROUNDS = 10;
 
 // Dependências injetáveis para testes (padrão puro+injetado do entregaService).
 function deps(overrides = {}) {
-  return { sql: sqlRepo, bcrypt, auditService, SALT_ROUNDS: DEFAULT_SALT_ROUNDS, ...overrides };
+  return { sql: sqlRepo, hash: hashPassword, auditService, SALT_ROUNDS: DEFAULT_SALT_ROUNDS, ...overrides };
 }
 
 function base(ctx) {
@@ -31,6 +31,8 @@ async function listarClientes(empresaId, d = deps()) {
       bairro: c.bairro,
       cep: c.cep,
       pontoReferencia: c.pontoReferencia,
+      empresaId: c.empresaId,
+      empresaNome: c.empresa ? c.empresa.nome : null,
       createdAt: c.createdAt,
       consentimentoAt: c.consentimentoAt,
       consentimentoRevogadoAt: c.consentimentoRevogadoAt,
@@ -48,7 +50,7 @@ async function atualizarCliente(id, data, ctx = {}, d = deps()) {
   delete body.id;
 
   if (body.telefone !== undefined) {
-    const outro = await d.sql.buscarCliente(body.telefone);
+    const outro = await d.sql.buscarCliente(body.telefone, existente.empresaId);
     if (outro && outro.id !== clienteId) {
       throw Object.assign(new Error('Telefone já cadastrado por outro cliente'), { status: 409 });
     }
@@ -84,7 +86,7 @@ async function resetarSenha(id, password, ctx = {}, d = deps()) {
     throw Object.assign(new Error('Senha deve ter 6+ caracteres'), { status: 400 });
   }
 
-  const hash = await d.bcrypt.hash(password, d.SALT_ROUNDS);
+  const hash = await d.hash(password);
   await d.sql.atualizarCliente(clienteId, { passwordHash: hash });
 
   await d.auditService.audit({

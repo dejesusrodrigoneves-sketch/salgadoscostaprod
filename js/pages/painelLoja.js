@@ -14,7 +14,7 @@
 
   async function checkPendingTheme() {
     try {
-      var token = localStorage.getItem('token');
+      var token = (typeof safeGetToken === 'function' ? safeGetToken() : '');
       var empresaId = authUser.empresaId || authUser.id;
       var res = await fetch((window.getApiBase ? window.getApiBase() : '') + '/api/admin/empresas/' + empresaId, {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -87,7 +87,7 @@
       };
 
       try {
-        var token = localStorage.getItem('token');
+        var token = (typeof safeGetToken === 'function' ? safeGetToken() : '');
         var empresaId = authUser.empresaId || authUser.id;
         var res = await fetch((window.getApiBase ? window.getApiBase() : '') + '/api/admin/empresas/' + empresaId + '/theme/pending', {
           method: 'PUT',

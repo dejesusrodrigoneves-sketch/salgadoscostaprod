@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<title>Pagamentos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/pagamentos-page.css">
+</head>
+<body>
+<div class="pg-wrap">
+
+  <div class="pg-top">
+    <span class="pg-brand" id="pgBrand">Loja</span>
+    <h2>Pagamentos</h2>
+    <span class="pg-flag" id="pgTipo"></span>
+    <span class="pg-spacer"></span>
+  </div>
+
+  <div class="pg-tabs" id="pagamentosTabs" role="tablist">
+    <button type="button" data-tab="mensalidade" role="tab" aria-selected="true">Mensalidade</button>
+    <button type="button" data-tab="extrato" role="tab" aria-selected="false">Extrato</button>
+    <button type="button" data-tab="receber" role="tab" aria-selected="false">Receber e recebimentos</button>
+  </div>
+
+  <!-- ══════════ ABA: MENSALIDADE (matriz/independente) ══════════ -->
+  <section id="mensalidadeSection">
+    <div class="pg-hero">
+      <div>
+        <span class="pg-eyebrow">Mensalidade · ciclo mensal</span>
+        <h1 class="pg-month" id="invoiceMonth">—</h1>
+        <dl class="pg-breakdown">
+          <div><dt>Base</dt><dd id="invoiceBase">—</dd></div>
+          <div><dt>Filiais cadastradas</dt><dd id="invoiceFilial">—</dd></div>
+          <div id="rowJuros" class="hidden alert"><dt>Juros <span class="qty">1% ao dia</span></dt><dd id="invoiceJuros">—</dd></div>
+        </dl>
+        <p class="pg-cycle">A fatura abre todo dia <b>1</b> e vence dia <b>10</b>.<br>Juros de <b>1%</b> por dia a partir do dia <b>11</b> · leitura limitada em <b>5</b> dias · bloqueio em <b>10</b>.</p>
+      </div>
+      <div class="pg-due">
+        <span class="lbl">Total da fatura</span>
+        <p class="pg-amount" id="invoiceTotal">—</p>
+        <p class="note" id="invoiceNote">—</p>
+        <p class="pg-meta">Vence em <b id="invoiceDue">—</b> · <span id="invoiceStatus">—</span></p>
+      </div>
+    </div>
+
+    <div class="pg-actions">
+      <button class="pg-btn primary" id="btnPay" disabled>Gerar PIX</button>
+      <span class="pg-hint" id="payHint"></span>
+    </div>
+
+    <div class="pg-pix hidden" id="pixBox">
+      <div class="pg-pix-code">
+        <span class="lbl">Código PIX copia e cola</span>
+        <div class="row">
+          <input id="pixCode" readonly aria-label="Código PIX copia e cola">
+          <button class="pg-btn quiet" id="btnCopyPix" type="button">Copiar</button>
+        </div>
+      </div>
+      <img id="pixQr" alt="QR Code do PIX" width="140" height="140">
+    </div>
+
+    <div class="pg-receipt hidden" id="receiptRow">
+      <span class="txt">Pago em <b id="receiptDate">—</b> · comprovante gerado pelo backend</span>
+      <button class="pg-link" id="btnReceipt" type="button">Baixar comprovante (PDF)</button>
+    </div>
+  </section>
+
+  <!-- ══════════ ABA: EXTRATO (matriz e filial) ══════════ -->
+  <section id="vExtrato" class="hidden">
+    <div class="pg-filter">
+      <span class="cap">Mês</span>
+      <div class="pg-chips" id="monthChips"></div>
+    </div>
+
+    <div id="extratoMens">
+      <span class="pg-eyebrow">Mensalidade do mês</span>
+      <div class="pg-mblock">
+        <div class="head">
+          <div class="t" id="emTitle">—</div>
+          <div class="big" id="emTotal">—</div>
+        </div>
+        <div class="rows">
+          <div><dt>Base</dt><dd id="emBase">—</dd></div>
+          <div id="emFilRow"><dt>Filiais cadastradas</dt><dd id="emFil">—</dd></div>
+          <div><dt>Juros</dt><dd id="emJuros">—</dd></div>
+          <div><dt>Situação</dt><dd><span class="pg-tag mute" id="emStatus">—</span></dd></div>
+          <div><dt>Pago em</dt><dd id="emPaid">—</dd></div>
+          <div id="emReceiptRow" class="hidden"><dt>Comprovante</dt><dd><button class="pg-link" id="emReceipt" type="button" data-url="">Baixar comprovante (PDF)</button></dd></div>
+        </div>
+      </div>
+    </div>
+
+    <span class="pg-eyebrow">Recebido no mês</span>
+    <div class="pg-week">
+      <div><div class="k">Período</div><div class="v" id="rcPeriod">—</div><div class="sub" id="rcWeeks">—</div></div>
+      <div><div class="k">Semanas repassadas</div><div class="v" id="rcWeeks2">—</div><div class="sub">valores por semana abaixo</div></div>
+    </div>
+
+    <table class="pg-ledger">
+      <caption>Valores semanais</caption>
+      <thead><tr><th>Semana</th><th class="num">Pedidos</th><th class="num">Bruto</th><th class="num">Líquido</th><th class="num">Pago em</th><th>Situação</th></tr></thead>
+      <tbody id="rcRows"></tbody>
+    </table>
+
+    <div id="extratoFilialNote" class="pg-banner hidden">
+      <span class="rule"></span>
+      <p>A mensalidade desta loja é paga pela <b>matriz</b>. O extrato mostra apenas o que você <b>recebeu</b>.</p>
+    </div>
+  </section>
+
+  <!-- ══════════ ABA: RECEBER E RECEBIMENTOS ══════════ -->
+  <section id="vReceber" class="hidden">
+    <div class="pg-cols">
+      <section>
+        <h3 class="pg-panel-title">Receber pagamentos</h3>
+        <p class="pg-sub">A chave PIX que recebe os pedidos da loja.</p>
+
+        <div class="pg-status pending" id="pixStatus">
+          <span class="dot"></span>
+          <span class="txt" id="pixStatusText">Carregando…</span>
+        </div>
+
+        <div class="pg-field"><span class="lbl">E-mail</span><input type="email" id="payEmail" aria-label="E-mail" placeholder="email@exemplo.com"></div>
+        <div class="pg-field"><span class="lbl">CPF / CNPJ</span><input type="text" id="payCpfCnpj" aria-label="CPF ou CNPJ" placeholder="000.000.000-00" maxlength="18"></div>
+        <div class="pg-field"><span class="lbl">Tipo da chave</span>
+          <select id="payPixKeyType" aria-label="Tipo da chave PIX">
+            <option value="cpf">CPF</option>
+            <option value="cnpj">CNPJ</option>
+            <option value="email">E-mail</option>
+            <option value="phone">Telefone</option>
+            <option value="random">Aleatória</option>
+          </select>
+        </div>
+        <div class="pg-field"><span class="lbl">Chave PIX</span><input type="text" id="payPixKey" aria-label="Chave PIX" placeholder="Sua chave PIX"></div>
+
+        <p class="pg-error hidden" id="payment-error"></p>
+
+        <div class="pg-actions">
+          <button class="pg-btn quiet" id="btnAtivarPayment" type="button">Ativar pagamentos</button>
+          <button class="pg-btn quiet hidden" id="btnAtualizarPayment" type="button">Atualizar chave</button>
+          <button class="pg-btn danger hidden" id="btnDesativarPayment" type="button">Desativar recebimento</button>
+        </div>
+      </section>
+
+      <section>
+        <h3 class="pg-panel-title">Recebimentos</h3>
+        <p class="pg-sub">Repasse do que a loja vendeu, por semana.</p>
+
+        <div class="pg-week">
+          <div><div class="k">Semana atual</div><div class="v" id="wkPeriod">—</div><div class="sub" id="wkPedidos">—</div></div>
+          <div><div class="k">Líquido</div><div class="v" id="wkLiquido">—</div><div class="sub"><span id="wkStatus">—</span> · <span id="wkPaid">—</span></div></div>
+        </div>
+
+        <table class="pg-ledger">
+          <thead><tr><th>Semana</th><th class="num">Pedidos</th><th class="num">Bruto</th><th class="num">Líquido</th><th class="num">Pago em</th><th>Situação</th></tr></thead>
+          <tbody id="receberRows"></tbody>
+        </table>
+      </section>
+    </div>
+  </section>
+
+</div>
+
+<script src="js/loading.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/pages/pagamentos.js" defer></script>
+</body>
+</html>

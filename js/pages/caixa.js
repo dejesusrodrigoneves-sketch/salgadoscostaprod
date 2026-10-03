@@ -1,23 +1,45 @@
 // js/pages/caixa.js — extracted from caixa.html inline scripts
-// Delegator bridge functions
-window.abrirCaixaAction = function () { abrirCaixa(); };
-window.verRelatoriosAction = function () { verRelatorios(); };
-window.fecharCaixaAction = function () { fecharCaixa(); };
 
 (function () {
   if (!authGuard(['admin', 'user'])) throw new Error('Redirect');
   var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
   if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
 
-  function api(path, opts) {
-    var headers = { 'Content-Type': 'application/json' };
-    var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    return fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path, { headers: headers, ...opts }).then(function (r) {
-      if (!r.ok) return r.json().then(function (e) { throw new Error(e.error || 'Erro ' + r.status); });
-      return r.json();
-    });
+  async function api(path, opts) {
+    var o = opts || {};
+    var skip = o.skipLoading === true;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      var token = (typeof safeGetToken === 'function' ? safeGetToken() : '') ||
+        (JSON.parse(localStorage.getItem('authUser') || '{}').token);
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      var r = await fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path,
+        Object.assign({}, o, { headers: Object.assign({}, headers, o.headers || {}) }));
+      if (r.status === 204) return null;
+      if (!r.ok) {
+        var e = await r.json().catch(function () { return { error: 'Erro ' + r.status }; });
+        throw new Error(e.error || 'Erro ' + r.status);
+      }
+      var text = await r.text();
+      return text ? JSON.parse(text) : null;
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
+    }
   }
+
+  window.abrirCaixaAction = function (ds) {
+    if (typeof abrirCaixa === 'function') return abrirCaixa(ds);
+    console.warn('[delegator] handler not ready:', 'abrirCaixaAction');
+  };
+  window.verRelatoriosAction = function (ds) {
+    if (typeof verRelatorios === 'function') return verRelatorios(ds);
+    console.warn('[delegator] handler not ready:', 'verRelatoriosAction');
+  };
+  window.fecharCaixaAction = function (ds) {
+    if (typeof fecharCaixa === 'function') return fecharCaixa(ds);
+    console.warn('[delegator] handler not ready:', 'fecharCaixaAction');
+  };
 
   function toast(message, type) {
     type = type || 'success';
@@ -50,11 +72,11 @@ window.fecharCaixaAction = function () { fecharCaixa(); };
     document.getElementById('aberturaCard').style.display = 'none';
     document.getElementById('caixaCard').style.display = 'block';
     try {
-      var caixa = await api('/caixa/hoje');
+      var caixa = await api('/caixa/hoje', { skipLoading: true });
       trocoInicial = Number(caixa.valorInicial) || 0;
       document.getElementById('trocoInicial').textContent = trocoInicial.toFixed(2);
       var hojeStr = new Date().toISOString().split('T')[0];
-      var pedidos = await api('/pedidos?createdAtFrom=' + hojeStr + 'T00:00:00&createdAtTo=' + hojeStr + 'T23:59:59');
+      var pedidos = await api('/pedidos?createdAtFrom=' + hojeStr + 'T00:00:00&createdAtTo=' + hojeStr + 'T23:59:59', { skipLoading: true });
       resumo = { dinheiro: 0, pix: 0, debito: 0, credito: 0 };
       quantidadePedidos = pedidos.length;
       pedidos.forEach(function (p) {
@@ -129,7 +151,7 @@ window.fecharCaixaAction = function () { fecharCaixa(); };
 
   window.onload = async function () {
     try {
-      var caixa = await api('/caixa/hoje');
+      var caixa = await api('/caixa/hoje', { skipLoading: true });
       if (caixa && caixa.status === 'aberto') {
         document.getElementById('aberturaCard').style.display = 'none';
         document.getElementById('caixaCard').style.display = 'block';

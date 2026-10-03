@@ -1,4 +1,4 @@
-const bcrypt = require('bcryptjs');
+const { hashPassword } = require('../utils/password');
 const prisma = require('../config/prisma');
 const auditService = require('./auditService');
 
@@ -19,7 +19,7 @@ async function listar(empresaId) {
   return prisma.usuario.findMany({
     where: { empresaId },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, username: true, role: true, lojaNome: true, createdAt: true },
+    select: { id: true, username: true, role: true, lojaNome: true, empresaId: true, createdAt: true },
   });
 }
 
@@ -40,7 +40,7 @@ async function criar({ username, password, lojaNome, role, empresaId }, ctx = {}
   }
 
   const roleNorm = ROLES_VALIDOS.includes(role) ? role : 'user';
-  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const hash = await hashPassword(password);
   const user = await prisma.usuario.create({
     data: { empresaId, username, passwordHash: hash, lojaNome: lojaNome || username, role: roleNorm },
     select: { id: true, username: true, role: true, lojaNome: true },
@@ -90,7 +90,7 @@ async function resetarSenha(id, password, ctx = {}) {
   });
   if (!user) throw Object.assign(new Error('Usuário não encontrado'), { status: 404 });
 
-  const hash = await bcrypt.hash(password, SALT_ROUNDS);
+  const hash = await hashPassword(password);
   await prisma.usuario.update({ where: { id: user.id }, data: { passwordHash: hash } });
 
   await auditService.audit({

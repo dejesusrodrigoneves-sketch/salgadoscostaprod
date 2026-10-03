@@ -19,18 +19,27 @@
     return 'R$ ' + Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   }
 
-  async function apiFetch(path) {
-    const token = getToken();
-    const res = await fetch(API_BASE + path, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!res.ok) throw new Error('API ' + res.status);
-    return res.json();
+  async function apiFetch(path, options = {}) {
+    const skip = options.skipLoading === true;
+    const opts = { ...options };
+    delete opts.skipLoading;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      const token = getToken();
+      const res = await fetch(API_BASE + path, {
+        ...opts,
+        headers: { 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) }
+      });
+      if (!res.ok) throw new Error('API ' + res.status);
+      return res.json();
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
+    }
   }
 
   async function carregarEmpresasDashboard() {
     try {
-      const data = await apiFetch('/api/admin/dashboard/empresas');
+      const data = await apiFetch('/api/admin/dashboard/empresas', { skipLoading: true });
       const select = document.getElementById('dashEmpresaSelect');
       if (!select || !data.empresas) return;
       select.innerHTML = '<option value="">Todas as Empresas (Visão Geral)</option>';
@@ -50,7 +59,7 @@
       const select = document.getElementById('dashEmpresaSelect');
       const empresaId = select?.value || '';
       const params = empresaId ? '?empresaId=' + empresaId : '';
-      const summary = await apiFetch('/api/admin/dashboard/summary' + params);
+      const summary = await apiFetch('/api/admin/dashboard/summary' + params, { skipLoading: true });
 
       const badge = document.getElementById('dashEmpresaBadge');
       const title = document.getElementById('dashTitle');
@@ -95,7 +104,7 @@
 
   async function renderEmpresasTable() {
     try {
-      const data = await apiFetch('/api/admin/dashboard/empresas');
+      const data = await apiFetch('/api/admin/dashboard/empresas', { skipLoading: true });
       const tbody = document.getElementById('dashEmpresasBody');
       if (!tbody || !data.empresas) return;
       tbody.innerHTML = data.empresas.map(function(e) {
@@ -121,7 +130,7 @@
     
     try {
       // Load all empresas for matriz names
-      var empresas = await apiFetch('/api/admin');
+      var empresas = await apiFetch('/api/admin', { skipLoading: true });
       var matrizMap = {};
       empresas.forEach(function(e) { matrizMap[e.id] = e.nome; });
       
@@ -131,7 +140,7 @@
         var e = empresas[i];
         if (e.empresaTipo !== 'filial') {
           try {
-            var filiais = await apiFetch('/api/admin/empresas/' + e.id + '/filiais');
+            var filiais = await apiFetch('/api/admin/empresas/' + e.id + '/filiais', { skipLoading: true });
             filiais.forEach(function(f) { f._matrizNome = e.nome; });
             allFiliais = allFiliais.concat(filiais);
           } catch (err) { /* skip */ }
@@ -155,15 +164,42 @@
           '<td>' + (filial.justificativa ? escapeHtml(filial.justificativa) : '-') + '</td>' +
           '<td>' + (filial.createdAt ? new Date(filial.createdAt).toLocaleDateString('pt-BR') : '-') + '</td>' +
           '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
-          '<td>' +
-            (filial.status === 'pending' ? '<button onclick="aprovarFilial(' + filial.id + ')" style="padding:4px 8px;border:1px solid #22c55e;border-radius:4px;background:transparent;color:#22c55e;font-size:12px;margin-right:4px;"><i class="fas fa-check"></i> Aprovar</button>' : '') +
-            '<button onclick="excluirFilial(' + filial.id + ')" style="padding:4px 8px;border:1px solid #EF4444;border-radius:4px;background:transparent;color:#EF4444;font-size:12px;"><i class="fas fa-trash"></i> Excluir</button>' +
+          '<td style="white-space:nowrap;">' +
+            (filial.status === 'pending' ? '<button class="btn btn-sm" data-action="aprovarFilialAction" data-id="' + filial.id + '" style="padding:4px 8px;border:1px solid #22c55e;border-radius:4px;background:transparent;color:#22c55e;font-size:12px;margin-right:4px;"><i class="fas fa-check"></i> Aprovar</button>' : '') +
+            '<button class="btn btn-sm" data-action="desvincularFilialAction" data-id="' + filial.id + '" style="padding:4px 8px;border:1px solid #F59E0B;border-radius:4px;background:transparent;color:#F59E0B;font-size:12px;margin-right:4px;"><i class="fas fa-link"></i> Desvincular</button>' +
+            '<button class="btn btn-sm" data-action="excluirFilialAction" data-id="' + filial.id + '" style="padding:4px 8px;border:1px solid #EF4444;border-radius:4px;background:transparent;color:#EF4444;font-size:12px;"><i class="fas fa-trash"></i> Excluir</button>' +
           '</td>';
         tbody.appendChild(tr);
       });
     } catch (err) {
       console.error('Erro ao carregar filiais:', err);
     }
+  }
+
+  async function buscarProximoCiclo(empresaId) {
+    try {
+      var r = await apiFetch('/api/admin/empresas/' + empresaId + '/next-due-date');
+      if (r.nextDueDate) {
+        var d = new Date(r.nextDueDate + 'T12:00:00');
+        return d.toLocaleDateString('pt-BR');
+      }
+    } catch (e) {}
+    // Fallback client-side: próximo dia útil
+    var d = new Date();
+    do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  async function popularDataCiclo() {
+    var empresas = await apiFetch('/api/admin');
+    // Pegar data da primeira matriz encontrada
+    var matriz = empresas.find(function(e) { return e.empresaTipo !== 'filial'; });
+    if (!matriz) return;
+    var data = await buscarProximoCiclo(matriz.id);
+    var elD = document.getElementById('dataCicloDesvincularSA');
+    var elE = document.getElementById('dataCicloExcluirSA');
+    if (elD) elD.textContent = data;
+    if (elE) elE.textContent = data;
   }
 
   function abrirModalCriarFilial() {
@@ -222,23 +258,9 @@
   }
 
   async function desvincularFilial(empresaId) {
-    if (!confirm('Tem certeza que deseja desvincular esta filial?')) return;
-    
-    try {
-      var token = getToken();
-      var res = await fetch(API_BASE + '/api/admin/empresas/' + empresaId + '/parent', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ parentEmpresaId: null }),
-      });
-      
-      if (!res.ok) throw new Error('Erro ao desvincular');
-      
-      carregarFiliais();
-      alert('Filial desvinculada com sucesso!');
-    } catch (err) {
-      alert('Erro ao desvincular: ' + err.message);
-    }
+    // Store id for modal confirmation
+    window._filialDesvincularId = empresaId;
+    document.getElementById('modalDesvincularFilial').style.display = 'flex';
   }
 
   async function aprovarFilial(id) {
@@ -261,8 +283,50 @@
   }
 
   async function excluirFilial(id) {
-    if (!confirm('Tem certeza que deseja excluir esta filial?')) return;
-    
+    // Store id for modal confirmation
+    window._filialExcluirId = id;
+    document.getElementById('modalExcluirFilial').style.display = 'flex';
+  }
+
+  // ---- Modal Confirm Handlers ----
+
+  window.confirmarDesvincularAction = async function() {
+    var id = window._filialDesvincularId;
+    document.getElementById('modalDesvincularFilial').style.display = 'none';
+    window._filialDesvincularId = null;
+    if (!id) return;
+
+    try {
+      var token = getToken();
+      var res = await fetch(API_BASE + '/api/admin/empresas/' + id + '/parent', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ parentEmpresaId: null }),
+      });
+      
+      if (!res.ok) {
+        var err = await res.json().catch(function() { return {}; });
+        throw new Error(err.error || 'Erro ao desvincular');
+      }
+      
+      carregarFiliais();
+      alert('Filial desvinculada com sucesso!');
+    } catch (err) {
+      alert('Erro ao desvincular: ' + err.message);
+    }
+  };
+
+  window.cancelarDesvincularAction = function() {
+    document.getElementById('modalDesvincularFilial').style.display = 'none';
+    window._filialDesvincularId = null;
+  };
+
+  window.confirmarExcluirAction = async function() {
+    var id = window._filialExcluirId;
+    document.getElementById('modalExcluirFilial').style.display = 'none';
+    window._filialExcluirId = null;
+    if (!id) return;
+
     try {
       var token = getToken();
       var res = await fetch(API_BASE + '/api/admin/filiais/' + id, {
@@ -270,14 +334,22 @@
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       });
       
-      if (!res.ok) throw new Error('Erro ao excluir');
+      if (!res.ok) {
+        var err = await res.json().catch(function() { return {}; });
+        throw new Error(err.error || 'Erro ao excluir');
+      }
       
       carregarFiliais();
       alert('Filial excluída com sucesso!');
     } catch (err) {
       alert('Erro ao excluir: ' + err.message);
     }
-  }
+  };
+
+  window.cancelarExcluirAction = function() {
+    document.getElementById('modalExcluirFilial').style.display = 'none';
+    window._filialExcluirId = null;
+  };
 
   window.carregarFiliais = carregarFiliais;
   window.abrirModalCriarFilial = abrirModalCriarFilial;
@@ -286,12 +358,24 @@
   window.aprovarFilial = aprovarFilial;
   window.excluirFilial = excluirFilial;
 
+  // Data-action bridge functions (delegator pattern)
+  window.desvincularFilialAction = function(ds) { desvincularFilial(Number(ds.id)); };
+  window.excluirFilialAction = function(ds) { excluirFilial(Number(ds.id)); };
+  window.aprovarFilialAction = function(ds) { aprovarFilial(Number(ds.id)); };
+  window.abrirModalCriarFilialAction = function() { abrirModalCriarFilial(); };
+  window.criarFilialAction = function() { criarFilial(); };
+
   // Expose globally for superadmin.html onclick
   window.carregarDashboard = carregarDashboard;
   window.onEmpresaChange = function() { carregarDashboard(); };
+  window.onEmpresaChangeAction = function (ds) {
+    if (typeof window.onEmpresaChange === 'function') return window.onEmpresaChange(ds);
+    console.warn('[delegator] handler not ready:', 'onEmpresaChangeAction');
+  };
 
   // Auto-load on script parse
   document.addEventListener('DOMContentLoaded', function() {
     carregarEmpresasDashboard().then(carregarDashboard);
+    popularDataCiclo();
   });
 })();

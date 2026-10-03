@@ -13,4 +13,10 @@ function calcularDesconto(percent, base) {
   return Number(((Number(base) || 0) * p / 100).toFixed(2));
 }
 
-module.exports = { calcularTaxaEntrega, calcularDesconto };
+function calcularTaxaCartao(formaPagamento, base) {
+  const f = String(formaPagamento || '').toLowerCase();
+  const percent = f === 'debito' ? 0.02 : f === 'credito' ? 0.06 : 0;
+  return Number(((Number(base) || 0) * percent).toFixed(2));
+}
+
+module.exports = { calcularTaxaEntrega, calcularDesconto, calcularTaxaCartao };

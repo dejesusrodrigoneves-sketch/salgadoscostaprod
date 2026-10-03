@@ -973,7 +973,8 @@ function mostrarPagamentoPix(orderId, pagamento, itens, total) {
 
   // SSE
   try {
-    var es = new EventSource((window.getApiBase ? window.getApiBase() : '') + "/api/payment/status/" + encodeURIComponent(orderId));
+    var sseToken = (typeof PUBLIC_API !== 'undefined' && PUBLIC_API.getToken) ? PUBLIC_API.getToken() : '';
+    var es = new EventSource((window.getApiBase ? window.getApiBase() : '') + "/api/payment/status/" + encodeURIComponent(orderId) + (sseToken ? "?token=" + encodeURIComponent(sseToken) : ""));
     es.onmessage = function (ev) {
       var data = JSON.parse(ev.data);
       if (data.status === "pago") {

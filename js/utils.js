@@ -68,8 +68,7 @@ function authGuard(requiredRoles) {
     if (!user.username) { window.location.replace('login.html'); return false; }
     // Expiração de sessão (30 min)
     if (user._expiry && Date.now() > user._expiry) {
-      localStorage.removeItem('authUser');
-      window.location.replace('login.html');
+      hardLogout('expiry');
       return false;
     }
     if (requiredRoles) {
@@ -94,29 +93,113 @@ window.checkSessionValid = function() {
     var data = JSON.parse(raw);
     if (!data || !data.token) return false;
     if (data._expiry && Date.now() > data._expiry) {
-      localStorage.removeItem('authUser');
-      window.location.href = 'login.html';
+      hardLogout('expiry');
       return false;
     }
     return true;
   } catch (e) {
-    localStorage.removeItem('authUser');
-    window.location.href = 'login.html';
+    hardLogout('storage-corrupt');
     return false;
   }
 };
 
-// Idle timeout: auto-logout after 30 minutes of inactivity
+// ========== Sessão: wipe + hard logout ==========
+// Chaves de sessão removidas no logout. cart/userLogged/clientToken_* preservados.
+var SESSION_KEYS = ['authUser', 'entregador_token', 'entregador_refresh', 'entregador_expiry'];
+
+// Limpeza total de cookies do navegador (inclui não-httpOnly) + chaves de sessão.
+// Cookies httpOnly são limpos pelo backend em /api/auth/wipe-cookies (hardLogout passo 2).
+function wipeBrowserStorage() {
+  try {
+    if (typeof document !== 'undefined' && typeof document.cookie === 'string') {
+      var paths = ['/'];
+      try { if (location && location.pathname) paths.push(location.pathname); } catch (e) { /* sem location */ }
+      for (var pass = 0; pass < 8; pass++) {
+        var names = document.cookie
+          .split(';')
+          .map(function (c) { return (c.split('=')[0] || '').trim(); })
+          .filter(Boolean);
+        if (!names.length) break;
+        names.forEach(function (n) {
+          paths.forEach(function (p) {
+            document.cookie = n + '=; max-age=0; path=' + p;
+            try { document.cookie = n + '=; max-age=0; path=' + p + '; domain=' + location.hostname; } catch (e) { /* sem domain */ }
+          });
+        });
+      }
+    }
+  } catch (e) { /* segue */ }
+  try {
+    SESSION_KEYS.forEach(function (k) { localStorage.removeItem(k); });
+  } catch (e) { /* segue */ }
+}
+window.wipeBrowserStorage = wipeBrowserStorage;
+
+// Hard logout — CONTRATO (ordem obrigatória):
+//   1) POST /api/auth/logout       → revoke token + refreshToken ANTES de qualquer limpeza
+//   2) POST /api/auth/wipe-cookies → limpa cookies httpOnly no servidor
+//   3) wipeBrowserStorage()        → limpa cookies restantes + chaves de sessão
+//   4) redirect → login.html
+var _hardLogoutRunning = false;
+function hardLogout(reason) {
+  if (_hardLogoutRunning) return;
+  _hardLogoutRunning = true;
+
+  var au = null;
+  try { au = JSON.parse(localStorage.getItem('authUser') || 'null'); } catch (e) { au = null; }
+
+  var base = '';
+  try {
+    base = (typeof window.getApiBase === 'function') ? window.getApiBase() : (window.getApiBase || '');
+  } catch (e) { base = ''; }
+
+  // 1. revoke no backend ANTES de limpar dados locais (best-effort)
+  var step1;
+  try {
+    step1 = fetch(base + '/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ((au && au.token) || '') },
+      body: JSON.stringify({ refreshToken: (au && au.refreshToken) || '' })
+    }).catch(function () {});
+  } catch (e) { step1 = Promise.resolve(); }
+
+  // 2. limpa cookies httpOnly via backend (best-effort)
+  step1
+    .then(function () {
+      try { return fetch(base + '/api/auth/wipe-cookies', { method: 'POST' }).catch(function () {}); }
+      catch (e) { return Promise.resolve(); }
+    })
+    .then(function () {
+      // 3. cookies não-httpOnly + chaves de sessão
+      wipeBrowserStorage();
+      // 4. redirect
+      try { window.location.href = 'login.html'; } catch (e) { /* segue */ }
+    });
+}
+window.hardLogout = hardLogout;
+
+// ========== Idle timeout: hard logout após 30 min de inatividade ==========
 var _idleTimer = null;
+var _idleStarted = false;
 var IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 window.startIdleTimer = function() {
+  if (_idleStarted) return; // proteção contra múltiplas inicializações
+  _idleStarted = true;
+
+  // Override de timeout (testes: window.__IDLE_TIMEOUT_MS)
+  var timeout = IDLE_TIMEOUT;
+  try {
+    if (typeof window.__IDLE_TIMEOUT_MS === 'number' && window.__IDLE_TIMEOUT_MS > 0) {
+      timeout = window.__IDLE_TIMEOUT_MS;
+    }
+  } catch (e) { /* segue com 30 min */ }
+
   function resetTimer() {
     clearTimeout(_idleTimer);
     _idleTimer = setTimeout(function() {
-      localStorage.removeItem('authUser');
-      window.location.href = 'login.html';
-    }, IDLE_TIMEOUT);
+      hardLogout('idle');
+    }, timeout);
   }
   ['mousedown','mousemove','keydown','scroll','touchstart'].forEach(function(evt) {
     document.addEventListener(evt, resetTimer, { passive: true });
@@ -129,6 +212,7 @@ window.startIdleTimer = function() {
   });
   resetTimer();
 };
+window.IDLE_TIMEOUT = IDLE_TIMEOUT;
 
 // Get current auth user
 function getAuthUser() {
@@ -162,3 +246,13 @@ function maskCEP(input) {
 
 // Get current date as YYYY-MM-DD
 function dataHoje() { return new Date().toISOString().split('T')[0]; }
+// Safe token reader — authUser JSON only (never localStorage.token)
+function safeGetToken() {
+  try {
+    var u = JSON.parse(localStorage.getItem('authUser') || '{}');
+    return (u && u.token) || '';
+  } catch (e) {
+    return '';
+  }
+}
+if (typeof window !== 'undefined') window.safeGetToken = safeGetToken;

@@ -1,4 +1,5 @@
 const auditQueue = require('./auditQueue');
+const { redactAudit, maskActor } = require('./auditRedaction');
 
 const SENSITIVE_KEYS = /password|passwd|secret|apikey|api_key|token|qr|pairing|hash/i;
 const PHONE_RE = /^\+?\d{10,14}$/;
@@ -37,14 +38,14 @@ function buildEntry(input) {
     empresaId: input.empresaId || 1,
     actorType: input.actorType || 'anon',
     actorId: input.actorId ?? null,
-    actorUsername: input.actorUsername || null,
+    actorUsername: maskActor(input.actorUsername) || null,
     actorRole: input.actorRole || null,
     action: input.action,
     module: input.module || 'geral',
     targetType: input.targetType || null,
     targetId: input.targetId != null ? String(input.targetId) : null,
-    before: input.before ? maskDeep(input.before) : null,
-    after: input.after ? maskDeep(input.after) : null,
+    before: input.before ? maskDeep(redactAudit(input.before)) : null,
+    after: input.after ? maskDeep(redactAudit(input.after)) : null,
     changedFields: input.changedFields ? input.changedFields : null,
     severity: input.severity || 'info',
     reason: input.reason || null,

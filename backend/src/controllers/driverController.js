@@ -2,7 +2,7 @@ const sql = require('../repositories/sqlRepository');
 const auditService = require('../services/auditService');
 const { getCtx } = require('../middleware/context');
 const { asyncHandler } = require('../middleware/errorHandler');
-const bcrypt = require('bcryptjs');
+const { hashPassword } = require('../utils/password');
 const whatsappService = require('../services/whatsappService');
 
 function empresaId(req) {
@@ -36,7 +36,7 @@ exports.criar = asyncHandler(async (req, res) => {
 
   // Generate provisional password (format: SIC-XXXX)
   const provisionalPassword = 'SIC-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-  const passwordHash = await bcrypt.hash(provisionalPassword, 10);
+  const passwordHash = await hashPassword(provisionalPassword);
 
   // Create Entregador
   const entregador = await prisma.entregador.create({
@@ -198,7 +198,7 @@ exports.resetarSenha = asyncHandler(async (req, res) => {
   });
   if (!entregador) return res.status(404).json({ error: 'Entregador não encontrado' });
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await hashPassword(password);
 
   // Update entregador + linked usuario
   await prisma.entregador.update({

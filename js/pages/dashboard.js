@@ -42,6 +42,7 @@
             { icon: 'fa-chart-bar', label: 'Relatórios', page: 'relatorios.html' },
             { icon: 'fa-wallet', label: 'Controle de Caixa', page: 'caixa.html' },
             { icon: 'fa-landmark', label: 'Central Financeira', page: 'financeiro.html' },
+            { icon: 'fa-receipt', label: 'Pagamentos', page: 'pagamentos.html' },
           ]
         },
         {
@@ -64,7 +65,6 @@
           title: 'Filiais',
           items: [
             { icon: 'fa-sitemap', label: 'Gerenciar Filiais', page: 'filiais.html' },
-            { icon: 'fa-chart-pie', label: 'Balanço Consolidado', page: 'financeiro.html?consolidated=1' },
           ]
         });
       }
@@ -210,7 +210,8 @@
           body: JSON.stringify({ refreshToken: au.refreshToken || '' }),
         });
       } catch (e) { /* Logout even if API call fails */ }
-      localStorage.clear();
+      if (typeof window.wipeBrowserStorage === 'function') window.wipeBrowserStorage();
+      else localStorage.clear();
       window.location.href = 'login.html';
     });
 
@@ -290,4 +291,59 @@
   mainFrame.src = currentPage;
 
   if (typeof startIdleTimer === 'function') startIdleTimer();
+
+  // ===== Validação periódica de sessão =====
+  // Verifica se o token ainda é válido; se 401, tenta refresh
+  var _sessionCheckBusy = false;
+  function validarSessao() {
+    if (_sessionCheckBusy) return;
+    var au = JSON.parse(localStorage.getItem('authUser') || 'null');
+    if (!au || !au.token) return;
+    _sessionCheckBusy = true;
+    fetch((getApiBase() || '') + '/api/admin', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + au.token }
+    }).then(function (r) {
+      if (r.status === 401) {
+        // Token inválido/expirado — hard logout (sem refresh; sessão não revive)
+        if (typeof window.hardLogout === 'function') {
+          window.hardLogout('401');
+        } else {
+          localStorage.removeItem('authUser');
+          window.location.href = 'login.html';
+        }
+        return;
+      }
+      // 200/403/etc — sessão ok (403 = empresa inativa, mas token válido)
+    }).catch(function () {
+      // Rede fora — ignora silenciosamente
+    }).then(function () {
+      _sessionCheckBusy = false;
+    });
+  }
+
+  // Revalida quando aba ganha foco
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) validarSessao();
+  });
+
+  // Revalida a cada 5 min
+  setInterval(validarSessao, 5 * 60 * 1000);
 })();
+
+window.toggleSidebarCollapseAction = function (ds) {
+  if (typeof window.toggleSidebarCollapse === 'function') return window.toggleSidebarCollapse(ds);
+  console.warn('[delegator] handler not ready:', 'toggleSidebarCollapseAction');
+};
+window.toggleSidebarAction = function (ds) {
+  if (typeof window.toggleSidebar === 'function') return window.toggleSidebar(ds);
+  console.warn('[delegator] handler not ready:', 'toggleSidebarAction');
+};
+window.closeSidebarAction = function (ds) {
+  if (typeof window.closeSidebar === 'function') return window.closeSidebar(ds);
+  console.warn('[delegator] handler not ready:', 'closeSidebarAction');
+};
+window.logoutAction = function (ds) {
+  if (typeof window.logout === 'function') return window.logout(ds);
+  console.warn('[delegator] handler not ready:', 'logoutAction');
+};

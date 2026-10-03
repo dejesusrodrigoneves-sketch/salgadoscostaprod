@@ -11,5 +11,6 @@ router.post('/register-public', authLimiter, controller.criarConta);
 router.put('/change-password', authenticate, controller.alterarSenha);
 router.post('/refresh', refreshLimiter, controller.refreshToken);
 router.post('/logout', authenticate, controller.logout);
+router.post('/wipe-cookies', controller.wipeCookies); // sem authenticate: roda após expirar a sessão
 
 module.exports = router;

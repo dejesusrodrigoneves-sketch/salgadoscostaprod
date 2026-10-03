@@ -70,7 +70,24 @@ const sql = {
     return prisma.processedWebhook.findUnique({ where: { eventId } });
   },
   async criarEventoWebhook(eventId) {
-    return prisma.processedWebhook.create({ data: { eventId } });
+    // Atomic: INSERT ... if duplicate → returns null (already processed)
+    try {
+      return await prisma.processedWebhook.create({ data: { eventId } });
+    } catch (err) {
+      // P2002 = unique constraint violation → already exists
+      if (err.code === 'P2002') return null;
+      throw err;
+    }
+  },
+  async removerEventoWebhook(eventId) {
+    await prisma.processedWebhook.deleteMany({ where: { eventId } });
+  },
+  async cleanupOldWebhookEvents(daysOld = 7) {
+    const cutoff = new Date(Date.now() - daysOld * 24 * 3600 * 1000);
+    const result = await prisma.processedWebhook.deleteMany({
+      where: { createdAt: { lt: cutoff } },
+    });
+    return result.count;
   },
   async listarPagamentosRejeitados(empresaId) {
     const where = { status: 'rejeitado', refundId: null };
@@ -116,9 +133,7 @@ const sql = {
 
   // ---- Usuários ----
   async buscarUsuario(username, empresaId) {
-    if (empresaId) {
-      return prisma.usuario.findUnique({ where: { empresaId_username: { empresaId, username } } });
-    }
+    // username is global (no compound unique)
     return prisma.usuario.findFirst({ where: { username } });
   },
   async buscarUsuarioSuperadmin(username) {
@@ -244,27 +259,36 @@ const sql = {
       const limit = Math.min(Number(filtros.limit) || 50, 100);
       const skip = (page - 1) * limit;
       const [items, total] = await Promise.all([
-        prisma.cliente.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit }),
+        prisma.cliente.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: limit, include: { empresa: true } }),
         prisma.cliente.count({ where }),
       ]);
       return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
     }
-    return prisma.cliente.findMany({ where, orderBy: { createdAt: 'desc' } });
+    return prisma.cliente.findMany({ where, orderBy: { createdAt: 'desc' }, include: { empresa: true } });
   },
   async buscarCliente(telefone, empresaId) {
-    if (empresaId) {
-      return prisma.cliente.findUnique({ where: { empresaId_telefone: { empresaId, telefone } } });
-    }
-    return prisma.cliente.findFirst({ where: { telefone } });
+    if (!empresaId) throw new Error('[sqlRepository] buscarCliente exige empresaId (lookup global proibido)');
+    const { buildBidxWhere } = require('./piiRepository');
+    const row = await prisma.cliente.findFirst({ where: buildBidxWhere(empresaId, telefone) });
+    if (row) return row;
+    // transição (T6→T13): bidx ainda não backfillado — fallback para coluna plaintext (removida no contract T13)
+    return prisma.cliente.findUnique({ where: { empresaId_telefone: { empresaId, telefone } } }).catch(() => null);
   },
   async buscarClientePorId(id) {
     return prisma.cliente.findUnique({ where: { id: Number(id) } });
   },
   async criarCliente(data) {
-    return prisma.cliente.create({ data });
+    // transição: mantém plaintext + popula enc/bidx (mappers T6 — pré-condição do contract T13)
+    const { mapClienteIn } = require('./piiRepository');
+    return prisma.cliente.create({ data: { ...data, ...mapClienteIn(data) } });
   },
   async atualizarCliente(id, data) {
-    return prisma.cliente.update({ where: { id: Number(id) }, data });
+    const { mapClientePatch } = require('./piiRepository');
+    const cur = ['telefone', 'endereco', 'numero', 'cep', 'pontoReferencia'].some((k) => data[k] !== undefined)
+      ? await prisma.cliente.findUnique({ where: { id: Number(id) }, select: { empresaId: true } })
+      : null;
+    const mapped = cur ? mapClientePatch(data, cur.empresaId) : {};
+    return prisma.cliente.update({ where: { id: Number(id) }, data: { ...data, ...mapped } });
   },
   async deletarCliente(id) {
     return prisma.cliente.delete({ where: { id: Number(id) } });

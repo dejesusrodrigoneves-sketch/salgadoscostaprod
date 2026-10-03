@@ -13,7 +13,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const prisma = require('./config/prisma');
 const { errorHandler } = require('./middleware/errorHandler');
-const { apiLimiter } = require('./middleware/rateLimit');
+const { apiLimiter, webhookLimiter } = require('./middleware/rateLimit');
 const { authenticate, authorize } = require('./middleware/auth');
 const validateEntregadorEmpresa = require('./middleware/validateEntregadorEmpresa');
 const contextMiddleware = require('./middleware/context');
@@ -52,6 +52,9 @@ const filialPricingRoutes = filialPricingRoutesModule.default ?? filialPricingRo
 
 const app = express();
 
+// Trust proxy por topologia (env, ex.: '1' ou IP/subnet do Railway — NÃO 'true')
+if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
+
 // HTTPS enforcement in production
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
@@ -67,6 +70,10 @@ registerAllProviders();
 
 app.use(resolveEmpresa);
 app.use(contextMiddleware);
+const { requestLog } = require('./middleware/requestLog');
+app.use(requestLog);
+// bloqueia escrita PII durante rotação de chaves (T14)
+app.use(require('./middleware/rotationGate'));
 app.use(compression({ threshold: 1024 }));
 app.use(helmet({
   contentSecurityPolicy: {
@@ -112,7 +119,7 @@ app.use('/api/usuarios', userRoutes);
 app.use('/api/entregas', entregaRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/payment', paymentRouter);
-app.use('/webhooks', webhookRouter);
+app.use('/webhooks', webhookLimiter, webhookRouter);
 app.use('/api/empresa/settlement', settlementRoutes);
 app.use('/api/empresa/payment', paymentSetupRoutes);
 app.use('/api/financeiro', financeiroRoutes);
@@ -134,6 +141,14 @@ app.get('/health', async (req, res) => {
     return res.json({ status: 'ok', db: 'up' });
   } catch {
     return res.status(503).json({ status: 'unavailable', db: 'down' });
+  }
+});
+app.get('/ready', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({ status: 'ready' });
+  } catch {
+    return res.status(503).json({ status: 'not_ready' });
   }
 });
 app.get('/', (req, res) => res.json({ status: 'online', sistema: 'Backend SalgadosCosta' }));

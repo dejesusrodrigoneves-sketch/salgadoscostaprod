@@ -21,20 +21,28 @@
   }
 
   async function apiFetch(path, options = {}) {
-    const token = getToken();
-    const res = await fetch(API_BASE + path, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-        ...options.headers,
-      },
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'API ' + res.status);
+    const skip = options.skipLoading === true;
+    const opts = { ...options };
+    delete opts.skipLoading;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      const token = getToken();
+      const res = await fetch(API_BASE + path, {
+        ...opts,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+          ...opts.headers,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'API ' + res.status);
+      }
+      return res.json();
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
     }
-    return res.json();
   }
 
   async function carregarFiliais() {
@@ -103,8 +111,17 @@
     }
   };
 
-  window.desvincular = async function(id) {
-    if (!confirm('Tem certeza que deseja desvincular esta filial?')) return;
+  window.desvincularAction = function(ds) { window._desvincularId = Number(ds.id); document.getElementById('modalDesvincular').classList.add('active'); };
+  window.excluirFilialAction = function(ds) { window._excluirId = Number(ds.id); document.getElementById('modalExcluir').classList.add('active'); };
+
+  window.cancelarDesvincularAction = function() { document.getElementById('modalDesvincular').classList.remove('active'); window._desvincularId = null; };
+  window.cancelarExcluirAction = function() { document.getElementById('modalExcluir').classList.remove('active'); window._excluirId = null; };
+
+  window.confirmarDesvincularAction = async function() {
+    var id = window._desvincularId;
+    document.getElementById('modalDesvincular').classList.remove('active');
+    window._desvincularId = null;
+    if (!id) return;
     try {
       await apiFetch('/api/admin/empresas/' + id + '/parent', {
         method: 'PUT',
@@ -117,16 +134,46 @@
     }
   };
 
-  window.excluir = async function(id) {
-    if (!confirm('Tem certeza que deseja excluir esta filial? Os dados serão preservados.')) return;
+  window.confirmarExcluirAction = async function() {
+    var id = window._excluirId;
+    document.getElementById('modalExcluir').classList.remove('active');
+    window._excluirId = null;
+    if (!id) return;
     try {
       await apiFetch('/api/admin/filiais/' + id, { method: 'DELETE' });
       carregarFiliais();
-      alert('Filial excluída (soft delete)!');
+      alert('Filial excluída!');
     } catch (err) {
       alert('Erro ao excluir: ' + err.message);
     }
   };
 
-  document.addEventListener('DOMContentLoaded', carregarFiliais);
+  async function buscarProximoCiclo(empresaId) {
+    try {
+      var r = await apiFetch('/api/admin/empresas/' + empresaId + '/next-due-date');
+      if (r.nextDueDate) {
+        var d = new Date(r.nextDueDate + 'T12:00:00');
+        return d.toLocaleDateString('pt-BR');
+      }
+    } catch (e) {}
+    // Fallback client-side: próximo dia útil
+    var d = new Date();
+    do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  async function initFiliais() {
+    await carregarFiliais();
+    var authUser = getAuthUser();
+    var empresaId = authUser?.empresaId;
+    if (empresaId) {
+      var data = await buscarProximoCiclo(empresaId);
+      var elD = document.getElementById('dataCicloDesvincular');
+      var elE = document.getElementById('dataCicloExcluir');
+      if (elD) elD.textContent = data;
+      if (elE) elE.textContent = data;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initFiliais);
 })();

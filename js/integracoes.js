@@ -6,17 +6,25 @@ window.Integracoes = (function () {
   }
 
   async function api(path, opts = {}) {
-    const a = auth();
-    const res = await fetch((window.getApiBase ? window.getApiBase() : '') + path, {
-      ...opts,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.token}`, ...(opts.headers || {}) },
-    });
-    if (res.status === 401) { window.location.href = 'login.html'; throw new Error('unauthorized'); }
-    return res.json();
+    const skip = opts.skipLoading === true;
+    const o = { ...opts };
+    delete o.skipLoading;
+    if (!skip && typeof showLoading === 'function') showLoading();
+    try {
+      const a = auth();
+      const res = await fetch((window.getApiBase ? window.getApiBase() : '') + path, {
+        ...o,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.token}`, ...(o.headers || {}) },
+      });
+      if (res.status === 401) { window.location.href = 'login.html'; throw new Error('unauthorized'); }
+      return res.json();
+    } finally {
+      if (!skip && typeof hideLoading === 'function') hideLoading();
+    }
   }
 
   async function carregar() {
-    const integs = await api('/api/financeiro/integrations');
+    const integs = await api('/api/financeiro/integrations', { skipLoading: true });
     const lista = document.getElementById('integ-lista');
     lista.innerHTML = '';
     integs.forEach(i => {

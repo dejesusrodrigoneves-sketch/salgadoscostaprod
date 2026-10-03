@@ -139,6 +139,7 @@
     document.body.appendChild(overlay);
     
     document.getElementById('payNowBtn').addEventListener('click', async () => {
+      if (typeof showLoading === 'function') showLoading();
       try {
         const authUser = getAuthUser();
         const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/pay', {
@@ -155,6 +156,8 @@
         }
       } catch (e) {
         console.error('Pay error:', e);
+      } finally {
+        if (typeof hideLoading === 'function') hideLoading();
       }
     });
     

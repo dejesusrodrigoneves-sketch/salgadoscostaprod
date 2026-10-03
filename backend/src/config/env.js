@@ -1,5 +1,15 @@
 require('dotenv').config();
 
+const { validateEnv } = require('./validateEnv.js');
+const _check = validateEnv();
+if (!_check.ok) {
+  console.error('[env] Variáveis obrigatórias ausentes:', _check.missing.join(', '));
+  if (process.env.NODE_ENV === 'production') process.exit(1);
+}
+if (_check.warnings.length) {
+  console.warn('[env] Variáveis recomendadas ausentes:', _check.warnings.join(', '));
+}
+
 module.exports = {
   port: process.env.PORT || 3000,
   jwtSecret: process.env.JWT_SECRET,
@@ -16,7 +26,7 @@ module.exports = {
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
   asaasAccessToken: process.env.ASAAS_ACCESS_TOKEN,
   asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN,
-  asaasEnv: process.env.ASAAS_ENV || 'production',
+  asaasEnv: process.env.ASAAS_ENV || 'sandbox',
   asaasPixExpiryMin: Number(process.env.ASAAS_PIX_EXPIRY_MIN) || 5,
   asaasPixFeePercent: Number(process.env.ASAAS_PIX_FEE_PERCENT) || 2,
   pixSyncCron: process.env.PIX_SYNC_CRON || '*/2 * * * *',

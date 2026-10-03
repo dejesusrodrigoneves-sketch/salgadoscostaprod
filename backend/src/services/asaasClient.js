@@ -99,7 +99,8 @@ async function agendarTransferencia({ accessToken, valor, pixAddressKey, pixAddr
 }
 
 async function consultarSaldo({ accessToken, subcontaId }) {
-  const { data } = await axios.get(`${BASE}/accounts/${subcontaId}/balance`, { headers: subcontaHeaders(accessToken) });
+  // Asaas v3: saldo do token autenticado (subconta usa proprio token)
+  const { data } = await axios.get(`${BASE}/finance/balance`, { headers: subcontaHeaders(accessToken) });
   // Normalize: Asaas API may return availableBalance or balance
   return {
     available: data.availableBalance ?? data.balance ?? 0,

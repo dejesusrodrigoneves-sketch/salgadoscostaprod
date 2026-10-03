@@ -1,12 +1,24 @@
 // --- api() helper ---
-function api(path, opts) {
-  var headers = { 'Content-Type': 'application/json' };
-  var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  return fetch((window.getApiBase?window.getApiBase():'') + '/api' + path, { headers: headers, ...opts }).then(function(r) {
-    if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Erro ' + r.status); });
-    return r.json();
-  });
+async function api(path, opts) {
+  var o = opts || {};
+  var skip = o.skipLoading === true;
+  if (!skip && typeof showLoading === 'function') showLoading();
+  try {
+    var headers = { 'Content-Type': 'application/json' };
+    var token = (typeof safeGetToken === 'function' ? safeGetToken() : '');
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    var r = await fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path,
+      Object.assign({}, o, { headers: Object.assign({}, headers, o.headers || {}) }));
+    if (r.status === 204) return null;
+    if (!r.ok) {
+      var e = await r.json().catch(function () { return { error: 'Erro ' + r.status }; });
+      throw new Error(e.error || 'Erro ' + r.status);
+    }
+    var text = await r.text();
+    return text ? JSON.parse(text) : null;
+  } finally {
+    if (!skip && typeof hideLoading === 'function') hideLoading();
+  }
 }
 
 // --- Auth guard + containers + tabs ---
@@ -1349,7 +1361,7 @@ document.addEventListener('click', function() {
 let pendentesAnteriores = [];
 let primeiraCarga = true;
 
-async function carregarPedidos() {
+async function carregarPedidos(skipLoading) {
   try {
     var openIds = [];
     document.querySelectorAll('.order-card.open').forEach(function(c) {
@@ -1365,7 +1377,7 @@ async function carregarPedidos() {
       });
     }
 
-    var pedidos = await api('/pedidos');
+    var pedidos = await api('/pedidos', skipLoading ? { skipLoading: true } : undefined);
 
     // Clear containers
     Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
@@ -1382,7 +1394,8 @@ async function carregarPedidos() {
     } else {
       pedidos.forEach(function(p) {
         if (!p.status) return;
-        var container = containers[p.status];
+        var containerKey = p.status === 'pago' ? 'producao' : p.status;
+        var container = containers[containerKey];
         if (!container) return;
         var card = renderCard(p, p.id);
         container.appendChild(card);
@@ -1682,7 +1695,7 @@ async function carregarNaoConcluidos() {
 
 async function initAdmin() {
   try { var r = await fetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } }); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
-  carregarPedidos();
+  carregarPedidos(true);
 }
 initAdmin();
 var lastPedidosHash = '';
@@ -1693,7 +1706,7 @@ var pedidosTimer = setInterval(async function() {
     var hash = JSON.stringify(data.map(function(p) { return p.id + p.status; }));
     if (hash !== lastPedidosHash) {
       lastPedidosHash = hash;
-      carregarPedidos();
+      carregarPedidos(true);
     }
     else { console.log('[polling] hash igual, skip re-render'); }
   } catch (e) { console.error('[polling] erro:', e); }

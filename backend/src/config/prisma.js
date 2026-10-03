@@ -1,5 +1,15 @@
 const { PrismaClient } = require('@prisma/client');
 
+function withPoolParams(url) {
+  if (!url) return url;
+  const limit = process.env.DB_CONNECTION_LIMIT || '5';
+  const timeout = process.env.DB_POOL_TIMEOUT || '20';
+  const u = new URL(url);
+  if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', limit);
+  if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', timeout);
+  return u.toString();
+}
+
 const globalForPrisma = globalThis;
 const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: [
@@ -8,7 +18,7 @@ const prisma = globalForPrisma.prisma ?? new PrismaClient({
   ],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL,
+      url: withPoolParams(process.env.DATABASE_URL),
     },
   },
 });
