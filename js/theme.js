@@ -75,7 +75,7 @@
     if (authUser && authUser.token) {
       // Admin page — use authenticated endpoint
       url = (window.getApiBase ? window.getApiBase() : '') + '/api/loja/settings-admin';
-      headers['Authorization'] = 'Bearer ' + authUser.token;
+      if (typeof authFetch !== 'function') headers['Authorization'] = 'Bearer ' + authUser.token;
     } else {
       // Public page — detect slug from URL or sessionStorage
       var slug = '';
@@ -92,7 +92,7 @@
       url = (window.getApiBase ? window.getApiBase() : '') + '/api/loja/settings?slug=' + encodeURIComponent(slug);
     }
 
-    fetch(url, { headers: headers })
+    ((typeof authFetch === 'function') ? authFetch : fetch)(url, { headers: headers })
       .then(function (res) {
         if (!res.ok) throw new Error('Failed to load theme');
         return res.json();

@@ -1,9 +1,73 @@
-// js/pages/relatorios.js — extracted from relatorios.html inline scripts
+// js/pages/relatorios.js — módulo SPA (receita Task3/Task5)
+const HTML_RELATORIOS = `<body>
 
-(function () {
-  if (!authGuard()) throw new Error('Redirect');
+<h1><i class="fas fa-chart-bar"></i> Relatórios de Pedidos</h1>
+
+<div class="tabs">
+  <button class="tab-btn active" data-action="abrirAbaResumo" data-aba="abaResumo"><i class="fas fa-calendar-day"></i> Resumo do Dia</button>
+  <button class="tab-btn" data-action="abrirAbaPeriodo" data-aba="abaPeriodo"><i class="fas fa-calendar-alt"></i> Relatório por Período</button>
+</div>
+
+<div id="abaResumo" class="tab-content active">
+  <div class="card">
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr><th>Data</th><th>Total Pedidos</th><th>Finalizados</th><th>Valor Total (R$)</th></tr>
+      </thead>
+      <tbody id="relatoriosTabela">
+        <tr><td colspan="4" style="color:#94a3b8;">Carregando...</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div class="grafico-container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3><i class="fas fa-chart-bar"></i> Faturamento Diário</h3>
+      <button class="btn btn-primary me-md-2" data-action="carregarRelatoriosDiaAction" aria-label="Atualizar gráfico"><i class="fas fa-sync-alt"></i> Atualizar</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="graficoFaturamentoDia"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="abaPeriodo" class="tab-content">
+  <div class="card">
+    <h2 style="font-size:16px;margin-bottom:16px;">📅 Relatório por Período</h2>
+    <div class="filtro-datas">
+      <label>De <input type="date" id="dataInicio"></label>
+      <label>Até <input type="date" id="dataFim"></label>
+      <button data-action="carregarRelatoriosPeriodoAction"><i class="fas fa-filter"></i> Filtrar</button>
+    </div>
+    <div id="resumoPeriodo" class="resumo-periodo"></div>
+  </div>
+
+  <div class="grafico-container" id="graficoPeriodoContainer" style="display:none;">
+    <h3>Faturamento do Período</h3>
+    <div class="chart-wrap">
+      <canvas id="graficoFaturamentoPeriodo"></canvas>
+    </div>
+  </div>
+
+  <div id="relatoriosPeriodo" style="margin-top:12px;">
+    <p style="color:#94a3b8;font-size:13px;">Selecione um período para visualizar os relatórios.</p>
+  </div>
+</div>
+
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+
+export  function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  _cleanups.push(pageCss('css/relatorios-page.css', 'relatorios'));
+  container.innerHTML = HTML_RELATORIOS;
+  (function () {
   var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
-  if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
+  if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { goTo('admin'); return; }
 
   function abrirAba(evt, abaId) {
     document.querySelectorAll('.tab-content').forEach(function (el) { el.classList.remove('active'); });
@@ -34,7 +98,7 @@
     isLoadingDia = true;
     if (typeof showLoading === 'function') showLoading();
     var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
-    fetch((getApiBase() || '') + '/api/pedidos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function (r) { return r.json(); }).then(function (pedidos) {
+    authFetch((getApiBase() || '') + '/api/pedidos').then(function (r) { return r.json(); }).then(function (pedidos) {
       var dadosPorDia = {};
       var hojeStr = new Date().toLocaleDateString('pt-BR');
       pedidos.forEach(function (p) {
@@ -60,8 +124,8 @@
       if (graficoDia) graficoDia.destroy();
       graficoDia = new Chart(ctxDia, {
         type: 'bar',
-        data: { labels: labels, datasets: [{ label: 'Valor total (R$)', data: valores, backgroundColor: '#f97316', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true } } }
+        data: { labels: labels, datasets: [{ label: 'Valor total (R$)', data: valores, backgroundColor: '#faae33', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true, ticks: { color: '#f0c46a' } }, x: { ticks: { color: '#f0c46a' } } } }
       });
     }).catch(function (e) { console.error('Erro carregar relatorios:', e); }).finally(function () { isLoadingDia = false; if (typeof hideLoading === 'function') hideLoading(); });
   }
@@ -85,7 +149,7 @@
     var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token || '';
     var url = (getApiBase() || '') + '/api/pedidos?createdAtFrom=' + encodeURIComponent(inicio + 'T00:00:00') + '&createdAtTo=' + encodeURIComponent(fim + 'T23:59:59') + '&order=asc';
     if (typeof showLoading === 'function') showLoading();
-    fetch(url, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} }).then(function (r) { return r.json(); }).then(function (pedidos) {
+    authFetch(url).then(function (r) { return r.json(); }).then(function (pedidos) {
       if (!pedidos || pedidos.length === 0) { container.innerHTML = '<p style="color:#94a3b8;">Nenhum pedido encontrado nesse período.</p>'; return; }
 
       var pedidosPorDia = {}, totaisPorDia = {}, totalPeriodo = 0;
@@ -117,15 +181,22 @@
       if (graficoPeriodo) graficoPeriodo.destroy();
       graficoPeriodo = new Chart(ctxPeriodo, {
         type: 'bar',
-        data: { labels: labelsPeriodo, datasets: [{ label: 'Valor diário (R$)', data: valoresPeriodo, backgroundColor: '#f97316', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true } } }
+        data: { labels: labelsPeriodo, datasets: [{ label: 'Valor diário (R$)', data: valoresPeriodo, backgroundColor: '#faae33', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return 'R$ ' + c.raw.toFixed(2).replace('.', ','); } } } }, scales: { y: { beginAtZero: true, ticks: { color: '#f0c46a' } }, x: { ticks: { color: '#f0c46a' } } } }
       });
     }).catch(function (e) { container.innerHTML = '<p style="color:#94a3b8;">Erro ao carregar: ' + e.message + '</p>'; }).finally(function () { if (typeof hideLoading === 'function') hideLoading(); });
   }
 
   // Cleanup charts on page unload
-  window.addEventListener('beforeunload', function () {
+  onPage(window, 'beforeunload', function () {
     if (graficoDia) graficoDia.destroy();
     if (graficoPeriodo) graficoPeriodo.destroy();
   });
-})();
+  })();
+  return cleanup;
+}
+function cleanup() {
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

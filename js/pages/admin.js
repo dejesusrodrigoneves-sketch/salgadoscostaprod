@@ -1,3 +1,193 @@
+// js/pages/admin.js — módulo da tela Pedidos (convertido de js/admin.js)
+const HTML_ADMIN = `<body>
+
+<div class="tabs" id="tabsContainer" role="tablist" aria-label="Status dos pedidos">
+  <div class="tab active" data-tab="pendente" role="tab" aria-selected="true" aria-controls="pendente" tabindex="0"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Pendentes <span class="tab-count" id="tabCountPendente" style="background:var(--danger);color:#fff">0</span></div>
+  <div class="tab" data-tab="producao" role="tab" aria-selected="false" aria-controls="producao" tabindex="-1"><i class="fas fa-cog" aria-hidden="true"></i> Produção <span class="tab-count" id="tabCountProducao">0</span></div>
+  <div class="tab" data-tab="pronto" role="tab" aria-selected="false" aria-controls="pronto" tabindex="-1"><i class="fas fa-check-circle" aria-hidden="true"></i> Pronto <span class="tab-count" id="tabCountPronto">0</span></div>
+  <div class="tab" data-tab="emRota" role="tab" aria-selected="false" aria-controls="emRota" tabindex="-1"><i class="fas fa-truck" aria-hidden="true"></i> Em Rota <span class="tab-count" id="tabCountRota">0</span></div>
+   <div class="tab" data-tab="finalizado" role="tab" aria-selected="false" aria-controls="finalizado" tabindex="-1"><i class="fas fa-check-double" aria-hidden="true"></i> Finalizados <span class="tab-count" id="tabCountFinalizado">0</span></div>
+   <div class="tab" data-tab="aguardandoPagamento" role="tab" aria-selected="false" aria-controls="aguardandoPagamento" tabindex="-1"><i class="fas fa-hourglass-half" aria-hidden="true"></i> Aguardando Pagamento</div>
+   <div class="tab" data-tab="reembolsos" role="tab" aria-selected="false" aria-controls="reembolsos" tabindex="-1"><i class="fas fa-undo" aria-hidden="true"></i> Reembolsos</div>
+   <div class="tab" data-tab="naoConcluidos" role="tab" aria-selected="false" aria-controls="naoConcluidos" tabindex="-1"><i class="fas fa-ban" aria-hidden="true"></i> Não Concluídos <span class="tab-count" id="tabCountNaoConcluidos">0</span></div>
+</div>
+
+<div id="pendente" class="tab-content active" role="tabpanel"></div>
+<div id="producao" class="tab-content" role="tabpanel"></div>
+<div id="pronto" class="tab-content" role="tabpanel"></div>
+<div id="emRota" class="tab-content" role="tabpanel"></div>
+<div id="finalizado" class="tab-content" role="tabpanel"></div>
+<div id="aguardandoPagamento" class="tab-content" role="tabpanel" style="padding:8px;"></div>
+<div id="reembolsos" class="tab-content" role="tabpanel" style="padding:8px;"></div>
+<div id="naoConcluidos" class="tab-content" role="tabpanel" style="padding:8px;"></div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+</body>
+`;
+const STYLE_ADMIN = `
+/* ═══ Bootstrap Overrides ═══ */
+#pageContainer { color: var(--text) !important; }
+.btn { background: var(--surface) !important; color: var(--text) !important; border: 1px solid var(--border) !important; }
+.btn-producao { color: var(--warning) !important; }
+.btn-pronto { color: var(--primary) !important; }
+.btn-rota { color: var(--primary) !important; }
+.btn-finalizar { color: var(--success) !important; }
+.btn-print { color: var(--text-muted) !important; }
+.btn-delete { color: var(--danger) !important; }
+.btn-add-item { color: var(--primary) !important; }
+.btn-aceitar { background: var(--success) !important; color: #fff !important; }
+
+/* ===== HT — correções: vencem overrides bootstrap ===== */
+#pageContainer { color: var(--ht-fg) !important; }
+.btn { background: transparent !important; color: var(--ht-fg) !important; border: 1px solid var(--ht-gold) !important; }
+.btn-aceitar { background: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+.btn:hover, .btn-aceitar:hover { filter: brightness(1.06); }
+.btn-finalizar { color: var(--ht-clove) !important; }
+.btn-producao, .btn-pronto, .btn-rota { color: var(--ht-fg) !important; }
+.btn-print { color: var(--ht-fg-muted) !important; }
+.btn-delete { color: var(--ht-danger) !important; }
+.btn-add-item { color: var(--ht-fg) !important; }
+.item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.item-name { flex: 1 1 auto; min-width: 0; }
+.leader-dots {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+.item-total {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+@media (max-width: 399px) {
+  .leader-dots { display: none; }
+  .item-row { gap: 0.5rem 1rem; }
+}
+
+@media (max-width: 319px) {
+  .item-row { font-size: 12px; }
+}
+
+.empty-state, .error-state {
+  padding: var(--s-32);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.error-state button {
+  margin-top: var(--s-12);
+  padding: var(--s-8) var(--s-16);
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.error-state button:hover {
+  background: var(--primary-hover);
+}
+
+/* Mini-cart bar (overlay admin) */
+.admin-mini-cart{background:var(--surface);display:flex;flex-direction:column;width:100%;max-height:52px;overflow:hidden;box-shadow:0 -2px 8px rgba(0,0,0,0.08);transition:max-height 0.3s ease,box-shadow 0.3s ease;}
+.admin-mini-cart:hover{box-shadow:0 -2px 12px rgba(242,109,61,0.15);}
+.admin-mini-cart.aberto{max-height:50vh;overflow-y:auto;box-shadow:0 -4px 20px rgba(242,109,61,0.12);}
+.admin-mini-cart .mini-cart-lista,.admin-mini-cart .mini-cart-footer{display:none;}
+.admin-mini-cart.aberto .mini-cart-lista,.admin-mini-cart.aberto .mini-cart-footer{display:flex;}
+.admin-mini-cart-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--secondary);cursor:pointer;border-bottom:1px solid var(--border);border-radius:10px 10px 0 0;transition:background 0.2s;user-select:none;}
+.admin-mini-cart-header h4{margin:0;font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px;}
+.admin-mini-cart-header .chevron{transition:transform 0.25s ease;font-size:12px;color:var(--text-muted);}
+.admin-mini-cart.aberto .admin-mini-cart-header .chevron{transform:rotate(180deg);}
+.admin-mini-cart-header .badge{background:var(--primary);color:#fff;border-radius:50%;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+.admin-mini-cart-header .fechar-btn{background:none;border:none;font-size:18px;color:var(--text-muted);cursor:pointer;padding:0 4px;transition:color 0.15s;}
+.admin-mini-cart-header .fechar-btn:hover{color:var(--text);}
+.admin-mini-cart-lista{flex:1;overflow-y:auto;padding:8px 12px;width:100%;}
+.admin-mini-cart-item{display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 12px;margin:4px 0;border-left:3px solid var(--primary);border-radius:0 8px 8px 0;background:var(--secondary);transition:background 0.15s;}
+.admin-mini-cart-item:last-child{border-bottom:none;}
+.admin-mini-cart-item .nome{flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--text);line-height:1.3;}
+.admin-mini-cart-item .nome small{display:block;font-weight:400;color:var(--text-muted);font-size:11px;margin-top:2px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.admin-mini-cart-item .preco{font-size:12px;font-weight:600;color:var(--primary);white-space:nowrap;margin-top:1px;flex-shrink:0;}
+.admin-mini-cart-item .qtd-display{font-size:13px;font-weight:700;min-width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;background:var(--primary-bg);color:var(--primary);border-radius:6px;margin-top:1px;flex-shrink:0;}
+.admin-mini-cart-footer{padding:12px 16px;border-top:2px solid var(--border);background:var(--secondary);display:flex;align-items:center;justify-content:space-between;width:100%;}
+.admin-mini-cart-footer .total-label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+.admin-mini-cart-footer .total-mini{font-size:18px;font-weight:800;color:var(--success);}
+@media(max-width:480px){
+  .admin-mini-cart-header{padding:10px 12px;}
+  .admin-mini-cart-header h4{font-size:13px;}
+  .admin-mini-cart-item{padding:8px 10px;gap:8px;}
+  .admin-mini-cart-item .nome{font-size:12px;}
+  .admin-mini-cart-item .nome small{font-size:10px;}
+  .admin-mini-cart-item .preco{font-size:11px;}
+  .admin-mini-cart-item .qtd-display{font-size:12px;min-width:22px;height:22px;}
+  .admin-mini-cart-footer{padding:10px 12px;}
+  .admin-mini-cart-footer .total-mini{font-size:16px;}
+  .admin-mini-cart-lista{padding:6px 8px;}
+}
+@media(min-width:769px){
+  .admin-mini-cart-item{padding:12px 16px;gap:12px;}
+  .admin-mini-cart-item .nome{font-size:14px;}
+  .admin-mini-cart-item .nome small{font-size:12px;}
+  .admin-mini-cart-item .preco{font-size:13px;}
+  .admin-mini-cart-item .qtd-display{font-size:14px;min-width:28px;height:28px;}
+  .admin-mini-cart-footer .total-mini{font-size:20px;}
+}
+`;
+let _adminAbort = null;
+const _adminCleanups = [];
+let pedidosTimer = null;
+let pollTimer = null;
+let containers = {};
+let _notifier = null;
+
+export async function mount(container, params) {
+  unmount();
+  _adminAbort = new AbortController();
+  container.innerHTML = HTML_ADMIN;
+  if (STYLE_ADMIN) {
+    const s = document.createElement('style');
+    s.dataset.page = 'admin';
+    s.textContent = STYLE_ADMIN;
+    document.head.appendChild(s);
+    _adminCleanups.push(function () { s.remove(); });
+  }
+  _adminCleanups.push(pageCss('css/admin-page.css', 'admin'), pageCss('css/toast.css', 'admin'));
+
+  containers = {
+    pendente: document.getElementById('pendente'),
+    producao: document.getElementById('producao'),
+    pronto: document.getElementById('pronto'),
+    'em_rota': document.getElementById('emRota'),
+    finalizado: document.getElementById('finalizado')
+  };
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).classList.add('active');
+      if (tab.dataset.tab === 'aguardandoPagamento') carregarAguardandoPagamento();
+      if (tab.dataset.tab === 'reembolsos') carregarReembolsos();
+      if (tab.dataset.tab === 'naoConcluidos') carregarNaoConcluidos();
+    });
+  });
+
+  const { orderNotifier } = await import('../services/order-notifier.js');
+  await initAdminWithNotifier(orderNotifier);
+
+  return cleanupAdmin;
+}
+
 // --- api() helper ---
 async function api(path, opts) {
   var o = opts || {};
@@ -5,9 +195,7 @@ async function api(path, opts) {
   if (!skip && typeof showLoading === 'function') showLoading();
   try {
     var headers = { 'Content-Type': 'application/json' };
-    var token = (typeof safeGetToken === 'function' ? safeGetToken() : '');
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    var r = await fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path,
+    var r = await authFetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path,
       Object.assign({}, o, { headers: Object.assign({}, headers, o.headers || {}) }));
     if (r.status === 204) return null;
     if (!r.ok) {
@@ -21,45 +209,73 @@ async function api(path, opts) {
   }
 }
 
-// --- Auth guard + containers + tabs ---
-var host = window.location.hostname;
-var isLocal = host === 'localhost' || /^\d+(\.\d+){3}$/.test(host);
-var sub = host.split('.')[0];
-if (!isLocal && (sub === 'admin' || sub === 'www')) {
-  window.location.href = '/superadmin.html';
-}
-// Auth guard — stops execution if not authenticated
-if (typeof checkSessionValid === 'function' && !checkSessionValid()) {
-  document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h2>Acesso negado</h2><p>Redirecionando para login...</p></div>';
-  setTimeout(function(){ window.location.href = 'login.html'; }, 500);
-  throw new Error('Redirecting to login');
-} else if (typeof checkSessionValid !== 'function' && typeof authGuard === 'function' && !authGuard()) {
-  document.body.innerHTML = '<div style="color:#fff;text-align:center;padding:40px;font-family:sans-serif;"><h2>Acesso negado</h2><p>Redirecionando para login...</p></div>';
-  setTimeout(function(){ window.location.href = 'login.html'; }, 500);
-  throw new Error('Redirecting to login');
-}
-
-const containers = {
-  pendente: document.getElementById('pendente'),
-  producao: document.getElementById('producao'),
-  pronto: document.getElementById('pronto'),
-  'em_rota': document.getElementById('emRota'),
-  finalizado: document.getElementById('finalizado')
-};
-
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById(tab.dataset.tab).classList.add('active');
-    if (tab.dataset.tab === 'aguardandoPagamento') carregarAguardandoPagamento();
-    if (tab.dataset.tab === 'reembolsos') carregarReembolsos();
-    if (tab.dataset.tab === 'naoConcluidos') carregarNaoConcluidos();
-  });
-});
+// --- Auth guard: removido (router cuida; rota superadmin tem guard próprio) ---
 
 // --- Main application JS ---
+function renderPedidos(pedidos) {
+  if (!pedidos || !Array.isArray(pedidos)) return;
+  
+  var openIds = [];
+  document.querySelectorAll('.order-card.open').forEach(function(c) {
+    if (c.dataset.id) openIds.push(c.dataset.id);
+  });
+
+  // Clear containers
+  Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
+
+  if (!pedidos || pedidos.length === 0) {
+    Object.keys(containers).forEach(function(key) {
+      containers[key].innerHTML =
+        '<div class="empty-state">' +
+        '<i class="fas fa-clipboard-list"></i>' +
+        '<p>Nenhum pedido encontrado</p>' +
+        '</div>';
+    });
+  } else {
+    pedidos.forEach(function(p) {
+      if (!p.status) return;
+      var containerKey = p.status === 'pago' ? 'producao' : p.status;
+      var container = containers[containerKey];
+      if (!container) return;
+      var card = renderCard(p, p.id);
+      container.appendChild(card);
+    });
+  }
+
+  updateStats();
+  atualizarBadgeEsteira();
+
+  openIds.forEach(function(id) {
+    var card = document.querySelector('.order-card[data-id="' + id + '"]');
+    if (card) card.classList.add('open');
+  });
+}
+
+async function janelaParams() {
+  try {
+    if (_notifier && _notifier.getJanelaDoDia && _notifier.janelaToQuery) {
+      const qs = _notifier.janelaToQuery(await _notifier.getJanelaDoDia());
+      return qs.replace(/^\?/, '');
+    }
+  } catch (e) { /* fallback dia UTC */ }
+  const diaUtc = new Date().toISOString().split('T')[0];
+  return 'createdAtFrom=' + encodeURIComponent(new Date(diaUtc + 'T00:00:00Z').toISOString()) +
+         '&createdAtTo=' + encodeURIComponent(new Date().toISOString());
+}
+
+async function carregarPedidos(skipLoading) {
+  var pedidos = _notifier ? _notifier.getAllPedidos() : [];
+  if (!pedidos || pedidos.length === 0) {
+    try {
+      var params = await janelaParams();
+      pedidos = await api('/pedidos' + (params ? '?' + params : ''), skipLoading ? { skipLoading: true } : undefined);
+    } catch(e) {
+      pedidos = [];
+    }
+  }
+  renderPedidos(pedidos);
+}
+
 function agruparItensAdmin(itens) {
   if (!Array.isArray(itens)) return [];
   var mapa = {};
@@ -246,7 +462,7 @@ function imprimirPedido(p) {
 
 function atualizarBadgeEsteira() {
   const total = document.querySelectorAll('.order-card').length;
-  window.parent.postMessage({ tipo: 'atualizarBadge', total }, window.location.origin);
+  document.dispatchEvent(new CustomEvent('pedidos:badge', { detail: { total: total } }));
 }
 
 function renderCard(p, docId) {
@@ -302,6 +518,7 @@ function renderCard(p, docId) {
         ${isPendente ? `
           <button class="btn-aceitar" data-action="aceitar"><i class="fas fa-check"></i> Aceitar Pedido</button>
           <button class="btn btn-print" data-action="print"><i class="fas fa-print"></i> Imprimir</button>
+          <button class="btn btn-delete" data-action="cancelar"><i class="fas fa-ban"></i> Cancelar Pedido</button>
         ` : `
           <button class="btn btn-producao" data-action="producao"><i class="fas fa-box"></i> Produção</button>
           <button class="btn btn-pronto" data-action="pronto"><i class="fas fa-bell"></i> Pronto</button>
@@ -334,6 +551,25 @@ function renderCard(p, docId) {
   if (isPendente) {
     card.querySelector('[data-action="aceitar"]').onclick = notificarComLoading('aceitar', 'producao', null, '✅ Pedido aceito e notificação enviada!');
     card.querySelector('[data-action="print"]').onclick = () => imprimirPedido(p);
+    card.querySelector('[data-action="cancelar"]').onclick = async function(e) {
+      e.stopPropagation();
+      const motivo = await pedirMotivoCancelamento(nome);
+      if (motivo === null) return;
+      var loadEl = toast('📤 Cancelando pedido...', 'info', 0);
+      try {
+        var res = await api('/pedidos/' + docId + '/cancelar', { method: 'POST', body: JSON.stringify({ motivo: motivo }) });
+        if (loadEl.parentNode) loadEl.remove();
+        if (res && res.whatsappOk) {
+          toast('✅ Pedido cancelado! Cliente avisado no WhatsApp.', 'success');
+        } else {
+          toast('⚠️ Pedido cancelado, mas o WhatsApp não foi enviado: ' + ((res && res.whatsappErro) || 'motivo desconhecido'), 'warning', 7000);
+        }
+        if (_notifier && _notifier.checkPedidos) { _notifier.checkPedidos(); } else { carregarPedidos(); }
+      } catch(e) {
+        if (loadEl.parentNode) loadEl.remove();
+        toast('❌ Erro: ' + e.message, 'danger');
+      }
+    };
     return card;
   }
 
@@ -408,15 +644,12 @@ function renderCard(p, docId) {
 }
 
 function updateStats() {
+  if (!_adminAbort || _adminAbort.signal.aborted) return;
   const counts = {};
   document.querySelectorAll('.order-card').forEach(c => {
     const s = c.dataset.status;
     counts[s] = (counts[s] || 0) + 1;
   });
-  document.getElementById('statPendente').textContent = counts.pendente || 0;
-  document.getElementById('statProducao').textContent = counts.producao || 0;
-  document.getElementById('statPronto').textContent = counts.pronto || 0;
-  document.getElementById('statRota').textContent = counts.emRota || 0;
   document.getElementById('tabCountPendente').textContent = counts.pendente || 0;
   document.getElementById('tabCountProducao').textContent = counts.producao || 0;
   document.getElementById('tabCountPronto').textContent = counts.pronto || 0;
@@ -465,6 +698,42 @@ async function selecionarEntregadorModal(pedidoNome) {
     });
     overlay.querySelector('#driverModalCancel').onclick = () => { overlay.remove(); resolve(null); };
     overlay.addEventListener('click', e => { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+  });
+}
+
+function pedirMotivoCancelamento(pedidoNome) {
+  return new Promise(function(resolve) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-box">
+        <h3><i class="fas fa-ban" style="color:var(--danger)"></i> Cancelar Pedido</h3>
+        <p style="margin-bottom:16px;">Informe o motivo do cancelamento do pedido de <strong>${escapeHtml(pedidoNome)}</strong>.</p>
+        <label for="motivoCancelamento" style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">Motivo do cancelamento</label>
+        <input type="text" id="motivoCancelamento" placeholder="Ex.: cliente desistiu do pedido" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;">
+        <p style="margin:8px 0 0;font-size:12px;color:var(--text-muted);">O cliente receberá no WhatsApp o aviso de cancelamento com este motivo.</p>
+        <div class="modal-actions" style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+          <button class="btn btn-modal-cancel" id="motivoCancelCancel">Voltar</button>
+          <button class="btn btn-delete" id="motivoCancelConfirm"><i class="fas fa-ban"></i> Confirmar Cancelamento</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    var input = overlay.querySelector('#motivoCancelamento');
+    input.focus();
+
+    function fechar(valor) { overlay.remove(); resolve(valor); }
+    overlay.querySelector('#motivoCancelCancel').onclick = function() { fechar(null); };
+    overlay.querySelector('#motivoCancelConfirm').onclick = function() {
+      var v = (input.value || '').trim();
+      if (!v) { toast('Informe o motivo do cancelamento.', 'warning'); input.focus(); return; }
+      fechar(v);
+    };
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) fechar(null); });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') overlay.querySelector('#motivoCancelConfirm').click();
+      if (e.key === 'Escape') fechar(null);
+    });
   });
 }
 
@@ -525,7 +794,7 @@ function modalEditarItens(p) {
     var produtos = window.products || [];
     if (!produtos.length) {
       try {
-        var r = await fetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
+        var r = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json' } });
         var d = await r.json(); produtos = Array.isArray(d) ? d : [];
         window.products = produtos;
       } catch(e) { console.error('Falha ao carregar produtos', e); }
@@ -662,8 +931,7 @@ function abrirOverlayAdicionar(p, docId) {
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body p-0">
-            <iframe src="balcao.html?embedded=1" id="iframeBalcao"
-                    style="width:100%;height:calc(100vh - 140px);border:none;"></iframe>
+            <div id="iframeBalcao" style="width:100%;height:calc(100vh - 140px);overflow:auto;"></div>
           </div>
           <div class="modal-footer d-flex flex-column p-0">
             <!-- Mini-cart bar (admin) -->
@@ -690,6 +958,10 @@ function abrirOverlayAdicionar(p, docId) {
   document.body.insertAdjacentHTML('beforeend', modalHtml);
   var modalEl = document.getElementById('modalAdicionarItens');
   var iframe = document.getElementById('iframeBalcao');
+  var balcaoCleanup = null;
+  router.mountInto(iframe, 'balcao', { embedded: '1' })
+    .then(function (fn) { balcaoCleanup = fn; })
+    .catch(function (e) { console.error('[admin] overlay balcao', e); });
   if (typeof bootstrap === 'undefined') { toast('Bootstrap não carregou', 'danger'); return; }
   var modal = new bootstrap.Modal(modalEl);
 
@@ -717,7 +989,7 @@ function abrirOverlayAdicionar(p, docId) {
       updateAdminMiniCart(e.data.itens, e.data.total, e.data.totalItens);
     }
   }
-  window.addEventListener('message', onMessage);
+  onPage(window, 'message', onMessage);
 
   // Mini-cart functions
   var adminMiniCart = document.getElementById('adminMiniCart');
@@ -776,10 +1048,8 @@ function abrirOverlayAdicionar(p, docId) {
   window.toggleAdminMiniCart = toggleAdminMiniCart;
   window.fecharAdminMiniCart = fecharAdminMiniCart;
 
-  var pollTimer = setInterval(function() {
-    if (iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'SOLICITAR_ITENS' }, window.location.origin);
-    }
+  pollTimer = setInterval(function() {
+    window.postMessage({ type: 'SOLICITAR_ITENS' }, window.location.origin);
   }, 800);
 
   btnSalvar.onclick = async function() {
@@ -851,6 +1121,7 @@ function abrirOverlayAdicionar(p, docId) {
   };
 
   modalEl.addEventListener('hidden.bs.modal', function() {
+    if (balcaoCleanup) { balcaoCleanup(); balcaoCleanup = null; }
     clearInterval(pollTimer);
     window.removeEventListener('message', onMessage);
     modalEl.remove();
@@ -1259,190 +1530,12 @@ function modalEntrega(p, est) {
   });
 }
 
-// --- Web Audio API beep system ---
-let audioCtx = null;
-let beepLoopId = null;
-let beepInProg = false;
-let customNotifSound = null;
-
-async function loadNotifSound() {
-  try {
-    const config = await api('/loja/settings-admin');
-    const url = config.notificationSound || (config.themeSettings && config.themeSettings.notificationSound);
-    if (url) {
-      customNotifSound = new Audio(url);
-      customNotifSound.load();
-    }
-  } catch(e) { /* fallback to beep */ }
-}
-loadNotifSound();
-
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
-}
-
-function beep(freq, duration, type) {
-  try {
-    const ctx = getAudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type || 'square';
-    osc.frequency.value = freq || 880;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
-  } catch(e) {}
-}
-
-function tocarAlarmeNovoPedido() {
-  if (customNotifSound) {
-    try {
-      const clone = customNotifSound.cloneNode();
-      clone.volume = 1;
-      clone.play().catch(function(e) {
-        console.warn('Som custom falhou, usando beep:', e);
-        toast('Som padrão usado (erro ao reproduzir custom)', 'warning');
-        beep(880, 0.2);
-        setTimeout(function() { beep(880, 0.2); }, 250);
-        setTimeout(function() { beep(880, 0.3); }, 500);
-      });
-      return;
-    } catch(e) {
-      console.warn('Som custom erro:', e);
-      customNotifSound = null;
-    }
-  }
-  beep(880, 0.2);
-  setTimeout(function() { beep(880, 0.2); }, 250);
-  setTimeout(function() { beep(880, 0.3); }, 500);
-}
-
-function beepLoop() {
-  if (beepInProg) return;
-  beepInProg = true;
-  function tick() {
-    beepLoopId = setTimeout(function() {
-      if (customNotifSound) {
-        try {
-          const clone = customNotifSound.cloneNode();
-          clone.volume = 0.7;
-          clone.play().catch(function(e) {
-            console.warn('Loop custom falhou, usando beep:', e);
-            beep(880, 0.5, 'sine');
-          });
-        } catch(e) {
-          beep(880, 0.5, 'sine');
-        }
-      } else {
-        beep(880, 0.5, 'sine');
-      }
-      tick();
-    }, 3000);
-  }
-  tick();
-}
-
-function pararBeepLoop() {
-  if (beepLoopId) { clearTimeout(beepLoopId); beepLoopId = null; }
-  beep(660, 0.15, 'sine');
-  beepInProg = false;
-}
-
-document.addEventListener('click', function() {
-  var ctx = getAudioCtx();
-  if (ctx.state === 'suspended') ctx.resume();
-}, { once: true });
-
-// --- polling + detection ---
-let pendentesAnteriores = [];
-let primeiraCarga = true;
-
-async function carregarPedidos(skipLoading) {
-  try {
-    var openIds = [];
-    document.querySelectorAll('.order-card.open').forEach(function(c) {
-      if (c.dataset.id) openIds.push(c.dataset.id);
-    });
-
-    // Show skeletons on first load
-    if (primeiraCarga) {
-      Object.values(containers).forEach(function(c) {
-        c.innerHTML =
-          '<div class="skeleton-card"><div class="skeleton-header"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line skeleton-line-md"></div></div><div class="skeleton-body"><div class="skeleton skeleton-line skeleton-line-lg"></div><div class="skeleton-row"><div class="skeleton skeleton-line skeleton-line-sm"></div><div class="skeleton skeleton-line skeleton-line-md"></div></div></div></div>' +
-          '<div class="skeleton-card"><div class="skeleton-header"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line skeleton-line-md"></div></div><div class="skeleton-body"><div class="skeleton skeleton-line skeleton-line-lg"></div></div></div>';
-      });
-    }
-
-    var pedidos = await api('/pedidos', skipLoading ? { skipLoading: true } : undefined);
-
-    // Clear containers
-    Object.values(containers).forEach(function(c) { c.innerHTML = ''; });
-
-    if (!pedidos || pedidos.length === 0) {
-      // Show empty state with icon + action
-      Object.keys(containers).forEach(function(key) {
-        containers[key].innerHTML =
-          '<div class="empty-state">' +
-          '<i class="fas fa-clipboard-list"></i>' +
-          '<p>Nenhum pedido encontrado</p>' +
-          '</div>';
-      });
-    } else {
-      pedidos.forEach(function(p) {
-        if (!p.status) return;
-        var containerKey = p.status === 'pago' ? 'producao' : p.status;
-        var container = containers[containerKey];
-        if (!container) return;
-        var card = renderCard(p, p.id);
-        container.appendChild(card);
-      });
-    }
-
-    updateStats();
-    atualizarBadgeEsteira();
-
-    openIds.forEach(function(id) {
-      var card = document.querySelector('.order-card[data-id="' + id + '"]');
-      if (card) card.classList.add('open');
-    });
-
-    var pendentesAtuais = pedidos.filter(function(p) { return p.status === 'pendente'; });
-    var novosIds = pendentesAtuais.filter(function(p) {
-      return !pendentesAnteriores.some(function(a) { return a.id === p.id; });
-    });
-
-    if (novosIds.length > 0) {
-      tocarAlarmeNovoPedido();
-      var abaAtiva = document.querySelector('.tab.active');
-      if (abaAtiva && abaAtiva.dataset.tab !== 'pendente') {
-        var tabPendente = document.querySelector('.tab[data-tab="pendente"]');
-        if (tabPendente) tabPendente.click();
-      }
-    }
-
-    if (pendentesAtuais.length > 0 && !beepLoopId) beepLoop();
-    else if (pendentesAtuais.length === 0 && beepLoopId) pararBeepLoop();
-
-    pendentesAnteriores = pendentesAtuais;
-    primeiraCarga = false;
-  } catch(e) {
-    console.error('Erro ao carregar pedidos:', e);
-    // Show error state in containers instead of leaving them blank
-    Object.values(containers).forEach(function(c) {
-      c.innerHTML = '<div class="error-state">Erro ao carregar pedidos. <button onclick="carregarPedidos()">Tentar novamente</button></div>';
-    });
-    toast('Erro ao carregar pedidos. Tentando novamente...', 'danger');
-  }
-}
 async function carregarAguardandoPagamento() {
   var el = document.getElementById('aguardandoPagamento');
   el.innerHTML = '<div class="skeleton-card"><div class="skeleton-header"><div class="skeleton skeleton-avatar"></div><div class="skeleton skeleton-line skeleton-line-md"></div></div><div class="skeleton-body"><div class="skeleton skeleton-line skeleton-line-lg"></div></div></div>';
   try {
-    var pedidos = await api('/pedidos?paymentStatus=aguardando_pagamento');
+    var params = await janelaParams();
+    var pedidos = await api('/pedidos?paymentStatus=aguardando_pagamento' + (params ? '&' + params : ''));
     if (!pedidos || !pedidos.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-hourglass-half"></i><p>Nenhum pedido aguardando pagamento</p></div>'; return; }
     el.innerHTML = '';
     pedidos.forEach(function(p) {
@@ -1672,7 +1765,9 @@ async function carregarNaoConcluidos() {
       '</tr></thead><tbody>';
     pedidos.forEach(function(p) {
       var motivoBadge = '';
-      if (p.motivo === 'expirado') {
+      if (p.status === 'cancelado') {
+        motivoBadge = '<span style="background:var(--danger);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🔴 Cancelado: ' + escapeHtml(p.cancelamentoMotivo || 'motivo não informado') + '</span>';
+      } else if (p.motivo === 'expirado') {
         motivoBadge = '<span style="background:var(--warning);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🟠 Expirado há ' + formatarTempoDecorrido(p.data) + '</span>';
       } else if (p.motivo === 'rejeitado') {
         motivoBadge = '<span style="background:var(--danger);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">🔴 Rejeitado: ' + escapeHtml(p.detalhe || '-') + '</span>';
@@ -1693,21 +1788,32 @@ async function carregarNaoConcluidos() {
   }
 }
 
-async function initAdmin() {
-  try { var r = await fetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } }); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
+function onPedidosData(pedidos) {
+  renderPedidos(pedidos);
+}
+
+async function initAdminWithNotifier(orderNotifier) {
+  _notifier = orderNotifier;
+  try { var r = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/produtos', { headers: { 'Content-Type': 'application/json' } }); var d = await r.json(); window.products = Array.isArray(d) ? d : []; } catch(e) { window.products = []; }
+  
+  // Usa orderNotifier para dados + polling global
+  orderNotifier.onDataChange(onPedidosData);
+  
+  // Carga inicial
   carregarPedidos(true);
 }
-initAdmin();
-var lastPedidosHash = '';
-var pedidosTimer = setInterval(async function() {
-  try {
-    var res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/pedidos', { headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (JSON.parse(localStorage.getItem('authUser') || '{}')).token } });
-    var data = await res.json();
-    var hash = JSON.stringify(data.map(function(p) { return p.id + p.status; }));
-    if (hash !== lastPedidosHash) {
-      lastPedidosHash = hash;
-      carregarPedidos(true);
-    }
-    else { console.log('[polling] hash igual, skip re-render'); }
-  } catch (e) { console.error('[polling] erro:', e); }
-}, 10000);
+
+function cleanupAdmin() {
+  if (_notifier) { try { _notifier.offDataChange(onPedidosData); } catch (e) {} }
+  try { clearInterval(pedidosTimer); } catch (e) {}
+  try { clearInterval(pollTimer); } catch (e) {}
+  _adminCleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_adminAbort) { _adminAbort.abort(); _adminAbort = null; }
+}
+
+export function unmount() { cleanupAdmin(); }
+
+window.carregarAguardandoPagamento = carregarAguardandoPagamento;
+window.carregarReembolsos = carregarReembolsos;
+window.abrirModalLimpezaNaoConcluidos = abrirModalLimpezaNaoConcluidos;
+window.carregarNaoConcluidos = carregarNaoConcluidos;

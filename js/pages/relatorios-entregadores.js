@@ -1,11 +1,49 @@
-// js/pages/relatorios-entregadores.js — extracted from relatorios-entregadores.html inline scripts
-// Delegator bridge
-window.carregarRelatorioAction = function () { carregarRelatorio(); };
+// js/pages/relatorios-entregadores.js — módulo SPA (receita Task3/Task5)
+const HTML_RELATORIOS_ENTREGADORES = `<body>
 
-(function () {
-  if (!authGuard()) throw new Error('Redirect');
+<h1><i class="fas fa-truck"></i> Relatório de Entregadores</h1>
+
+<div class="card">
+  <h2 class="mb-3"><i class="fas fa-filter me-2"></i>Filtros</h2>
+  <div class="row g-3 align-items-end flex-wrap">
+    <div class="col-12 col-md-auto">
+      <label class="form-label" for="dataInicio">De</label>
+      <input type="date" class="form-control" id="dataInicio">
+    </div>
+    <div class="col-12 col-md-auto">
+      <label class="form-label" for="dataFim">Até</label>
+      <input type="date" class="form-control" id="dataFim">
+    </div>
+    <div class="col-12 col-md-auto">
+      <label class="form-label" for="filtroEntregador">Entregador</label>
+      <select class="form-select" id="filtroEntregador">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-auto">
+      <button class="btn btn-primary w-100" data-action="carregarRelatorioAction"><i class="fas fa-filter me-1"></i>Filtrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="relatorioContainer">
+  <p style="color:#94a3b8;font-size:13px;">Selecione um período para visualizar.</p>
+</div>
+
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+
+export  function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  _cleanups.push(pageCss('css/relatorios-page.css', 'relatorios-entregadores'));
+  container.innerHTML = HTML_RELATORIOS_ENTREGADORES;
+  (function () {
+window.carregarRelatorioAction = function () { carregarRelatorio(); };
   var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
-  if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
+  if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { goTo('admin'); return; }
 
   var API = (window.getApiBase ? window.getApiBase() : window.location.origin) + '/api';
   var authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
@@ -20,8 +58,7 @@ window.carregarRelatorioAction = function () { carregarRelatorio(); };
     try {
       var url = API + path;
       var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      var res = await authFetch(url, Object.assign({}, opts, { headers: headers }));
       if (!res.ok) {
         var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
         throw new Error(err.error || 'Erro');
@@ -166,4 +203,11 @@ window.carregarRelatorioAction = function () { carregarRelatorio(); };
     carregarEntregadores();
     carregarRelatorio();
   })();
-})();
+  })();
+  return cleanup;
+}
+function cleanup() {
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

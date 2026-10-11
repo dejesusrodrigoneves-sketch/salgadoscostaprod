@@ -1,7 +1,7 @@
 window.Financeiro = (function () {
   function auth() {
     const raw = localStorage.getItem('authUser');
-    if (!raw) { window.location.href = 'login.html'; return null; }
+    if (!raw) { goTo('login'); return null; }
     return JSON.parse(raw);
   }
 
@@ -17,11 +17,11 @@ window.Financeiro = (function () {
     if (!skip && typeof showLoading === 'function') showLoading();
     try {
       const a = auth();
-      const res = await fetch((window.getApiBase ? window.getApiBase() : '') + path, {
+      const res = await authFetch((window.getApiBase ? window.getApiBase() : '') + path, {
         ...o,
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${a.token}`, ...(o.headers || {}) },
+        headers: { 'Content-Type': 'application/json', ...(o.headers || {}) },
       });
-      if (res.status === 401) { window.location.href = 'login.html'; throw new Error('unauthorized'); }
+      if (res.status === 401) { goTo('login'); throw new Error('unauthorized'); }
       return res.json();
     } finally {
       if (!skip && typeof hideLoading === 'function') hideLoading();

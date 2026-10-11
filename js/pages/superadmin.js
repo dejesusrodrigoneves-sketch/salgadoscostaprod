@@ -1,4 +1,563 @@
-// js/pages/superadmin.js — extracted from superadmin.html inline scripts
+// js/pages/superadmin.js — módulo da rota superadmin
+const HTML_SUPERADMIN = `<body>
+
+<div class="sa-layout">
+  <div class="sa-overlay" id="saOverlay"></div>
+  <aside class="sa-sidebar" id="saSidebar">
+    <div class="sa-sidebar-header">
+      <div class="sa-logo"><i class="fas fa-shield-alt"></i></div>
+      <div class="sa-brand"><strong>Super Admin</strong><span>Controle geral</span></div>
+      <button class="sa-hamburger" id="saCollapseBtn" title="Recolher menu"><i class="fas fa-bars"></i></button>
+      <button class="sa-expand" id="saExpandBtn" title="Expandir menu"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <nav class="sa-nav" id="saNav"></nav>
+    <div class="sa-sidebar-foot">v1.0</div>
+  </aside>
+  <div class="sa-main">
+
+<!-- Dashboard tab -->
+<div class="tab-content active" id="tabDashboard">
+  <div class="empresa-selector">
+    <label><i class="fas fa-building"></i> Visualizar:</label>
+    <select id="dashEmpresaSelect" data-action-change="onEmpresaChangeAction">
+      <option value="">Todas as Empresas (Visão Geral)</option>
+    </select>
+    <span class="empresa-badge" id="dashEmpresaBadge"><i class="fas fa-globe"></i> Global</span>
+  </div>
+  <div class="dash-header">
+    <h2 id="dashTitle">Visão Geral do SaaS</h2>
+    <button class="btn-refresh" data-action="carregarDashboardAction"><i class="fas fa-sync-alt"></i> Atualizar</button>
+  </div>
+  <div class="dash-cards" id="dashCards"></div>
+  <div class="dash-table-card" id="dashTableCard">
+    <h3><i class="fas fa-building"></i> Empresas - Resumo Financeiro</h3>
+    <table class="dash-table">
+      <thead><tr><th>Empresa</th><th>Pedidos Mês</th><th>Recebido</th><th>A Receber</th><th>Status</th></tr></thead>
+      <tbody id="dashEmpresasBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Users tab -->
+<div class="tab-content" id="tabUsuarios">
+  <div class="card">
+    <h2><i class="fas fa-list"></i> Usuários Cadastrados</h2>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <label for="filtroEmpresaUsuarios" style="font-weight:600;color:#94a3b8;">Filtrar por empresa:</label>
+      <select id="filtroEmpresaUsuarios" aria-label="Filtrar por empresa" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;">
+        <option value="">Todas as empresas</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Usuário</th><th>Papel</th><th>Empresa</th><th>Loja</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody id="userTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2><i class="fas fa-plus-circle"></i> Cadastrar Novo Usuário</h2>
+    <div style="max-width:400px;">
+      <input type="text" id="newUsername" aria-label="Nome de usuário" placeholder="Nome de usuário">
+      <input type="password" id="newPassword" aria-label="Senha" placeholder="Senha">
+      <select id="newRole" aria-label="Papel do usuário">
+        <option value="user">Usuário</option>
+        <option value="admin">Administrador</option>
+        <option value="superadmin">Super Admin</option>
+      </select>
+      <select id="newEmpresa" aria-label="Empresa da conta">
+        <option value="">— selecionar empresa —</option>
+      </select>
+      <button class="btn btn-primary" data-action="cadastrarUsuarioAction"><i class="fas fa-user-plus"></i> Cadastrar</button>
+    </div>
+    <div class="toast" id="registerMsg" style="display:none;margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Passwords tab -->
+<div class="tab-content" id="tabSenhas">
+  <div class="card">
+    <h2><i class="fas fa-exchange-alt"></i> Alterar Senha de Usuário</h2>
+    <div style="max-width:400px;">
+      <select id="userSelect" aria-label="Selecionar usuário"><option value="">Carregando...</option></select>
+      <input type="password" id="newPassInput" aria-label="Nova senha" placeholder="Nova senha">
+      <input type="password" id="newPassConfirm" aria-label="Confirmar nova senha" placeholder="Confirmar nova senha">
+      <button class="btn btn-primary" data-action="alterarSenhaAction"><i class="fas fa-save"></i> Salvar</button>
+    </div>
+    <div class="toast" id="passMsg" style="display:none;margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Clientes tab -->
+<div class="tab-content" id="tabClientes">
+  <div class="card">
+    <h2><i class="fas fa-user-tie"></i> Clientes Cadastrados</h2>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <label for="filtroEmpresaClientes" style="font-weight:600;color:#94a3b8;">Filtrar por empresa:</label>
+      <select id="filtroEmpresaClientes" aria-label="Filtrar por empresa" style="background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:6px 10px;">
+        <option value="">Todas as empresas</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Nome</th><th>Telefone</th><th>Bairro</th><th>Empresa</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody id="clientesTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Modal Editar Cliente -->
+  <div class="modal-overlay" id="modalEditarCliente" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-user-edit"></i> Editar Cliente</h3>
+      <label>Nome <input type="text" id="editNome"></label>
+      <label>Telefone <input type="text" id="editTelefone"></label>
+      <label>Endereço <input type="text" id="editEndereco"></label>
+      <label>Número <input type="text" id="editNumero"></label>
+      <label>Bairro <input type="text" id="editBairro"></label>
+      <label>CEP <input type="text" id="editCep"></label>
+      <label>Ponto de Referência <input type="text" id="editPontoReferencia"></label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-action="fecharModalAction" data-modal="modalEditarCliente">Cancelar</button>
+        <button class="btn btn-primary" data-action="salvarEdicaoClienteAction"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Trocar Senha -->
+  <div class="modal-overlay" id="modalSenhaCliente" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-key"></i> Trocar Senha</h3>
+      <label>Nova senha <input type="password" id="novaSenhaCliente" aria-label="Nova senha" placeholder="Nova senha"></label>
+      <label>Confirmar senha <input type="password" id="confirmarSenhaCliente" aria-label="Confirmar senha" placeholder="Confirmar senha"></label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-action="fecharModalAction" data-modal="modalSenhaCliente">Cancelar</button>
+        <button class="btn btn-primary" data-action="salvarSenhaClienteAction"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Empresas tab -->
+<div class="tab-content" id="tabEmpresas">
+  <div class="card">
+    <h2><i class="fas fa-store"></i> Empresas Cadastradas</h2>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Nome</th><th>Slug</th><th>Telefone</th><th>Cidade</th><th>Split</th><th>Produtos</th><th>Pedidos</th><th>Criado em</th><th>Ações</th></tr></thead>
+      <tbody id="empresasTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2><i class="fas fa-plus-circle"></i> Cadastrar Nova Empresa</h2>
+    <div style="max-width:600px;display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <input type="text" id="empNome" aria-label="Nome da loja" placeholder="Nome da loja *">
+      <input type="text" id="empSlug" aria-label="Slug da loja" placeholder="Slug (URL) *">
+      <input type="text" id="empTelefone" aria-label="Telefone" placeholder="Telefone">
+      <input type="text" id="empCidade" aria-label="Cidade" placeholder="Cidade">
+    </div>
+    <button class="btn btn-primary" data-action="cadastrarEmpresaAction"><i class="fas fa-plus"></i> Cadastrar</button>
+  </div>
+
+  <!-- Modal Editar Empresa -->
+  <div class="modal-overlay" id="modalEditarEmpresa" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-store"></i> Editar Empresa</h3>
+      <input type="hidden" id="editEmpId">
+      <label>Nome <input type="text" id="editEmpNome"></label>
+      <label>Slug <input type="text" id="editEmpSlug"></label>
+      <label>Telefone <input type="text" id="editEmpTelefone"></label>
+      <label>Endereço <input type="text" id="editEmpEndereco"></label>
+      <label>Número <input type="text" id="editEmpNumero"></label>
+      <label>Bairro <input type="text" id="editEmpBairro"></label>
+      <label>CEP <input type="text" id="editEmpCep"></label>
+      <label>Cidade <input type="text" id="editEmpCidade"></label>
+      <label>Estado <input type="text" id="editEmpEstado"></label>
+      <label>Descrição <textarea id="editEmpDescricao" rows="2"></textarea></label>
+      <div class="payment-section" id="paymentSection" style="display:none;margin-top:12px;padding:12px;border:1px solid #334155;border-radius:8px;">
+        <h4 style="margin:0 0 8px;color:var(--accent,#f97316);font-size:0.95rem;"><i class="fas fa-credit-card"></i> Pagamento</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.85rem;">
+          <div><strong>Status:</strong> <span id="paymentStatusIcon"></span></div>
+          <div><strong>Onboarded:</strong> <span id="paymentOnboardedAt">—</span></div>
+          <div><strong>Wallet ID:</strong> <span id="paymentWalletId" style="font-family:monospace;font-size:0.8rem;word-break:break-all;">—</span></div>
+          <div><strong>Subconta ID:</strong> <span id="paymentSubcontaId" style="font-family:monospace;font-size:0.8rem;word-break:break-all;">—</span></div>
+        </div>
+        <div id="paymentSettlements" style="margin-top:8px;font-size:0.85rem;"></div>
+        <div style="margin-top:10px;" id="paymentDeactivateWrap">
+          <button class="btn btn-secondary" id="btnDesativarSplit" data-action="desativarSplitAction" style="font-size:0.8rem;"><i class="fas fa-ban"></i> Desativar Split</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-action="fecharModalAction" data-modal="modalEditarEmpresa">Cancelar</button>
+        <button class="btn btn-primary" data-action="salvarEdicaoEmpresaAction"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filiais tab -->
+<div class="tab-content" id="tabFiliais">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="font-size:16px;font-weight:600;"><i class="fas fa-sitemap"></i> Gerenciar Filiais</h2>
+      <button class="btn btn-primary" data-action="abrirModalCriarFilialAction"><i class="fas fa-plus"></i> Criar Filial</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Slug</th>
+            <th>Matriz Pai</th>
+            <th>Justificativa</th>
+            <th>Data Criação</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="filiaisTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Criar Filial -->
+  <div class="modal-overlay" id="modalCriarFilial" style="display:none;">
+    <div class="modal-card">
+      <h3><i class="fas fa-plus"></i> Criar Nova Filial</h3>
+      <label>Nome <input type="text" id="filialNome" placeholder="Nome da filial"></label>
+      <label>Justificativa <textarea id="filialJustificativa" rows="2" placeholder="Ex: expansão bairro X"></textarea></label>
+      <label>Matriz
+        <select id="filialMatriz">
+          <option value="">Selecionar matriz...</option>
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-action="fecharModalAction" data-modal="modalCriarFilial">Cancelar</button>
+        <button class="btn btn-primary" data-action="criarFilialAction"><i class="fas fa-plus"></i> Criar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Desvincular Filial -->
+<div class="modal-overlay" id="modalDesvincularFilial" style="display:none;">
+  <div class="modal-card" style="max-width:420px;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:24px;background:rgba(245,158,11,0.12);color:#F59E0B;">
+      <i class="fas fa-link"></i>
+    </div>
+    <h3 style="font-size:17px;font-weight:700;color:#FFFCE1;margin-bottom:10px;">Desvincular Filial</h3>
+    <p style="font-size:13px;line-height:1.65;color:#94A3B8;margin-bottom:16px;">
+      Ao desvincular sua empresa filial, acarretará que ela entrará em <strong style="color:#F59E0B;">modo de teste</strong> e isso <strong style="color:#FFFCE1;">não poderá ser revertido</strong>.
+    </p>
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);color:#F59E0B;margin-bottom:20px;">
+      <i class="fas fa-exclamation-triangle"></i> Modo teste a partir de <strong id="dataCicloDesvincularSA">...</strong> — mensalidade integral. Tem certeza disso?
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="cancelarDesvincularAction">Não</button>
+      <button class="btn btn-primary" data-action="confirmarDesvincularAction" style="background:#F59E0B;color:#000;border:none;">Sim, desvincular</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Excluir Filial -->
+<div class="modal-overlay" id="modalExcluirFilial" style="display:none;">
+  <div class="modal-card" style="max-width:420px;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:24px;background:rgba(239,68,68,0.12);color:#EF4444;">
+      <i class="fas fa-trash-alt"></i>
+    </div>
+    <h3 style="font-size:17px;font-weight:700;color:#FFFCE1;margin-bottom:10px;">Excluir Filial</h3>
+    <p style="font-size:13px;line-height:1.65;color:#94A3B8;margin-bottom:16px;">
+      Você está prestes a apagar essa filial do seu sistema. Todos os valores irão para a <strong style="color:#FFFCE1;">chave PIX cadastrada</strong> na mesma e todos os dados permanecerão guardados conforme <strong style="color:#FFFCE1;">LGPD</strong>.
+    </p>
+    <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#EF4444;margin-bottom:20px;">
+      <i class="fas fa-exclamation-circle"></i> Ação irreversível — filial apagada a partir da data de <strong id="dataCicloExcluirSA">...</strong>. Tem certeza disso?
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-action="cancelarExcluirAction">Não</button>
+      <button class="btn btn-primary" data-action="confirmarExcluirAction" style="background:#EF4444;color:#fff;border:none;">Sim, excluir</button>
+    </div>
+  </div>
+</div>
+
+<div class="tab-content" id="tabSettlements">
+  <div class="card">
+    <h2><i class="fas fa-dollar-sign"></i> Settlements Globais</h2>
+    <div style="overflow-x:auto">
+    <table class="user-table">
+      <thead><tr><th>Empresa</th><th>Periodo</th><th>Pedidos</th><th>Bruto</th><th>Liquido</th><th>Status</th></tr></thead>
+      <tbody id="settlementsTableBody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- Integrações tab -->
+<div class="tab-content" id="tabIntegracoes">
+  <div class="card">
+    <h2><i class="fas fa-plug"></i> Integrações Marketplace</h2>
+    <div id="super-integ-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;"></div>
+  </div>
+</div>
+
+<!-- Audit logs tab -->
+<div class="tab-content" id="tabRegistros">
+  <div class="card">
+    <h2><i class="fas fa-scroll"></i> Registros de Auditoria</h2>
+    <div class="audit-filters">
+      <div>
+        <label for="filtroUsuario">Usuário</label>
+        <select id="filtroUsuario" aria-label="Filtrar por usuário"><option value="">Todos os usuários</option></select>
+      </div>
+      <div>
+        <label for="filtroModulo">Módulo</label>
+        <select id="filtroModulo" aria-label="Filtrar por módulo">
+          <option value="">Todos os módulos</option>
+          <option value="cliente">cliente</option>
+          <option value="whatsapp">whatsapp</option>
+          <option value="auth">auth</option>
+          <option value="pedido">pedido</option>
+          <option value="geral">geral</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtroSeveridade">Severidade</label>
+        <select id="filtroSeveridade" aria-label="Filtrar por severidade">
+          <option value="">Todas</option>
+          <option value="info">Info</option>
+          <option value="warning">Aviso</option>
+          <option value="critical">Crítico</option>
+        </select>
+      </div>
+      <div>
+        <label for="filtroInicio">De</label>
+        <input type="date" id="filtroInicio" aria-label="Data inicial">
+      </div>
+      <div>
+        <label for="filtroFim">Até</label>
+        <input type="date" id="filtroFim" aria-label="Data final">
+      </div>
+      <div class="audit-filters-actions">
+        <button class="btn btn-primary" id="btnLimparFiltros"><i class="fas fa-eraser"></i> Limpar filtros</button>
+      </div>
+    </div>
+    <div class="audit-summary" id="timelineErro" style="display:none;"></div>
+    <div class="timeline" id="timeline"><div class="timeline-empty">Carregando...</div></div>
+    <div class="audit-footer">
+      <span id="auditContador"></span>
+      <button class="btn btn-primary" id="btnLoadMore" style="display:none;"><i class="fas fa-plus"></i> Carregar mais</button>
+    </div>
+  </div>
+</div>
+
+<!-- Billing tab -->
+<div class="tab-content" id="tabBilling">
+  <div class="dash-cards" id="billingCards"></div>
+  <div class="dash-table-card">
+    <h3><i class="fas fa-credit-card"></i> Assinaturas</h3>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <label for="filtroEmpresaBilling" style="font-weight:600;color:#7C7C6F;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">Filtrar por empresa:</label>
+      <select id="filtroEmpresaBilling" aria-label="Filtrar por empresa" style="background:#111;color:#FFFCE1;border:1px solid #333;border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;">
+        <option value="">Todas as empresas</option>
+      </select>
+    </div>
+    <table class="dash-table">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Status</th>
+          <th>Próximo Vencimento</th>
+          <th>Último Pagamento</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="billingTableBody"></tbody>
+    </table>
+  </div>
+  <div class="dash-table-card" style="margin-top: 24px;">
+    <h3><i class="fas fa-dollar-sign"></i> Configurar Mensalidade</h3>
+    <div style="display: flex; gap: 16px; align-items: end;">
+      <div>
+        <label style="font-size: 12px; color: #7C7C6F;">Valor (R$)</label>
+        <input type="number" id="pricingValue" value="100" step="0.01" style="
+          padding: 10px; border: 1px solid #333; border-radius: 8px;
+          background: #111; color: #FFFCE1; font-size: 14px; width: 150px;
+        ">
+      </div>
+      <div>
+        <label style="font-size: 12px; color: #7C7C6F;">Data de Efetivação</label>
+        <input type="date" id="pricingDate" style="
+          padding: 10px; border: 1px solid #333; border-radius: 8px;
+          background: #111; color: #FFFCE1; font-size: 14px;
+        ">
+      </div>
+      <button data-action="savePricingAction" style="
+        padding: 10px 20px; background: #F26D3D; color: white;
+        border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
+      ">
+        Salvar Alterações
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Detalhes Assinatura -->
+<div class="modal-overlay-sub" id="modalDetalhesAssinatura">
+  <div class="modal-card-sub">
+    <div class="modal-title-sub">Detalhes da Assinatura</div>
+    <div class="modal-subtitle-sub">Informações completas da assinatura desta empresa</div>
+    <div class="empresa-header-sub">
+      <div class="empresa-header-icon-sub"><i class="fas fa-building"></i></div>
+      <div class="empresa-header-info-sub">
+        <div class="empresa-header-name-sub" id="subEmpresaNome">—</div>
+        <div class="empresa-header-slug-sub" id="subEmpresaSlug">—</div>
+      </div>
+    </div>
+    <div class="status-section-sub">
+      <div class="status-section-label-sub">Status</div>
+      <span class="status-badge" id="subStatusBadge" style="font-size:12px;padding:5px 14px;"><i class="fas fa-circle" style="font-size:6px;"></i> <span id="subStatusText">—</span></span>
+    </div>
+    <div class="detail-grid-sub">
+      <div><div class="detail-label-sub">Valor Mensal</div><div class="detail-value-sub" id="subValor">—</div></div>
+      <div><div class="detail-label-sub">Tipo Cobrança</div><div class="detail-value-sub" id="subBillingType">—</div></div>
+      <div><div class="detail-label-sub">Próx. Vencimento</div><div class="detail-value-sub" id="subNextDue">—</div></div>
+      <div><div class="detail-label-sub">Último Pagamento</div><div class="detail-value-sub" id="subLastPayment">—</div></div>
+      <div><div class="detail-label-sub">Fim do Trial</div><div class="detail-value-sub muted" id="subTrialEnds">—</div></div>
+      <div><div class="detail-label-sub">Cancelado em</div><div class="detail-value-sub muted" id="subCanceledAt">—</div></div>
+    </div>
+    <div class="id-box-sub">
+      <div class="id-box-label-sub">ID Asaas</div>
+      <div class="id-box-value-sub" id="subAsaasId">—</div>
+    </div>
+    <div class="created-at-sub"><i class="far fa-clock" style="margin-right:4px;"></i> Criado em <strong id="subCreatedAt">—</strong></div>
+    <div class="modal-divider-sub"></div>
+    <div>
+      <div class="status-section-label-sub" style="margin-bottom:10px;">Alterar Status</div>
+      <div class="status-change-row-sub">
+        <select class="status-select-sub" id="subStatusSelect">
+          <option value="TRIAL">TRIAL</option>
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="PAST_DUE">PAST_DUE</option>
+          <option value="SUSPENDED">SUSPENDED</option>
+          <option value="CANCELED">CANCELED</option>
+        </select>
+        <button class="btn-update-sub" data-action="atualizarStatusAssinaturaAction"><i class="fas fa-save" style="margin-right:4px;"></i> Atualizar</button>
+        <button class="btn-close-sub" data-action="fecharModalDetalhesAction">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+
+  </div><!-- /.sa-main -->
+</div><!-- /.sa-layout -->
+
+</body>`;
+
+const STYLE_SUPERADMIN = `
+  /* Superadmin Dashboard dark theme override */
+  #pageContainer { color: var(--text, #FFFCE1); }
+  .empresa-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 14px 20px; background: var(--surface, #191919); border-radius: 16px; border: 1px solid #2a2a2a; }
+  .empresa-selector label { font-size: 12px; color: #7C7C6F; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .empresa-selector select { flex: 1; padding: 8px 12px; border: 1px solid #333; border-radius: 8px; background: #111; color: var(--text, #FFFCE1); font-size: 13px; font-family: inherit; font-weight: 500; cursor: pointer; }
+  .empresa-selector select:focus { outline: none; border-color: var(--primary, #F26D3D); }
+  .empresa-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; background: rgba(242,109,61,0.15); color: var(--primary, #F26D3D); }
+  .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .dash-header h2 { font-size: 14px; font-weight: 600; color: #7C7C6F; }
+  .btn-refresh { padding: 8px 16px; border: 1px solid #333; border-radius: 8px; background: transparent; color: var(--text, #FFFCE1); font-size: 12px; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; }
+  .dash-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .dash-card { background: var(--surface, #191919); border-radius: 16px; padding: 20px; border-left: 4px solid var(--primary, #F26D3D); }
+  .dash-card-icon { font-size: 20px; color: var(--primary, #F26D3D); margin-bottom: 8px; opacity: 0.8; }
+  .dash-card-value { font-size: 28px; font-weight: 800; color: var(--text, #FFFCE1); line-height: 1.2; }
+  .dash-card-label { font-size: 11px; color: #7C7C6F; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .dash-table-card { background: var(--surface, #191919); border-radius: 16px; padding: 20px; overflow-x: auto; }
+  .dash-table-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .dash-table-card h3 i { color: var(--primary, #F26D3D); }
+  .dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .dash-table th { text-align: left; padding: 12px; color: #7C7C6F; font-weight: 600; border-bottom: 1px solid #2a2a2a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dash-table td { padding: 14px 12px; border-bottom: 1px solid #1e1e1e; }
+  .empresa-name { font-weight: 700; }
+  .empresa-slug { font-size: 11px; color: #7C7C6F; font-family: monospace; }
+  .status-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .status-active { background: rgba(16,185,129,0.15); color: #10B981; }
+  .status-inactive { background: rgba(124,124,111,0.15); color: #7C7C6F; }
+  .status-trial { background: rgba(59,130,246,0.15); color: #3B82F6; }
+  .status-past_due { background: rgba(245,158,11,0.15); color: #F59E0B; }
+  .status-suspended { background: rgba(239,68,68,0.15); color: #EF4444; }
+  .status-canceled { background: rgba(124,124,111,0.15); color: #7C7C6F; }
+  .amount-positive { color: #10B981; font-weight: 600; }
+  .amount-pending { color: #F59E0B; font-weight: 600; }
+  @media (max-width: 1024px) { .dash-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 600px) { .dash-cards { grid-template-columns: minmax(0, 1fr); } .dash-card-value { font-size: 22px; } }
+
+  /* Modal Detalhes Assinatura */
+  .modal-overlay-sub { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:1000; }
+  .modal-overlay-sub.show { display:flex; }
+  .modal-card-sub { background:#191919;border:1px solid #2a2a2a;border-radius:16px;padding:28px 32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .modal-title-sub { font-size:18px;font-weight:700;color:#FFFCE1;margin-bottom:4px; }
+  .modal-subtitle-sub { font-size:11px;color:#7C7C6F;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;margin-bottom:20px; }
+  .empresa-header-sub { background:rgba(242,109,61,0.06);border:1px solid rgba(242,109,61,0.12);border-radius:12px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px; }
+  .empresa-header-icon-sub { width:36px;height:36px;background:rgba(242,109,61,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#F26D3D;font-size:16px;flex-shrink:0; }
+  .empresa-header-name-sub { font-size:14px;font-weight:700;color:#FFFCE1; }
+  .empresa-header-slug-sub { font-size:11px;color:#7C7C6F;font-family:monospace; }
+  .status-section-sub { margin-bottom:20px; }
+  .status-section-label-sub { font-size:11px;color:#7C7C6F;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px; }
+  .detail-grid-sub { display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px; }
+  .detail-label-sub { font-size:11px;color:#7C7C6F;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px; }
+  .detail-value-sub { font-size:14px;color:#FFFCE1;font-weight:500; }
+  .detail-value-sub.muted { color:#7C7C6F; }
+  .id-box-sub { background:#111;border:1px solid #333;border-radius:8px;padding:10px 14px;margin-bottom:16px; }
+  .id-box-label-sub { font-size:11px;color:#7C7C6F;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px; }
+  .id-box-value-sub { font-family:monospace;font-size:12px;color:#7C7C6F;word-break:break-all; }
+  .created-at-sub { font-size:12px;color:#7C7C6F;margin-bottom:20px; }
+  .modal-divider-sub { height:1px;background:#2a2a2a;margin:0 -32px 20px; }
+  .status-change-row-sub { display:flex;align-items:center;gap:10px;flex-wrap:wrap; }
+  .status-select-sub { background:#111;color:#FFFCE1;border:1px solid #333;border-radius:8px;padding:8px 12px;font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;flex:1; }
+  .status-select-sub:focus { outline:none;border-color:#F26D3D; }
+  .btn-update-sub { padding:8px 16px;background:#F26D3D;color:white;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:background 0.15s; }
+  .btn-update-sub:hover { background:#e85d2a; }
+  .btn-close-sub { padding:8px 16px;background:transparent;color:#7C7C6F;border:1px solid #333;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all 0.15s; }
+  .btn-close-sub:hover { border-color:#555;color:#FFFCE1; }
+
+  /* Modal overlays (desvincular / excluir filial) */
+  .modal-overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:1000; }
+  .modal-card { background:#191919;border:1px solid #2a2a2a;border-radius:16px;padding:28px 32px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+  .modal-actions { display:flex;gap:10px;margin-top:20px; }
+  .modal-actions .btn { flex:1;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all 0.2s; }
+  .btn-secondary { background:#2a2a2a;color:#94A3B8;border:1px solid #333; }
+  .btn-secondary:hover { background:#333;color:#FFFCE1; }
+  .btn-primary { background:#F26D3D;color:#fff; }
+  .btn-primary:hover { background:#e85d2a; }
+`;
+
+let _abort = null;
+const _cleanups = [];
+
+export async function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  container.innerHTML = HTML_SUPERADMIN;
+  if (STYLE_SUPERADMIN) {
+    const s = document.createElement('style');
+    s.dataset.page = 'superadmin';
+    s.textContent = STYLE_SUPERADMIN;
+    document.head.appendChild(s);
+    _cleanups.push(function () { s.remove(); });
+  }
+  _cleanups.push(
+    pageCss('css/superadmin-page.css', 'superadmin'),
+    pageCss('https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css', 'superadmin')
+  );
+  // HTML primeiro: helpers com init auto (readyState) precisam dos nós.
+  // superadmin-audit.js é ES module (export) — import dinâmico, não loadScriptOnce.
+  const audit = await import('../superadmin-audit.js');
+  await loadScriptOnce('js/password-toggle.js');
+  await loadScriptOnce('js/superadminDashboard.js');
+  await loadScriptOnce('js/superadminBilling.js');
+  await loadScriptOnce('js/superadmin-integracoes.js');
+  await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js');
 (function () {
   var host = window.location.hostname;
   var isLocal = host === 'localhost' || /^\d+(\.\d+){3}$/.test(host);
@@ -10,14 +569,10 @@
       window.location.href = 'https://admin.' + labels.slice(1).join('.');
     }
   }
-  if (!authGuard('superadmin')) throw new Error('Redirect');
-  if (typeof startIdleTimer === 'function') startIdleTimer();
 
   function _doFetch(path, opts) {
     var headers = { 'Content-Type': 'application/json' };
-    var token = (JSON.parse(localStorage.getItem('authUser') || '{}')).token;
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    return fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path, {
+    return authFetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path, {
       headers: headers,
       method: opts ? opts.method : undefined,
       body: opts ? opts.body : undefined
@@ -136,7 +691,7 @@
     if (tab === 'registros' && window.superadminAudit) superadminAudit.carregarAudit(1);
     if (tab === 'clientes') carregarClientes();
     if (tab === 'empresas') carregarEmpresas();
-    if (tab === 'filiais') { carregarFiliais(); try { document.getElementById('mainFrame').contentWindow.popularDataCiclo(); } catch (e) {} }
+    if (tab === 'filiais') { carregarFiliais(); try { if (typeof window.popularDataCiclo === 'function') window.popularDataCiclo(); } catch (e) {} }
     if (tab === 'billing' && window.loadBillingDashboard) loadBillingDashboard();
     if (tab === 'settlements') carregarSettlements();
     if (tab === 'integracoes' && window.SuperIntegracoes) SuperIntegracoes.carregar();
@@ -657,3 +1212,14 @@
   // External scripts (superadminDashboard.js, superadminBilling.js) define:
   // onEmpresaChange, carregarDashboard, savePricing, abrirModalCriarFilial, criarFilial
 })();
+  // re-init por mount (loadScriptOnce pula re-eval em visitas seguintes)
+  try { if (window.initPasswordToggles) window.initPasswordToggles(); } catch (e) {}
+  try { audit.init(); } catch (e) {}
+  try { if (window.autoLoadDashboard) window.autoLoadDashboard(); } catch (e) {}
+  return cleanup;
+}
+function cleanup() {
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

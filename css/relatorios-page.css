@@ -2,12 +2,16 @@
    Relatórios — Page-specific styles
    ═══════════════════════════════════════════════════════ */
 
-body {
+@layer pages {
+
+#pageContainer {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  padding: 24px;
-  background: #f1f5f9;
   color: #1e293b;
+  padding: 24px;
+  min-height: 100%;
 }
+
+@scope (#pageContainer) {
 
 h1 {
   font-size: 20px;
@@ -193,8 +197,38 @@ tr:hover td { background: #f8fafc; }
 tfoot td { background: #f1f5f9; font-weight: 700; }
 
 @media (max-width: 768px) {
-  body { padding: 16px; }
+  :scope { padding: 16px; }
   .tabs { flex-direction: column; }
   .filtro-datas { flex-direction: column; align-items: stretch; }
   table { font-size: 12px; }
 }
+
+/* ===== HT — Relatórios (únicos) ===== */
+/* Chart.js cor aprovada em T0 (exceção A: #f97316 → #faae33 em js/pages/relatorios.js) */
+.resumo-periodo {
+  background: var(--ht-spice) !important; border-radius: var(--ht-radius-card) !important;
+  font-family: var(--ht-display); font-size: 29px; color: var(--ht-fg); padding: 16px 20px;
+}
+.grafico-container, .chart-wrap {
+  background: var(--ht-spice) !important; border-radius: var(--ht-radius-card) !important; box-shadow: none !important;
+}
+.dia-relatorio {
+  background: var(--ht-spice) !important; border-radius: var(--ht-radius-card) !important; padding: 14px 16px;
+}
+.dia-relatorio h3 {
+  font-family: var(--ht-display); font-weight: 400; text-transform: uppercase;
+  color: var(--ht-fg); border-bottom: 1px dotted var(--ht-gold); padding-bottom: 8px; line-height: 1.05;
+}
+.pedido-card { background: var(--ht-clove) !important; border: 1px solid var(--ht-cardamom) !important; border-radius: var(--ht-radius-card); color: var(--ht-fg); }
+.badge-entrega, .badge-pagamento {
+  background: var(--ht-spice) !important; color: var(--ht-fg) !important;
+  border: 1px solid var(--ht-cardamom) !important; border-radius: 9999px !important;
+}
+.summary-row, .pedido-totals, .pedido-total-row, .pedido-meta { border-color: var(--ht-cardamom) !important; color: var(--ht-fg) !important; }
+.filtro-datas input { background: transparent; border: 1px solid var(--ht-cardamom); border-radius: 9999px; color: var(--ht-fg); padding: 10px 16px; }
+.valor-entrega { color: var(--ht-fg) !important; }
+.grafico-container h3 { color: var(--ht-fg) !important; }
+.grafico-container h3 i { color: var(--ht-gold) !important; }
+
+} /* @scope */
+} /* @layer pages */

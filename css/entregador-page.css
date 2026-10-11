@@ -3,13 +3,15 @@
    Extraído de inline <style> — Finalização
    ═══════════════════════════════════════════════════════ */
 
-body {
+@layer pages {
+
+#pageContainer {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  background: #f1f5f9;
   color: #1e293b;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100%;
 }
+
+@scope (#pageContainer) {
 
 .app {
   display: flex;
@@ -91,3 +93,17 @@ body {
   .app { flex-direction: column; }
   .sidebar { height: 100vh; height: 100dvh; }
 }
+
+/* ===== HT — Entregadores (únicos) ===== */
+.driver-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.driver-card {
+  background: var(--ht-spice) !important; border: none !important;
+  border-left: 3px solid var(--ht-cardamom) !important;
+  border-radius: var(--ht-radius-card) !important; box-shadow: none !important; color: var(--ht-fg) !important;
+}
+.badge-active { background: var(--ht-gold) !important; color: var(--ht-clove) !important; border-radius: 9999px !important; }
+.badge-inactive { background: var(--ht-danger) !important; color: var(--ht-clove) !important; border-radius: 9999px !important; }
+.report-box { background: var(--ht-spice) !important; border-radius: var(--ht-radius-card); }
+
+} /* @scope */
+} /* @layer pages */

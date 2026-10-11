@@ -1,9 +1,147 @@
-// js/pages/financeiro.js — extracted from financeiro.html inline script
-// Delegator bridge functions
+// js/pages/financeiro-page.js — módulo SPA (receita Task6)
+const HTML_FINANCEIRO = `<body>
+  <!-- TABS (só para matriz) -->
+  <div id="fin-tabs" class="fin-tabs" style="display:none;">
+    <button class="fin-tab active" data-tab="resumo">Resumo</button>
+    <button class="fin-tab" data-tab="consolidado">Balanço Consolidado</button>
+  </div>
+
+  <!-- TAB: Resumo (fluxo existente) -->
+  <div id="fin-tab-resumo" class="fin-tab-panel active">
+    <div id="fin-loading" class="fin-loading">Carregando dados financeiros...</div>
+    <div id="fin-content" style="display:none;">
+      <div class="fin-grid">
+        <div class="fin-card"><div class="label">Bruto</div><div class="value" id="fin-bruto">-</div></div>
+        <div class="fin-card"><div class="label">Descontos</div><div class="value" id="fin-descontos">-</div></div>
+        <div class="fin-card"><div class="label">Taxas</div><div class="value" id="fin-taxas">-</div></div>
+        <div class="fin-card net"><div class="label">Líquido</div><div class="value" id="fin-liquido">-</div></div>
+        <div class="fin-card"><div class="label">Recebido</div><div class="value" id="fin-recebido">-</div></div>
+        <div class="fin-card receivable"><div class="label">A Receber</div><div class="value" id="fin-a-receber">-</div></div>
+      </div>
+      <div class="fin-section">
+        <h3>Por Plataforma</h3>
+        <ul id="fin-por-plataforma"></ul>
+      </div>
+      <div class="fin-actions">
+        <button class="btn-financeiro btn-sync" data-action="financeiroSincronizar">
+          <i class="fas fa-sync-alt"></i> Sincronizar Dados
+        </button>
+        <button class="btn-financeiro btn-closing" data-action="financeiroGerarFechamento">
+          <i class="fas fa-file-invoice-dollar"></i> Gerar Fechamento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Balanço Consolidado (só para matriz) -->
+  <div id="fin-tab-consolidado" class="fin-tab-panel">
+    <div id="consol-loading" class="fin-loading">Carregando balanço consolidado...</div>
+    <div id="consol-content" style="display:none;">
+      <div class="fin-grid">
+        <div class="fin-card" style="border-left:3px solid var(--primary, #F26D3D);"><div class="label">Bruto Total</div><div class="value" id="consol-bruto">-</div></div>
+        <div class="fin-card"><div class="label">Descontos</div><div class="value" id="consol-descontos">-</div></div>
+        <div class="fin-card"><div class="label">Taxas</div><div class="value" id="consol-taxas">-</div></div>
+        <div class="fin-card net"><div class="label">Líquido Total</div><div class="value" id="consol-liquido">-</div></div>
+        <div class="fin-card"><div class="label">Recebido</div><div class="value" id="consol-recebido">-</div></div>
+        <div class="fin-card receivable"><div class="label">A Receber</div><div class="value" id="consol-a-receber">-</div></div>
+      </div>
+      <div class="section-title"><i class="fas fa-sitemap"></i> Detalhamento por Filial</div>
+      <table class="consol-table">
+        <thead>
+          <tr>
+            <th>Filial</th>
+            <th>Bruto</th>
+            <th>Líquido</th>
+            <th>Recebido</th>
+            <th>A Receber</th>
+          </tr>
+        </thead>
+        <tbody id="consol-filiais-tbody"></tbody>
+        <tfoot id="consol-filiais-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/admin/hungry-tiger.css">
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+
+const STYLE_FINANCEIRO = `
+  #pageContainer { font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text); padding: 24px; }
+  .fin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .fin-card { background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 16px; }
+  .fin-card .label { font-size: 12px; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .fin-card .value { font-size: 22px; font-weight: 700; }
+  .fin-card.receivable .value { color: #f59e0b; }
+  .fin-card.net .value { color: #10b981; }
+  .fin-section { margin-bottom: 24px; }
+  .fin-section h3 { font-size: 16px; margin-bottom: 12px; }
+  .fin-section ul { list-style: none; padding: 0; }
+  .fin-section li { padding: 8px 0; border-bottom: 1px solid var(--border, #e2e8f0); font-size: 14px; }
+  .fin-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-financeiro { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn-sync { background: #3b82f6; color: #fff; }
+  .btn-sync:hover { background: #2563eb; }
+  .btn-closing { background: #10b981; color: #fff; }
+  .btn-closing:hover { background: #059669; }
+  .btn-financeiro:disabled { opacity: 0.5; cursor: not-allowed; }
+  .fin-loading { text-align: center; padding: 40px; color: var(--text-muted, #64748b); }
+  /* Tabs */
+  .fin-tabs { display:flex; gap:4px; margin-bottom:24px; border-bottom:2px solid var(--border, #e2e8f0); }
+  .fin-tab { padding:10px 20px; font-size:13px; font-weight:600; color:var(--text-muted, #64748b); border:none; background:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; font-family:inherit; }
+  .fin-tab.active { color:var(--primary, #F26D3D); border-bottom-color:var(--primary, #F26D3D); }
+  .fin-tab:hover { color:var(--text, #2D1A12); }
+  .fin-tab-panel { display:none; }
+  .fin-tab-panel.active { display:block; }
+  /* Consolidated table */
+  .consol-table { width:100%; border-collapse:collapse; background:var(--card-bg, #fff); border-radius:12px; overflow:hidden; border:1px solid var(--border, #e2e8f0); margin-bottom:24px; }
+  .consol-table th { background:var(--bg, #F5F0EB); padding:10px 14px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted, #64748b); border-bottom:1px solid var(--border, #e2e8f0); }
+  .consol-table td { padding:10px 14px; font-size:13px; border-bottom:1px solid var(--bg, #F5F0EB); }
+  .consol-table tr:last-child td { border-bottom:none; }
+  .consol-table .filial-name { font-weight:600; color:var(--text, #2D1A12); }
+  .consol-table .positive { color:#10b981; }
+  .consol-table .negative { color:#ef4444; }
+  .consol-table .pending { color:#f59e0b; }
+  .consol-table tfoot td { background:var(--bg, #F5F0EB); font-weight:700; border-top:2px solid var(--border, #e2e8f0); }
+  .section-title { font-size:16px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .section-title i { color:var(--primary, #F26D3D); }
+
+/* ===== HT — Central Financeira (únicos) ===== */
+.fin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.fin-section { background: transparent !important; }
+.fin-card .fin-amount, .fin-card .amount, .fin-card strong {
+  font-family: var(--ht-display); font-size: 43px; line-height: 0.9; color: var(--ht-fg);
+}
+.fin-tabs { border-bottom: 1px dotted var(--ht-gold); }
+.fin-tab {
+  background: transparent !important; border: 1px solid var(--ht-cardamom) !important;
+  border-radius: 9999px !important; color: var(--ht-fg) !important;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; padding: 6px 14px;
+}
+.fin-tab.active { background: var(--ht-gold) !important; color: var(--ht-clove) !important; border-color: var(--ht-gold) !important; }
+.consol-table th { color: var(--ht-fg-muted); border-bottom: 1px dotted var(--ht-gold); }
+.consol-table td { border-bottom: 1px solid var(--ht-cardamom); color: var(--ht-fg); }
+`;
+
+export async function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  await loadScriptOnce('js/financeiro.js');
+  container.innerHTML = HTML_FINANCEIRO;
+  if (STYLE_FINANCEIRO) {
+    const s = document.createElement('style');
+    s.dataset.page = 'financeiro';
+    s.textContent = STYLE_FINANCEIRO;
+    document.head.appendChild(s);
+    _cleanups.push(function () { s.remove(); });
+  }
+  (function () {
 window.financeiroSincronizar = function () { if (typeof Financeiro !== 'undefined') Financeiro.sincronizar(); };
 window.financeiroGerarFechamento = function () { if (typeof Financeiro !== 'undefined') Financeiro.gerarFechamento(); };
-
-(function () {
   var authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
   var isMatriz = authUser.empresaTipo === 'matriz';
 
@@ -50,10 +188,7 @@ window.financeiroGerarFechamento = function () { if (typeof Financeiro !== 'unde
     var loadingEl = document.getElementById('consol-loading');
     var contentEl = document.getElementById('consol-content');
     try {
-      var token = (typeof safeGetToken === 'function' ? safeGetToken() : '');
-      var res = await fetch((getApiBase() || '') + '/api/financeiro/consolidated', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+      var res = await authFetch((getApiBase() || '') + '/api/financeiro/consolidated');
       if (!res.ok) throw new Error('Erro ao carregar consolidado');
       var data = await res.json();
 
@@ -109,14 +244,24 @@ window.financeiroGerarFechamento = function () { if (typeof Financeiro !== 'unde
 
   // Init
   (async function init() {
+    var loadingEl = document.getElementById('fin-loading');
+    var contentEl = document.getElementById('fin-content');
     try {
       if (typeof Financeiro !== 'undefined' && Financeiro.carregarBalanco) {
         await Financeiro.carregarBalanco();
       }
-      document.getElementById('fin-loading').style.display = 'none';
-      document.getElementById('fin-content').style.display = 'block';
+      if (!loadingEl || !contentEl) return;
+      loadingEl.style.display = 'none';
+      contentEl.style.display = 'block';
     } catch (e) {
-      document.getElementById('fin-loading').textContent = 'Erro ao carregar dados.';
+      if (loadingEl) loadingEl.textContent = 'Erro ao carregar dados.';
     }
   })();
-})();
+  })();
+  return cleanup;
+}
+function cleanup() {
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

@@ -2,6 +2,8 @@
 (function() {
   'use strict';
   
+  window.initPasswordToggles = initPasswordToggles;
+
   function initPasswordToggles() {
     // Find all password input fields
     const passwordFields = document.querySelectorAll('input[type="password"]');

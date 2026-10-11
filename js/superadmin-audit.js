@@ -155,8 +155,8 @@ async function carregarAudit(novaPagina) {
     filtros.page = page;
     filtros.limit = 50;
     const qs = buildQueryParams(filtros);
-    const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/audit?' + qs, {
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+    const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/audit?' + qs, {
+      headers: { 'Content-Type': 'application/json' },
     });
     if (!res.ok) {
       const err = await res.json().catch(function () { return { error: 'Erro ' + res.status }; });
@@ -210,9 +210,8 @@ async function popularSelectUsuarios() {
   if (!select) return;
   select.innerHTML = '<option value="">Todos os usuários</option>';
   try {
-    const atores = await fetch((window.getApiBase?window.getApiBase():'') + '/api/audit/usuarios', {
-      headers: { Authorization: 'Bearer ' + getToken() },
-    }).then(function (r) { return r.json(); });
+    const atores = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/audit/usuarios')
+      .then(function (r) { return r.json(); });
     if (!Array.isArray(atores)) return;
     atores.forEach(function (a) {
       const opt = document.createElement('option');
@@ -240,7 +239,7 @@ function init() {
   if (loadMore) loadMore.addEventListener('click', carregarMaisAudit);
 }
 
-export { carregarAudit, carregarMaisAudit, aplicarFiltros, limparFiltros, popularSelectUsuarios };
+export { carregarAudit, carregarMaisAudit, aplicarFiltros, limparFiltros, popularSelectUsuarios, init };
 
 if (typeof document !== 'undefined') {
   window.superadminAudit = { carregarAudit, carregarMaisAudit, expandirCard: toggleDetalhes, aplicarFiltros, limparFiltros, popularSelectUsuarios };

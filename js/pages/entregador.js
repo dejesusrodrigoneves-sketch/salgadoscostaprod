@@ -1,8 +1,89 @@
-// js/pages/entregador.js — extracted from entregador.html inline scripts
-(function () {
-  if (!authGuard(['admin', 'entregador'])) throw new Error('Redirect');
+// js/pages/entregador.js — módulo SPA (receita Task3/Task5)
+const HTML_ENTREGADOR = `<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modal Redefinir Senha -->
+<div id="modalResetSenha" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:24px; width:90%; max-width:400px; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <h3 style="margin:0 0 16px; font-size:18px;"><i class="fas fa-key"></i> Redefinir Senha</h3>
+    <p style="margin:0 0 12px; font-size:14px; color:#64748b;">Entregador: <strong id="modalResetNome"></strong></p>
+    <div style="margin-bottom:12px;">
+      <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Nova senha</label>
+      <input type="password" id="modalResetPassword" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;" placeholder="Mín. 6 caracteres, maiúscula, minúscula e número">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Confirmar senha</label>
+      <input type="password" id="modalResetPasswordConfirm" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; box-sizing:border-box;" placeholder="Repita a senha">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;">
+        <input type="checkbox" id="modalResetSendWhatsApp" checked>
+        Enviar via WhatsApp
+      </label>
+    </div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn btn-ghost" data-action="fecharModalResetAction">Cancelar</button>
+      <button class="btn btn-primary" data-action="confirmarResetSenhaAction"><i class="fas fa-check"></i> Redefinir</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- Sidebar - Gerenciamento de Entregadores -->
+  <aside class="sidebar">
+    <h2><i class="fas fa-motorcycle"></i> Entregadores</h2>
+
+    <div>
+      <h3>Cadastrar Entregador</h3>
+      <div class="form-group">
+        <label>Nome Completo</label>
+        <input type="text" id="inpNome" placeholder="Nome do entregador">
+      </div>
+      <div class="form-group">
+        <label>Endereço</label>
+        <input type="text" id="inpEndereco" placeholder="Endereço">
+      </div>
+      <div class="form-group">
+        <label>WhatsApp</label>
+        <input type="text" id="inpWhatsapp" placeholder="21999999999">
+      </div>
+      <div class="form-group">
+        <label>Username (login)</label>
+        <input type="text" id="inpUsername" placeholder="Ex: joao.silva">
+      </div>
+      <div class="form-group">
+        <label>Chave Pix</label>
+        <input type="text" id="inpPix" placeholder="CPF, telefone ou e-mail">
+      </div>
+      <br />
+      <button class="btn btn-primary" style="width:100%;margin-top:4px;" data-action="salvarEntregadorAction">
+        <i class="fas fa-plus"></i> Cadastrar
+      </button>
+    </div>
+
+    <div>
+      <h3>Entregadores Ativos</h3>
+      <div class="driver-list" id="driverList"></div>
+    </div>
+  </aside>
+
+</div>
+
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+let entregadorPollId = null;
+
+export  function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  _cleanups.push(pageCss('css/entregador-page.css', 'entregador'));
+  container.innerHTML = HTML_ENTREGADOR;
+  (function () {
   var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
-  if (!_au.role || !['admin', 'superadmin', 'entregador'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
+  if (!_au.role || !['admin', 'superadmin', 'entregador'].includes(_au.role)) { goTo('admin'); return; }
 
   var authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
   var API_BASE = (window.getApiBase ? window.getApiBase() : window.location.origin) + '/api';
@@ -17,8 +98,7 @@
     try {
       var url = API_BASE + path;
       var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      var res = await authFetch(url, Object.assign({}, opts, { headers: headers }));
       if (!res.ok) {
         var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
         throw new Error(err.error || 'Erro HTTP ' + res.status);
@@ -208,6 +288,14 @@
   };
 
   // Poll drivers
-  setInterval(carregarEntregadores, 15000);
+  entregadorPollId = setInterval(carregarEntregadores, 15000);
   carregarEntregadores();
-})();
+  })();
+  return cleanup;
+}
+function cleanup() {
+  try { clearInterval(entregadorPollId); } catch (e) {}
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

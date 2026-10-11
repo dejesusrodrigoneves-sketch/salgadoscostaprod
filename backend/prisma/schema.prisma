@@ -24,6 +24,7 @@ model Empresa {
   latitude          Decimal?           @db.Decimal(10, 7)
   longitude         Decimal?           @db.Decimal(10, 7)
   descricao         String?
+  anoAbertura       Int?               @map("ano_abertura")
   openingTime       String?            @map("opening_time")
   closingTime       String?            @map("closing_time")
   workingDays       Json               @default("[]") @map("working_days")
@@ -171,6 +172,7 @@ model Pedido {
   formaPagamento    String?       @map("forma_pagamento")
   troco             Decimal?      @db.Decimal(10, 2)
   status            String        @default("pendente")
+  cancelamentoMotivo String?      @map("cancelamento_motivo")
   valoresItens      Decimal?      @map("valores_itens") @db.Decimal(10, 2)
   taxasEntrega      Decimal?      @map("taxas_entrega") @db.Decimal(10, 2)
   taxasCartao       Decimal?      @map("taxas_cartao") @db.Decimal(10, 2)

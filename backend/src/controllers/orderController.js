@@ -40,6 +40,11 @@ exports.buscar = asyncHandler(async (req, res) => {
 });
 
 exports.criar = asyncHandler(async (req, res) => {
+  const data = new Date().toISOString().split('T')[0];
+  const caixa = await sql.buscarCaixaHoje(empresaId(req), data);
+  if (!caixa || caixa.status !== 'aberto') {
+    return res.status(403).json({ error: 'Loja fechada: abra o caixa para receber pedidos' });
+  }
   const pedido = await orderService.criar({ ...req.body, empresaId: empresaId(req) }, empresaId(req), getCtx(req));
   res.status(201).json(pedido);
 });
@@ -63,6 +68,13 @@ exports.atualizarStatus = asyncHandler(async (req, res) => {
   res.json(atualizado);
 });
 
+exports.cancelarPedido = asyncHandler(async (req, res) => {
+  const motivo = String(req.body?.motivo || '').trim();
+  if (!motivo) return res.status(400).json({ error: 'Motivo do cancelamento é obrigatório' });
+  const resultado = await orderService.cancelarPedido(req.params.id, motivo, empresaId(req), getCtx(req));
+  res.json(resultado);
+});
+
 exports.editarPedido = asyncHandler(async (req, res) => {
   const { total, itens, formaPagamento, tipoEntrega, bairro, taxasEntrega, taxasCartao, desconto, troco } = req.body;
   if (!total || !itens) return res.status(400).json({ error: 'total e itens obrigatórios' });
@@ -81,9 +93,11 @@ exports.listarNaoConcluidos = asyncHandler(async (req, res) => {
   const pedidos = await orderService.listarNaoConcluidos(req.query, empresaId(req));
   const formatado = pedidos.map(function(p) {
     const dataExpiracao = p.updatedAt || p.createdAt;
-    const motivo = p.paymentStatus === 'expirado'
-      ? `Expirado há ${formatarTempoDecorrido(new Date(), dataExpiracao)}`
-      : `Rejeitado: ${p.pagamentos?.[0]?.refundReason || 'motivo não informado'}`;
+    const motivo = p.status === 'cancelado'
+      ? `Cancelado: ${p.cancelamentoMotivo || 'motivo não informado'}`
+      : p.paymentStatus === 'expirado'
+        ? `Expirado há ${formatarTempoDecorrido(new Date(), dataExpiracao)}`
+        : `Rejeitado: ${p.pagamentos?.[0]?.refundReason || 'motivo não informado'}`;
     return { ...p, motivo, dataExpiracao };
   });
   res.json(formatado);

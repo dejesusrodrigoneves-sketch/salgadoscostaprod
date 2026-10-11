@@ -136,7 +136,13 @@ const pedidoRepository = {
     return prisma.pedido.update({ where: { id }, data });
   },
   async listarNaoConcluidos(empresaId, filtros = {}) {
-    const where = { paymentStatus: { in: ['expirado', 'rejeitado'] }, deletedAt: null };
+    const where = {
+      OR: [
+        { paymentStatus: { in: ['expirado', 'rejeitado'] } },
+        { status: 'cancelado' },
+      ],
+      deletedAt: null,
+    };
     if (empresaId) where.empresaId = empresaId;
     if (filtros?.status) where.status = filtros.status;
     return prisma.pedido.findMany({ where, orderBy: { createdAt: 'desc' }, include: { itens: true, pagamentos: true } });

@@ -3,32 +3,23 @@
    Brand tokens via theme.js (fallback laranja terracota)
    ══════════════════════════════════════════════════════════════ */
 
-/* ─── RESET ─── */
-*, *::before, *::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+@layer pages {
 
 /* ─── LAYOUT BASE ─── */
-html {
-  font-size: 16px;
+#pageContainer {
+  display: flex;
+  height: 100%;
+  color: var(--text, #2D1A12);
+  font-family: var(--font, 'Plus Jakarta Sans', sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 
-body {
-  display: flex;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--secondary, #FFFAF8);
-  color: var(--text, #2D1A12);
-  font-family: var(--font, 'Plus Jakarta Sans', sans-serif);
-  overflow: hidden;
-}
+@scope (#pageContainer) {
 
 /* ─── LADO ESQUERDO — PRODUTOS ─── */
 .produtos-area {
   flex: 2;
+  min-width: 0;
   padding: 28px 28px 20px;
   display: flex;
   flex-direction: column;
@@ -172,7 +163,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  min-width: min(340px, 100%);
+  min-width: 0;
 }
 
 .checkout h3 {
@@ -577,6 +568,11 @@ hr {
   margin: 20px 0;
 }
 
+} /* @scope — regras de página */
+
+/* Modal sabores: montado no <body> pelo balcao.js — fora do @scope */
+@layer overrides {
+
 /* ─── OVERLAY MODAL SABORES ─── */
 .modal-sabores {
   position: fixed;
@@ -714,10 +710,19 @@ hr {
   box-shadow: 0 4px 14px rgba(242, 109, 61, 0.25);
 }
 
+} /* @layer overrides */
+
+/* HT — itens do modal sabores (árvore body-appended) */
+@layer overrides {
+.sabor-item { border-bottom: 1px dotted var(--ht-cardamom); }
+}
+
+@scope (#pageContainer) {
+
 /* ─── RESPONSIVIDADE ─── */
 
 @media (max-width: 1024px) {
-  body {
+  :scope {
     flex-direction: column;
     overflow: auto;
   }
@@ -933,3 +938,50 @@ hr {
     padding: 10px 14px;
   }
 }
+
+/* ===== HT — Balcão (únicos) ===== */
+.top-bar { border-bottom: 1px dotted var(--ht-gold); background: transparent !important; }
+.top-bar h1, .top-bar h2 { font-family: var(--ht-display); font-weight: 400; text-transform: uppercase; color: var(--ht-fg); font-size: 29px; line-height: 1.05; }
+.grid-produtos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.produto {
+  background: var(--ht-spice) !important; border: none !important;
+  border-radius: var(--ht-radius-card) !important; box-shadow: none !important;
+  color: var(--ht-fg) !important; text-align: center; padding: 14px;
+}
+.produto:hover { outline: 1px solid var(--ht-gold); }
+.lista, .item-carrinho, .total-area, .entrega-area {
+  background: var(--ht-spice) !important; border: none !important;
+  border-radius: var(--ht-radius-card) !important; box-shadow: none !important; color: var(--ht-fg) !important;
+}
+.item-carrinho { border-bottom: 1px dotted var(--ht-cardamom) !important; }
+.total-final { font-family: var(--ht-display); font-size: 43px; line-height: 0.9; color: var(--ht-fg); }
+.entrega-opcoes label, .pagamento-box label { color: var(--ht-fg) !important; }
+.controle-qtd input { width: 60px; text-align: center; }
+.sabor-item { border-bottom: 1px dotted var(--ht-cardamom); }
+.search { background: transparent; border: 1px solid var(--ht-cardamom); border-radius: 9999px; color: var(--ht-fg); padding: 10px 18px; }
+
+/* ===== HT — Balcão correções T3 ===== */
+.produtos-area { background: var(--ht-rust) !important; }
+.checkout h3 { font-family: var(--ht-display); font-weight: 400; text-transform: uppercase; color: var(--ht-fg); font-size: 24px; letter-spacing: 0.01em; }
+.entrega-opcoes label, .pagamento-box label {
+  background: var(--ht-spice) !important; border: 1px solid var(--ht-cardamom) !important;
+  border-radius: 9999px !important; color: var(--ht-fg) !important;
+}
+.entrega-opcoes label:has(input:checked) {
+  background: var(--ht-gold) !important; border-color: var(--ht-gold) !important; color: var(--ht-clove) !important;
+}
+.pagamento-box label:hover { background: var(--ht-cardamom) !important; border-color: var(--ht-gold) !important; }
+.pagamento-box input[type="radio"], .entrega-area input[type="radio"] {
+  background: transparent !important; border-color: var(--ht-gold) !important;
+}
+.pagamento-box input[type="radio"]:checked, .entrega-area input[type="radio"]:checked {
+  background: var(--ht-gold) !important; border-color: var(--ht-gold) !important;
+}
+.pagamento-box input[type="radio"]:checked::after, .entrega-area input[type="radio"]:checked::after {
+  background: var(--ht-clove) !important;
+}
+.entrega-opcoes input:checked + span { background: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+.produto span { background: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+
+} /* @scope */
+} /* @layer pages */

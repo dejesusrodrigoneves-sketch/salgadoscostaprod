@@ -429,9 +429,22 @@ async function carregarSettingsLoja() {
       logoEl.appendChild(span);
     }
 
-    // Update copyright
+    // Update "Quem somos" phrase (footer) — fallback = frase default
+    const qsEl = document.getElementById('quemSomosText');
+    if (qsEl) qsEl.textContent = config.descricao || 'Somos quem traz alegria pra sua casa em forma de comida';
+
+    // Update copyright — DOM-safe (sem innerHTML), ano opcional
     const crEl = document.getElementById('footerCopyright');
-    if (crEl) crEl.innerHTML = nome + ' - 2024 \u00A9 Todos os direitos reservados. | <a href="politicas.html" rel="noopener">Pol\u00EDtica de Privacidade</a>';
+    if (crEl) {
+      crEl.textContent = '';
+      const anoParte = config.anoAbertura ? ' - ' + config.anoAbertura : '';
+      crEl.appendChild(document.createTextNode(nome + anoParte + ' \u00A9 Todos os direitos reservados. | '));
+      const polLink = document.createElement('a');
+      polLink.href = 'politicas.html';
+      polLink.rel = 'noopener';
+      polLink.textContent = 'Pol\u00EDtica de Privacidade';
+      crEl.appendChild(polLink);
+    }
 
     // Update WhatsApp links
     const waFloat = document.getElementById('whatsappFloatLink');

@@ -3,64 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Controle de Caixa</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-visual">
-<link rel="dns-prefetch" href="https://fonts.googleapis.com">
-<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/loading.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/delegator.js"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css">
-<link rel="stylesheet" href="css/caixa-page.css">
+<meta http-equiv="refresh" content="0; url=dashboard.html#/caixa">
+<script>location.replace('dashboard.html#/caixa');</script>
 </head>
-<body>
-
-<div class="container">
-  <div class="card" id="aberturaCard">
-    <h2><i class="fas fa-cash-register"></i> Abertura de Caixa</h2>
-    <input type="number" id="valorInicial" aria-label="Valor inicial do troco" placeholder="Valor inicial (troco)">
-    <button class="btn-primary" data-action="abrirCaixaAction"><i class="fas fa-play"></i> Abrir Caixa</button>
-  </div>
-
-  <div class="card" id="caixaCard" style="display:none;">
-    <h2><i class="fas fa-chart-pie"></i> Resumo do Dia</h2>
-    <div class="resumo-grid">
-      <div class="resumo-item"><i class="fas fa-money-bill-wave"></i> Dinheiro<br><span id="dinheiro">0</span></div>
-      <div class="resumo-item"><i class="fas fa-qrcode"></i> Pix<br><span id="pix">0</span></div>
-      <div class="resumo-item"><i class="fas fa-credit-card"></i> Débito<br><span id="debito">0</span></div>
-      <div class="resumo-item"><i class="fas fa-credit-card"></i> Crédito<br><span id="credito">0</span></div>
-    </div>
-
-    <div class="total-geral">
-      <i class="fas fa-calculator"></i> Total Geral: R$ <span id="totalGeral">0</span><br>
-      <span style="font-size:14px;font-weight:500;color:#16a34a;">
-        Troco Inicial: R$ <span id="trocoInicial">0</span>
-        &nbsp;|&nbsp; Pedidos: <span id="qtdPedidos">0</span>
-      </span>
-    </div>
-
-    <canvas id="graficoPagamentos"></canvas>
-
-    <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn-info" data-action="verRelatoriosAction"><i class="fas fa-history"></i> Ver Relatórios</button>
-      <button class="btn-danger" data-action="fecharCaixaAction"><i class="fas fa-stop"></i> Fechar Caixa</button>
-    </div>
-    <div class="relatorios-list" id="listaRelatorios"></div>
-  </div>
-</div>
-
-<div class="toast-container" id="toastContainer"></div>
-
-<script src="js/pages/caixa.js" defer></script>
-<script src="js/theme.js" defer></script>
-</body>
+<body></body>
 </html>

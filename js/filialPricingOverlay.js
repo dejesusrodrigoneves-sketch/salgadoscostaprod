@@ -28,9 +28,7 @@
 
     let data;
     try {
-      const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/status', {
-        headers: { 'Authorization': 'Bearer ' + authUser.token }
-      });
+      const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/status');
       if (!res.ok) return; // 401/403/409/500 — skip sem barulho
       data = await res.json();
     } catch (e) {
@@ -197,10 +195,7 @@
       if (typeof showLoading === 'function') showLoading();
       try {
         const authUser = getAuthUser();
-        const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/accept', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + authUser.token }
-        });
+        const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/accept', { method: 'POST' });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           alert(err.error || 'Erro ao aceitar alteração.');
@@ -220,10 +215,7 @@
       if (typeof showLoading === 'function') showLoading();
       try {
         const authUser = getAuthUser();
-        const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/reject', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + authUser.token }
-        });
+        const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/admin/filial-pricing/reject', { method: 'POST' });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           alert(err.error || 'Erro ao rejeitar alteração.');

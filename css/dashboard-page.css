@@ -3,6 +3,8 @@
    Extraído de inline <style> — C1
    ═══════════════════════════════════════════════════════ */
 
+@layer tokens {
+
 :root {
   --sidebar-bg: #2D1A12;
   --sidebar-hover: #3D2A22;
@@ -18,13 +20,17 @@
   --warning: #F59E0B;
 }
 
+} /* @layer tokens */
 
+/* Base do documento — UNLAYERED de propósito: vence bootstrap reboot */
 html, body {
   height: 100%;
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg);
   overflow: hidden;
 }
+
+@layer shell {
 
 .app {
   display: flex;
@@ -319,7 +325,7 @@ html, body {
 .content {
   flex: 1;
   position: relative;
-  overflow: hidden;
+  overflow: auto; /* contêiner de scroll único do shell */
 }
 
 .content iframe {
@@ -422,7 +428,8 @@ html, body {
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
+/* Breakpoint unificado com dashboard-shell.css (era 768 — gap 769–960 sem menu acessível) */
+@media (max-width: 960px) {
   .sidebar {
     position: fixed;
     height: 100%;
@@ -472,3 +479,5 @@ html, body {
     max-width: none;
   }
 }
+
+} /* @layer shell */

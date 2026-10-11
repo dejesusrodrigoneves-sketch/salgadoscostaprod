@@ -713,6 +713,7 @@ async function carregarConfigLoja() {
     document.getElementById('confNome').value = settings.nome || '';
     document.getElementById('confTelefone').value = settings.telefone || '';
     document.getElementById('confDescricao').value = settings.descricao || '';
+    document.getElementById('confAno').value = settings.anoAbertura ?? '';
     document.getElementById('confEndereco').value = settings.endereco || '';
     document.getElementById('confNumero').value = settings.numero || '';
     document.getElementById('confBairro').value = settings.bairro || '';
@@ -896,6 +897,7 @@ document.getElementById('btnSalvarConfig')?.addEventListener('click', async () =
     nome: document.getElementById('confNome').value.trim(),
     telefone: document.getElementById('confTelefone').value.trim(),
     descricao: document.getElementById('confDescricao').value.trim(),
+    anoAbertura: document.getElementById('confAno').value === '' ? null : Number(document.getElementById('confAno').value),
     endereco: document.getElementById('confEndereco').value.trim(),
     numero: document.getElementById('confNumero').value.trim(),
     bairro: document.getElementById('confBairro').value.trim(),

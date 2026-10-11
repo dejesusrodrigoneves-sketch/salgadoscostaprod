@@ -67,7 +67,7 @@ function authGuard(requiredRoles) {
     var user = JSON.parse(u);
     if (!user.username) { window.location.replace('login.html'); return false; }
     // Expiração de sessão (30 min)
-    if (user._expiry && Date.now() > user._expiry) {
+    if (user._expiry && Date.now() > user._expiry && !user.refreshToken) {
       hardLogout('expiry');
       return false;
     }
@@ -92,7 +92,7 @@ window.checkSessionValid = function() {
     if (!raw) return false;
     var data = JSON.parse(raw);
     if (!data || !data.token) return false;
-    if (data._expiry && Date.now() > data._expiry) {
+    if (data._expiry && Date.now() > data._expiry && !data.refreshToken) {
       hardLogout('expiry');
       return false;
     }
@@ -184,27 +184,54 @@ var _idleStarted = false;
 var IDLE_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 window.startIdleTimer = function() {
-  if (_idleStarted) return; // proteção contra múltiplas inicializações
+  if (_idleStarted) return;
   _idleStarted = true;
 
-  // Override de timeout (testes: window.__IDLE_TIMEOUT_MS)
   var timeout = IDLE_TIMEOUT;
   try {
     if (typeof window.__IDLE_TIMEOUT_MS === 'number' && window.__IDLE_TIMEOUT_MS > 0) {
       timeout = window.__IDLE_TIMEOUT_MS;
     }
+    // Hook de teste (persiste no storage p/ sobreviver a reload)
+    var ov = Number(localStorage.getItem('__IDLE_TIMEOUT_MS'));
+    if (ov > 0) timeout = ov;
   } catch (e) { /* segue com 30 min */ }
 
+  var warnMs = Math.min(120000, Math.floor(timeout / 3)); // 2min real; proporcional em testes
+  var warnEl = null, warnTimer = null;
+
+  function removeWarn() {
+    if (warnEl) { try { warnEl.remove(); } catch (e) {} warnEl = null; }
+  }
+  function showWarn() {
+    if (warnEl) return;
+    warnEl = document.createElement('div');
+    warnEl.id = 'idleWarn';
+    warnEl.setAttribute('role', 'alertdialog');
+    warnEl.innerHTML =
+      '<div class="modal-box">' +
+      '<h3>Sessão expira em 2 minutos</h3>' +
+      '<p>Continue navegando para permanecer conectado.</p>' +
+      '<div class="modal-actions">' +
+      '<button class="btn btn-modal-confirm" id="idleKeepAlive">Continuar logado</button>' +
+      '</div></div>';
+    warnEl.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;';
+    document.body.appendChild(warnEl);
+    var btn = document.getElementById('idleKeepAlive');
+    if (btn) btn.addEventListener('click', function () { resetTimer(); });
+  }
   function resetTimer() {
     clearTimeout(_idleTimer);
-    _idleTimer = setTimeout(function() {
-      hardLogout('idle');
-    }, timeout);
+    clearTimeout(warnTimer);
+    removeWarn();
+    warnTimer = setTimeout(showWarn, Math.max(timeout - warnMs, 1000));
+    _idleTimer = setTimeout(function () { hardLogout('idle'); }, timeout);
   }
-  ['mousedown','mousemove','keydown','scroll','touchstart'].forEach(function(evt) {
+
+  ['mousedown','mousemove','keydown','scroll','touchstart'].forEach(function (evt) {
     document.addEventListener(evt, resetTimer, { passive: true });
   });
-  document.addEventListener('visibilitychange', function() {
+  document.addEventListener('visibilitychange', function () {
     if (!document.hidden) {
       if (typeof checkSessionValid === 'function') checkSessionValid();
       resetTimer();
@@ -256,3 +283,45 @@ function safeGetToken() {
   }
 }
 if (typeof window !== 'undefined') window.safeGetToken = safeGetToken;
+
+// ========== Lifecycle de páginas (router) ==========
+var _pageAbort = null;
+function onPage(target, ev, fn) {
+  if (!_pageAbort || _pageAbort.signal.aborted) _pageAbort = new AbortController();
+  var t = target || window;
+  t.addEventListener(ev, fn, { signal: _pageAbort.signal, passive: ev !== 'click' });
+}
+function offPage() {
+  if (_pageAbort) { _pageAbort.abort(); _pageAbort = null; }
+}
+window.onPage = onPage;
+window.offPage = offPage;
+
+// Navegação interna do shell; 'login' sai do shell
+window.goTo = function (route) {
+  if (route === 'login') { window.location.replace('login.html'); return; }
+  window.location.hash = '#/' + route;
+};
+
+// <link> de CSS por página — removido no unmount do módulo
+window.pageCss = function (href, page) {
+  var l = document.createElement('link');
+  l.rel = 'stylesheet';
+  l.href = href;
+  l.dataset.page = page;
+  document.head.appendChild(l);
+  return function () { try { l.remove(); } catch (e) {} };
+};
+
+// Carrega <script> clássico UMA vez (helpers: js/financeiro.js, js/comboConfig.js, ...)
+window.loadScriptOnce = function (src) {
+  return new Promise(function (resolve, reject) {
+    if (document.querySelector('script[data-dyn="' + src + '"]')) { resolve(); return; }
+    var s = document.createElement('script');
+    s.src = src;
+    s.dataset.dyn = src;
+    s.onload = function () { resolve(); };
+    s.onerror = function () { reject(new Error('script falhou: ' + src)); };
+    document.head.appendChild(s);
+  });
+};

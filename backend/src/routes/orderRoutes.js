@@ -20,6 +20,7 @@ router.post('/', authenticate, authorize('superadmin', 'admin', 'user'), control
 router.patch('/:id/status', authenticate, requireOwnership('pedido'), controller.atualizarStatus);
 router.delete('/:id', authenticate, requireOwnership('pedido'), controller.deletar);
 router.post('/:id/finalizar', authenticate, requireOwnership('pedido'), controller.finalizar);
+router.post('/:id/cancelar', authenticate, requireOwnership('pedido'), authorize('superadmin', 'admin'), controller.cancelarPedido);
 router.patch('/:id/editar', authenticate, requireOwnership('pedido'), authorize('superadmin', 'admin', 'user'), controller.editarPedido);
 
 function legacyCtx(req, rota) {

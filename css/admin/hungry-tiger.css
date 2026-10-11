@@ -1,0 +1,279 @@
+/* css/admin/hungry-tiger.css — HUNGRY TIGER · CAMADA DO PAINEL ADMINISTRATIVO
+   ATENÇÃO: este arquivo pertence só ao painel. NUNCA linkar em index/login/politicas/cart.
+   Carregar POR ÚLTIMO depois de todos os CSS da página. Tokens = mockup-dashboard/styles.css (DESIGN.md). */
+@layer shell {
+
+:root {
+  --ht-gold: #faae33;
+  --ht-rust: #823513;
+  --ht-saffron: #9f531b;   /* só borda/divisória — NUNCA texto pequeno */
+  --ht-spice: #402011;
+  --ht-clove: #281006;
+  --ht-cardamom: #6b2e12;
+  --ht-chili: #d1255c;     /* só borda/preenchimento decorativo */
+  --ht-danger: #ef6d97;    /* texto/fill de alerta (5.10 em spice) */
+
+  /* rampa de foreground (WCAG AA em rust e spice) */
+  --ht-fg: #faae33;        /* 4.53 rust / 7.75 spice */
+  --ht-fg-muted: #f0c46a;  /* 5.18 rust / 8.94 spice — th, labels, placeholder */
+  --ht-fg-dim: #c98f3e;    /* 3.03 — só large/disabled */
+  --ht-accent: #9f531b;    /* bordas */
+
+  --ht-display: 'Bebas Neue', 'Antonio', 'Arial Narrow', sans-serif;
+  --ht-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ht-radius-card: 6px;
+  --ht-radius-pill: 9999px;
+}
+
+/* ─── Base ─── */
+html { color-scheme: dark; background: var(--ht-rust); }
+body {
+  background: var(--ht-rust) !important;
+  color: var(--ht-fg) !important;
+  font-family: var(--ht-body) !important;
+  font-weight: 500;
+}
+a { color: var(--ht-fg); }
+:focus-visible { outline: 2px solid var(--ht-gold); outline-offset: 2px; }
+::selection { background: var(--ht-gold); color: var(--ht-clove); }
+
+/* reduced-motion: NÃO congelar o spinner */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+  .page-loader .spinner { animation: ht-spin 0.8s linear infinite !important; animation-duration: 0.8s !important; animation-iteration-count: infinite !important; }
+}
+@keyframes ht-spin { to { transform: rotate(360deg); } }
+
+/* ─── Botões (pills; Bebas com line-height estável) ─── */
+.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-info, .btn-success,
+.btn-ghost, .btn-logout, .btn-sm, .btn-print, .btn-delete, .btn-finalizar,
+.btn-producao, .btn-pronto, .btn-rota, .btn-aceitar, .btn-editar,
+.btn-remover, .btn-carrinho, .btn-financeiro, .btn-sync, .btn-closing,
+.botao-pagar, .btn-f {
+  font-family: var(--ht-display) !important;
+  font-weight: 400 !important;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  border-radius: var(--ht-radius-pill) !important;
+  border: 1px solid var(--ht-gold) !important;
+  background: transparent !important;
+  color: var(--ht-fg) !important;
+  box-shadow: none !important;
+  padding: 8px 17px;
+}
+.btn:hover, .btn-primary:hover { background: var(--ht-spice) !important; }
+.btn-primary, .btn-filled, .btn-finalizar, .btn-producao, .botao-pagar,
+.btn-financeiro, .btn-carrinho, .btn-aceitar {
+  background: var(--ht-gold) !important;
+  color: var(--ht-clove) !important;
+}
+.btn-primary:hover, .btn-finalizar:hover, .botao-pagar:hover { filter: brightness(1.06); }
+.btn-danger, .btn-delete, .btn-remover {
+  background: var(--ht-danger) !important;
+  border-color: var(--ht-danger) !important;
+  color: var(--ht-clove) !important;
+}
+.btn-ghost, .btn-secondary, .btn-info, .btn-modal-cancel {
+  background: transparent !important;
+  border-color: var(--ht-cardamom) !important;
+  color: var(--ht-fg) !important;
+}
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+button:disabled, .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Cards / superfícies ─── */
+.card, .info-box, .report-box, .driver-card, .instance-card, .pg-panel,
+.fin-card, .modal-box, .modal-card, .box-sabores, .checkout, .pagamento-box,
+.empty-state, .skeleton, .skeleton-card, .skeleton-row {
+  background: var(--ht-spice) !important;
+  color: var(--ht-fg) !important;
+  border: none !important;
+  border-radius: var(--ht-radius-card) !important;
+  box-shadow: none !important;
+}
+.card-title, .section-title, .pg-panel-title, .page-header h1, .page-header h2,
+.subtitle, .info-box h3 {
+  font-family: var(--ht-display) !important;
+  font-weight: 400 !important;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--ht-fg) !important;
+  letter-spacing: 0.01em;
+}
+.eyebrow, .pg-eyebrow, .pg-hint, .pg-sub, .subtitle, label, th {
+  color: var(--ht-fg-muted) !important;
+}
+
+/* ─── Inputs (pills) + nativos ─── */
+input, textarea, select {
+  background: transparent !important;
+  border: 1px solid var(--ht-cardamom) !important;
+  border-radius: var(--ht-radius-pill) !important;
+  color: var(--ht-fg) !important;
+  font-family: var(--ht-body) !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+}
+.form-group input, .form-group select, .form-group textarea,
+.field input, .field textarea, .field select, .filtros input {
+  background: transparent !important;
+  border: 1px solid var(--ht-cardamom) !important;
+  border-radius: var(--ht-radius-pill) !important;
+  color: var(--ht-fg) !important;
+}
+textarea { border-radius: 18px !important; }
+input::placeholder, textarea::placeholder { color: var(--ht-fg-muted) !important; opacity: 1; }
+input:focus, textarea:focus, select:focus { border-color: var(--ht-gold) !important; outline: none; }
+select { -webkit-appearance: none; appearance: none; padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23faae33' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 16px center;
+}
+select option { background: var(--ht-spice); color: var(--ht-fg); }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--ht-gold); border-radius: var(--ht-radius-pill); }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(74%) sepia(48%) saturate(700%) hue-rotate(345deg) brightness(101%);
+  opacity: 0.9; cursor: pointer;
+}
+input[type="file"] { border-style: dashed; padding: 10px 16px; }
+input[type="file"]::file-selector-button {
+  background: transparent; border: 1px solid var(--ht-gold); color: var(--ht-gold);
+  border-radius: var(--ht-radius-pill); padding: 6px 14px; font: inherit; margin-right: 12px; cursor: pointer;
+}
+input[type="range"] { -webkit-appearance: none; appearance: none; background: transparent; border: none; padding: 0; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: var(--ht-cardamom); border-radius: var(--ht-radius-pill); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; background: var(--ht-gold); border-radius: var(--ht-radius-pill); }
+input[type="range"]::-moz-range-track { height: 4px; background: var(--ht-cardamom); border-radius: var(--ht-radius-pill); }
+input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border: none; background: var(--ht-gold); border-radius: var(--ht-radius-pill); }
+input[type="color"] { padding: 4px 6px; height: 38px; border-radius: var(--ht-radius-pill); }
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+input[type="color"]::-webkit-color-swatch { border: none; border-radius: var(--ht-radius-pill); }
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ht-fg) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--ht-spice) inset !important;
+  caret-color: var(--ht-fg);
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+/* ─── Tabelas ─── */
+table { background: transparent; color: var(--ht-fg); }
+th { color: var(--ht-fg-muted) !important; border-bottom: 1px dotted var(--ht-gold) !important;
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.02em; }
+td { border-bottom: 1px solid var(--ht-cardamom) !important; color: var(--ht-fg) !important; }
+.table th, table.table th { color: var(--ht-fg-muted) !important; border-bottom: 1px dotted var(--ht-gold) !important; }
+.table td, table.table td { color: var(--ht-fg) !important; border-bottom: 1px solid var(--ht-cardamom) !important; }
+
+/* ─── Tabs / filtros pill ─── */
+.tabs, .filtros, .pg-chips, .audit-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab, .tab-btn, .filtro-btn, .pg-filter, .chip, .pill, .stat-chip {
+  background: transparent !important;
+  border: 1px solid var(--ht-cardamom) !important;
+  border-radius: var(--ht-radius-pill) !important;
+  color: var(--ht-fg) !important;
+  font-family: var(--ht-body) !important;
+  font-size: 11px !important;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  box-shadow: none !important;
+  padding: 6px 14px !important;
+}
+.tab.active, .tab-btn.active, .filtro-btn.active, .pill-active,
+.pg-filter.active, .tab[aria-selected="true"] {
+  background: var(--ht-gold) !important;
+  color: var(--ht-clove) !important;
+  border-color: var(--ht-gold) !important;
+}
+
+/* ─── Modais / scrim ─── */
+.modal-overlay, .criar-modal-overlay { background: rgba(40, 16, 6, 0.78) !important; }
+.modal-actions, .criar-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ─── Toasts ─── */
+.toast { background: var(--ht-gold) !important; color: var(--ht-clove) !important;
+  border-radius: var(--ht-radius-pill) !important; font-weight: 500; box-shadow: none !important; }
+.toast-danger { background: var(--ht-danger) !important; color: var(--ht-clove) !important; }
+.toast-success { background: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+.toast-info { background: var(--ht-fg-dim) !important; color: var(--ht-clove) !important; }
+
+/* ─── Skeleton/loader ─── */
+.skeleton-line, .skeleton-line-sm, .skeleton-line-md, .skeleton-line-lg,
+.skeleton-avatar, .skeleton-body, .skeleton-header { background: var(--ht-cardamom) !important; }
+.page-loader { background: var(--ht-rust) !important; }
+.spinner { border: 3px solid var(--ht-cardamom) !important; border-top-color: var(--ht-gold) !important;
+  animation: ht-spin 0.8s linear infinite; }
+
+/* ─── Badges base (variantes de status: CSS de cada página) ─── */
+.badge, .status-badge, .audit-badge {
+  border-radius: var(--ht-radius-pill) !important;
+  font-size: 11px !important;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  box-shadow: none !important;
+}
+.msg-error, .error-text { color: var(--ht-danger) !important; }
+.msg-success { color: var(--ht-fg) !important; }
+
+/* ─── Divisória utilitária ─── */
+.hr, hr { border: none; border-top: 1px dotted var(--ht-gold); }
+
+/* ─── NEUTRALIZAÇÃO BOOTSTRAP 5 (admin/relatorios) ─── */
+.text-muted { color: var(--ht-fg-muted) !important; }
+.text-dark, .text-body { color: var(--ht-fg) !important; }
+.bg-light, .bg-white { background: var(--ht-spice) !important; }
+.table-striped > tbody > tr:nth-of-type(odd) > * { background: rgba(40, 16, 6, 0.45) !important; color: var(--ht-fg) !important; }
+.table > :not(caption) > * > * { background: transparent !important; color: var(--ht-fg) !important; }
+.modal-content { background: var(--ht-spice) !important; color: var(--ht-fg) !important;
+  border: 1px solid var(--ht-cardamom) !important; border-radius: var(--ht-radius-card) !important; box-shadow: none !important; }
+.modal-header, .modal-footer { border-color: var(--ht-cardamom) !important; }
+.modal-backdrop { background: #281006 !important; }
+.modal-backdrop.show { opacity: 0.78; }
+.btn-close { filter: invert(78%) sepia(64%) saturate(500%) hue-rotate(345deg) brightness(102%); opacity: 0.85; }
+.form-check-input { background-color: transparent !important; border-color: var(--ht-cardamom) !important; }
+.form-check-input:checked { background-color: var(--ht-gold) !important; border-color: var(--ht-gold) !important; }
+.form-check-input:checked::after { border-color: var(--ht-clove) !important; }
+.alert { background: var(--ht-spice) !important; color: var(--ht-fg) !important;
+  border: 1px solid var(--ht-cardamom) !important; border-radius: var(--ht-radius-card) !important; }
+.alert-danger { border-color: var(--ht-danger) !important; }
+.list-group-item { background: var(--ht-spice) !important; color: var(--ht-fg) !important;
+  border-color: var(--ht-cardamom) !important; }
+.nav-tabs { border-bottom: 1px dotted var(--ht-gold); }
+.nav-tabs .nav-link { color: var(--ht-fg-muted) !important; border: none !important; border-radius: var(--ht-radius-pill) !important; }
+.nav-tabs .nav-link.active { background: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+
+/* ─── Scrollbar cross-browser ─── */
+* { scrollbar-width: thin; scrollbar-color: var(--ht-cardamom) var(--ht-clove); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--ht-clove); }
+::-webkit-scrollbar-thumb { background: var(--ht-cardamom); border-radius: var(--ht-radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--ht-saffron); }
+
+/* ─── PRINT (caixa/relatórios imprimem em claro) ─── */
+@media print {
+  html, body { background: #fff !important; color: #111 !important; }
+  .sidebar, .sidebar-overlay, .topbar, .sidebar-collapse-btn, .toast,
+  .page-loader, .mock-tag, .no-print { display: none !important; }
+  .app { display: block !important; }
+  * { color: #111 !important; background: transparent !important;
+      box-shadow: none !important; text-shadow: none !important; }
+  .card, .stat-chip, .order-card, .fin-card, .resumo-item, .kpi {
+    background: #fff !important; border: 1px solid #999 !important; border-radius: 4px !important;
+  }
+  th, td, .table td, table td { border-color: #999 !important; }
+  th { color: #111 !important; }
+  a[href]:after { content: ""; }
+}
+
+/* ===== Correções T3 (procedimento Step 7) ===== */
+#loadingOverlay { background: rgba(40, 16, 6, 0.94) !important; }
+.loading-dot { background: var(--ht-gold) !important; }
+.loading-label { color: var(--ht-fg) !important; letter-spacing: 0.02em; }
+th { background: transparent !important; }
+
+/* ===== HT — accent nativo (checkbox/radio não marcados) ===== */
+input[type="checkbox"], input[type="radio"] { accent-color: var(--ht-gold); }
+
+} /* @layer shell */

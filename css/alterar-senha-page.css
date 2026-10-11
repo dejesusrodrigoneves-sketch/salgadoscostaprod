@@ -2,11 +2,20 @@
    Alterar Senha — Page-specific styles
    ═══════════════════════════════════════════════════════ */
 
-body {
+@layer pages {
+
+#pageContainer {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  background: #f1f5f9; color: #1e293b;
-  min-height: 100vh; min-height: 100dvh; display:flex; align-items:center; justify-content:center; padding:20px;
+  color: #1e293b;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
+
+@scope (#pageContainer) {
+
 .card {
   background: white; border-radius: 16px; padding: 32px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.08); max-width: 420px; width: 100%;
@@ -40,7 +49,7 @@ body {
 .msg-error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
 
 @media(max-width:480px) {
-  body { padding:16px; }
+  :scope { padding:16px; }
   .card { padding:24px; }
   .card h1 { font-size:18px; }
   .card .sub { font-size:12px; }
@@ -50,3 +59,11 @@ body {
   .form-group input { padding:10px 12px; font-size:13px; }
   .btn { padding:12px; font-size:13px; }
 }
+
+/* ===== HT — Alterar Senha (únicos) ===== */
+.form-group label { color: var(--ht-fg-muted) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+.form-group input { background: transparent; border: 1px solid var(--ht-cardamom); border-radius: 9999px; color: var(--ht-fg); padding: 12px 20px; }
+.form-group input:focus { border-color: var(--ht-gold); }
+
+} /* @scope */
+} /* @layer pages */

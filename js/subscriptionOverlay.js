@@ -30,9 +30,7 @@
     if (!authUser.token || authUser.role === 'superadmin') return;
     
     try {
-      const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/status', {
-        headers: { 'Authorization': 'Bearer ' + authUser.token }
-      });
+      const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/status');
       
       if (!res.ok) return; // 404/401/500 — silently skip
       
@@ -142,12 +140,9 @@
       if (typeof showLoading === 'function') showLoading();
       try {
         const authUser = getAuthUser();
-        const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/pay', {
+        const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/empresa/subscription/pay', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + authUser.token
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
         
         const data = await res.json();

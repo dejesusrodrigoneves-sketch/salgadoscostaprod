@@ -342,4 +342,50 @@ async function limparPedidosAntigos(dias = 30) {
   return { deletados: ids.length, ids };
 }
 
-module.exports = { listar, buscar, criar, atualizarStatus, deletarPedido, finalizarPedido, listarFiltrado, darBaixaEstoque, processarEdicaoPedido, editarPedido, agruparItens, listarNaoConcluidos, limparPedidosAntigos };
+async function cancelarPedido(id, motivo, empresaId, ctx = {}) {
+  const pedido = await sql.buscarPedido(id, empresaId);
+  if (!pedido) throw Object.assign(new Error('Pedido não encontrado'), { status: 404 });
+  if (pedido.status !== 'pendente') {
+    throw Object.assign(new Error('Só é possível cancelar pedidos pendentes'), { status: 409 });
+  }
+
+  const atualizado = await sql.atualizarPedido(id, {
+    status: 'cancelado',
+    cancelamentoMotivo: motivo,
+  });
+
+  auditService.audit({
+    ...ctx,
+    action: 'pedido.cancel',
+    module: 'pedidos',
+    targetType: 'pedido',
+    targetId: id,
+    before: { status: pedido.status },
+    after: { status: 'cancelado', motivo },
+    changedFields: ['status', 'cancelamentoMotivo'],
+  });
+
+  let whatsappOk = false;
+  let whatsappErro = null;
+  const numero = pedido.clienteWhatsapp;
+
+  if (!numero) {
+    whatsappErro = 'cliente sem WhatsApp cadastrado';
+  } else {
+    const mensagem =
+      ` Ola ${pedido.clienteNome},\n` +
+      ` seu pedido foi cancelado e pedimos mil desculpas por nao poder te atender agora, e o motivo foi que ${motivo}\n` +
+      ` Qualquer coisa, pode pedir denovo em !`;
+    try {
+      const envio = await whatsapp.enviarMensagem(numero, mensagem, empresaId);
+      whatsappOk = !!envio;
+      if (!whatsappOk) whatsappErro = 'falha ao enviar (instância desconectada ou número inválido)';
+    } catch (err) {
+      whatsappErro = err.message || 'erro ao enviar WhatsApp';
+    }
+  }
+
+  return { pedido: atualizado, whatsappOk, whatsappErro };
+}
+
+module.exports = { listar, buscar, criar, atualizarStatus, cancelarPedido, deletarPedido, finalizarPedido, listarFiltrado, darBaixaEstoque, processarEdicaoPedido, editarPedido, agruparItens, listarNaoConcluidos, limparPedidosAntigos };

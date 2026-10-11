@@ -3,16 +3,18 @@
    Extraído de inline <style> — C1
    ═══════════════════════════════════════════════════════ */
 
-body {
+@layer pages {
+
+#pageContainer {
   font-family: var(--font);
   font-weight: 400;
-  background: var(--secondary);
   color: var(--text);
   padding: var(--s-32);
-  min-height: 100dvh;
-  min-height: 100vh;
+  min-height: 100%;
   -webkit-font-smoothing: antialiased;
 }
+
+@scope (#pageContainer) {
 
 /* ─── HEADER ─── */
 
@@ -429,6 +431,12 @@ body {
 .btn-delete { color: var(--danger); }
 .btn-delete:hover { background: var(--danger-bg); border-color: var(--danger); }
 
+} /* @scope — regras de página */
+
+/* MODAIS/TOAST/DRIVER: montados no <body> pelo JS (logout em dashboard.js,
+   ações em admin.js) — ficam fora do @scope, em overrides */
+@layer overrides {
+
 .btn-modal-confirm {
   background: var(--primary);
   color: #fff;
@@ -611,6 +619,10 @@ body {
   color: #fff;
 }
 
+} /* @layer overrides */
+
+@scope (#pageContainer) {
+
 /* ─── LOADING SKELETON ─── */
 
 .skeleton {
@@ -717,7 +729,7 @@ body {
 /* ─── RESPONSIVE ─── */
 
 @media (max-width: 768px) {
-  body { padding: var(--s-16); }
+  :scope { padding: var(--s-16); }
   .page-header { flex-direction: column; align-items: flex-start; }
   .stats-row { width: 100%; justify-content: flex-start; overflow-x: auto; }
   .order-header { flex-direction: column; align-items: flex-start; }
@@ -726,7 +738,7 @@ body {
 }
 
 @media (max-width: 320px) {
-  body { padding: var(--s-8); }
+  :scope { padding: var(--s-8); }
   .page-header h1 { font-size: 20px; }
   .order-header { padding: var(--s-8); }
   .order-name { font-size: 13px; }
@@ -742,3 +754,52 @@ body {
   .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .tab { min-height: 44px; padding: var(--s-8) var(--s-12); font-size: 12px; white-space: nowrap; }
 }
+
+/* ===== HT — Pedidos (grupos únicos) ===== */
+.page-header { border-bottom: 1px dotted var(--ht-gold); padding-bottom: 12px; }
+.page-header h1 { font-size: 43px; line-height: 0.9; }
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat-chip {
+  background: var(--ht-spice) !important; border: none !important;
+  border-radius: var(--ht-radius-card) !important; padding: 14px 16px !important;
+}
+.stat-chip strong, .stat-chip [class*="num"], .stat-chip [class*="count"] {
+  font-family: var(--ht-display); font-size: 42px; line-height: 0.95; color: var(--ht-fg);
+}
+.stat-chip [class*="label"] { font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ht-fg-muted); }
+.order-card {
+  background: var(--ht-spice) !important; border: none !important;
+  border-left: 3px solid var(--ht-cardamom) !important;
+  border-radius: var(--ht-radius-card) !important; box-shadow: none !important;
+  color: var(--ht-fg) !important;
+}
+.order-card.status-pendente { border-left-color: var(--ht-saffron) !important; }
+.order-card.status-producao, .order-card.status-pronto { border-left-color: var(--ht-gold) !important; }
+.order-card.status-em_rota, .order-card.status-rota { border-left-color: var(--ht-cardamom) !important; }
+.order-card.status-entregue { border-left-color: var(--ht-saffron) !important; }
+.order-card.status-cancelado { border-left-color: var(--ht-chili) !important; }
+.order-code { font-family: var(--ht-display); font-size: 18px; letter-spacing: 0.01em; color: var(--ht-fg); }
+.order-header { border-bottom: 1px dotted var(--ht-cardamom); color: var(--ht-fg); }
+.order-info-grid, .item-row, .sub-item { color: var(--ht-fg); border-color: var(--ht-cardamom); }
+.order-status, .badge-novo {
+  background: transparent !important; border: 1px solid var(--ht-saffron) !important;
+  color: var(--ht-fg-muted) !important; border-radius: 9999px !important;
+  font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.02em;
+}
+.order-status.status-producao, .order-status.status-pronto {
+  background: var(--ht-gold) !important; border-color: var(--ht-gold) !important; color: var(--ht-clove) !important;
+}
+.order-status.status-em_rota, .order-status.status-rota { background: var(--ht-spice); border-color: var(--ht-cardamom); color: var(--ht-fg); }
+.order-status.status-entregue { background: var(--ht-cardamom); border-color: var(--ht-cardamom); color: var(--ht-fg); }
+.order-status.status-cancelado { background: var(--ht-danger) !important; border-color: var(--ht-danger) !important; color: var(--ht-clove) !important; }
+.badge-novo { background: var(--ht-gold) !important; border-color: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+
+} /* @scope */
+} /* @layer pages */
+
+@layer overrides {
+.driver-modal-list, .driver-option {
+  background: var(--ht-spice); border: 1px solid var(--ht-cardamom);
+  border-radius: var(--ht-radius-card); color: var(--ht-fg);
+}
+} /* @layer overrides */

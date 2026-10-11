@@ -1,9 +1,13 @@
 
-  body {
-    font-family: 'Montserrat', sans-serif;
-    padding: 20px;
-    background: #f4f4f4;
-  }
+@layer pages {
+
+#pageContainer {
+  font-family: 'Montserrat', sans-serif;
+  padding: 20px;
+}
+
+@scope (#pageContainer) {
+
   h1 { text-align: center; margin-bottom: 20px; }
   form {
     background: linear-gradient(180deg, #0e1630, #0b1224);;
@@ -45,13 +49,29 @@
   }
   li button:hover { background: #0056b3; }
 
+} /* @scope */
+} /* @layer pages */
+
+@layer overrides {
+
  :root{
       --bg:#0f172a; --card:#0b1224; --muted:#94a3b8; --text:#e2e8f0;
       --brand:#22c55e; --brand-2:#3b82f6; --warn:#f59e0b; --danger:#ef4444;
       --ok:#10b981; --ring:#22c55e55;
     }
-    *{ box-sizing: border-box }
-    html,body{ height:100%; margin:0; font-family:'Montserrat', sans-serif; background: var(--bg); color:var(--text); }
+
+} /* @layer overrides */
+
+@layer pages {
+
+#pageContainer {
+  font-family: 'Montserrat', sans-serif;
+  color: var(--text);
+  min-height: 100%;
+}
+
+@scope (#pageContainer) {
+
     .wrapper{ max-width:1200px; margin:32px auto; padding:0 16px; }
 
     header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px }
@@ -89,7 +109,7 @@
 }
 
 @media(max-width: 600px) {
-  body, .wrapper {
+  :scope, .wrapper {
     padding: 12px; /* menos espaço lateral */
   }
 }
@@ -294,3 +314,27 @@
 @media(max-width: 600px) {
   .card { padding: 12px; border-radius: 12px; }
 }
+
+/* ===== HT — Painel Loja tabs/tabela (únicos) ===== */
+.tabs { border-bottom: 1px dotted var(--ht-gold); }
+.tab-btn {
+  background: transparent !important; border: 1px solid var(--ht-cardamom) !important;
+  border-radius: 9999px !important; color: var(--ht-fg) !important;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; padding: 6px 14px; line-height: 1.2;
+}
+.tab-btn.active, .tab-btn[aria-selected="true"] { background: var(--ht-gold) !important; color: var(--ht-clove) !important; border-color: var(--ht-gold) !important; }
+.tipos-legenda { color: var(--ht-fg-muted); }
+
+} /* @scope */
+} /* @layer pages */
+
+@layer overrides {
+
+/* ===== HT — remap :root (paleta → Hungry Tiger) ===== */
+:root {
+  --bg: #823513; --card: #402011; --muted: #f0c46a; --text: #faae33;
+  --brand: #faae33; --brand-2: #faae33; --warn: #f0c46a; --danger: #ef6d97;
+  --ok: #faae33; --ring: rgba(250, 174, 51, 0.4);
+}
+
+} /* @layer overrides */

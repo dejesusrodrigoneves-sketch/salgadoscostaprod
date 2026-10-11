@@ -40,4 +40,16 @@ function validateMaxLen(fieldName, value) {
   return { valid: true };
 }
 
-module.exports = { MAX_LENGTHS, validateLength, validateMaxLen };
+function validateAnoAbertura(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 1900 || n > 2999) {
+    const err = new Error('Ano de abertura deve ser um número inteiro entre 1900 e 2999');
+    err.status = 400;
+    throw err;
+  }
+  return n;
+}
+
+module.exports = { MAX_LENGTHS, validateLength, validateMaxLen, validateAnoAbertura };

@@ -32,6 +32,8 @@ async function ensureColumns(prisma) {
   await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "transfer_status" TEXT');
   await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "asaas_transfer_id" TEXT');
   await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS "WeeklySettlement" ADD COLUMN IF NOT EXISTS "split_error" TEXT');
+  // Rodapé: ano de abertura da loja
+  await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS empresas ADD COLUMN IF NOT EXISTS ano_abertura INTEGER');
 }
 
 module.exports = ensureColumns;

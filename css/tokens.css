@@ -4,11 +4,15 @@
    Cores de marca permanecem no :root de cada página
    ═══════════════════════════════════════════════════════ */
 
-*, *::before, *::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer reset {
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 }
+
+@layer tokens {
 
 :root {
   /* Z-Index System */
@@ -137,3 +141,5 @@
 @media (prefers-reduced-motion: reduce) {
   .loading-dot { animation: none; }
 }
+
+} /* @layer tokens */

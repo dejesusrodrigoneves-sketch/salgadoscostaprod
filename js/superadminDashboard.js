@@ -25,10 +25,9 @@
     delete opts.skipLoading;
     if (!skip && typeof showLoading === 'function') showLoading();
     try {
-      const token = getToken();
-      const res = await fetch(API_BASE + path, {
+      const res = await authFetch(API_BASE + path, {
         ...opts,
-        headers: { 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) }
+        headers: { ...(opts.headers || {}) }
       });
       if (!res.ok) throw new Error('API ' + res.status);
       return res.json();
@@ -234,10 +233,9 @@
     }
     
     try {
-      var token = getToken();
-      var res = await fetch(API_BASE + '/api/admin/filiais', {
+      var res = await authFetch(API_BASE + '/api/admin/filiais', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nome: nome, justificativa: justificativa || undefined, parentEmpresaId: Number(parentEmpresaId) }),
       });
       
@@ -267,10 +265,9 @@
     if (!confirm('Tem certeza que deseja aprovar esta filial?')) return;
     
     try {
-      var token = getToken();
-      var res = await fetch(API_BASE + '/api/admin/filiais/' + id + '/approve', {
+      var res = await authFetch(API_BASE + '/api/admin/filiais/' + id + '/approve', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json' },
       });
       
       if (!res.ok) throw new Error('Erro ao aprovar');
@@ -297,10 +294,9 @@
     if (!id) return;
 
     try {
-      var token = getToken();
-      var res = await fetch(API_BASE + '/api/admin/empresas/' + id + '/parent', {
+      var res = await authFetch(API_BASE + '/api/admin/empresas/' + id + '/parent', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parentEmpresaId: null }),
       });
       
@@ -328,10 +324,9 @@
     if (!id) return;
 
     try {
-      var token = getToken();
-      var res = await fetch(API_BASE + '/api/admin/filiais/' + id, {
+      var res = await authFetch(API_BASE + '/api/admin/filiais/' + id, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        headers: { 'Content-Type': 'application/json' },
       });
       
       if (!res.ok) {
@@ -374,8 +369,9 @@
   };
 
   // Auto-load on script parse
-  document.addEventListener('DOMContentLoaded', function() {
+  function autoLoadDashboard() {
     carregarEmpresasDashboard().then(carregarDashboard);
     popularDataCiclo();
-  });
+  }
+  window.autoLoadDashboard = autoLoadDashboard;
 })();

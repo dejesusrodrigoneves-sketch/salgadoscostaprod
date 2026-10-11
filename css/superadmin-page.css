@@ -2,14 +2,17 @@
    Super Admin — Page-specific styles
    ═══════════════════════════════════════════════════════ */
 
-body {
+@layer pages {
+
+#pageContainer {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  background: #f1f5f9;
   color: #1e293b;
   padding: 24px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100%;
 }
+
+@scope (#pageContainer) {
+
 h1 { font-size: 20px; font-weight: 700; margin-bottom: 20px; display:flex; align-items:center; gap:8px; }
 h1 i { color: #f97316; }
 
@@ -58,7 +61,7 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
    Sidebar Colapsável
    ═══════════════════════════════════════════════════════ */
 
-.sa-layout { display: flex; min-height: 100vh; }
+.sa-layout { display: flex; min-height: 100%; }
 
 .sa-sidebar {
   width: 260px;
@@ -215,11 +218,11 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
 .sa-main { flex: 1; min-width: 0; }
 
 @media(max-width:768px) {
-  body { padding:16px; }
+  :scope { padding:16px; }
   .user-table { font-size:12px; }
 }
 @media(max-width:480px) {
-  body { padding:12px; }
+  :scope { padding:12px; }
   h1 { font-size:18px; }
   .card { padding:16px; border-radius:10px; }
   .card h2 { font-size:14px; }
@@ -316,6 +319,11 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
   .audit-card::before { left:-17px; }
 }
 
+} /* @scope — regras de página */
+
+/* Modais: logout montado no <body> pelo dashboard.js — fora do @scope */
+@layer overrides {
+
 /* ===== Modais (clientes + confirmModal) ===== */
 .modal-overlay {
   position: fixed; inset: 0;
@@ -350,3 +358,27 @@ input:focus, select:focus { border-color:#f97316; box-shadow:0 0 0 3px rgba(249,
 .btn-modal-confirm { background: #f97316; color: white; }
 .btn-secondary { background: #e2e8f0; color: #475569; }
 .btn-secondary:hover { background: #cbd5e1; }
+
+} /* @layer overrides */
+
+@scope (#pageContainer) {
+
+/* ===== HT — Superadmin (sidebar sa-* própria) ===== */
+.sa-sidebar { background: var(--ht-clove) !important; border-right: 1px solid var(--ht-cardamom) !important; }
+.sa-sidebar-header { border-bottom: 1px dotted var(--ht-gold); }
+.sa-brand, .sa-logo, .sa-name { font-family: var(--ht-display) !important; color: var(--ht-gold) !important; text-transform: uppercase; line-height: 1; }
+.sa-section-head { color: var(--ht-fg-muted) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+.sa-item { border-radius: 9999px !important; color: var(--ht-fg) !important; background: transparent !important; }
+.sa-item:hover { background: var(--ht-spice) !important; }
+.sa-item.active, .sa-item[aria-current="page"] { background: var(--ht-gold) !important; color: var(--ht-clove) !important; }
+.sa-main { background: var(--ht-rust) !important; }
+.sa-sidebar-foot { border-top: 1px dotted var(--ht-gold); color: var(--ht-fg-muted); }
+.sa-hamburger { border: 1px solid var(--ht-gold); border-radius: 9999px; background: transparent; color: var(--ht-gold); }
+.audit-card-head { border-color: var(--ht-cardamom) !important; }
+.audit-card-title { font-family: var(--ht-display); font-weight: 400; text-transform: uppercase; color: var(--ht-fg); line-height: 1.05; }
+.user-table th { color: var(--ht-fg-muted); border-bottom: 1px dotted var(--ht-gold); }
+.user-table td { border-bottom: 1px solid var(--ht-cardamom); color: var(--ht-fg); }
+.timeline { border-color: var(--ht-cardamom) !important; }
+
+} /* @scope */
+} /* @layer pages */

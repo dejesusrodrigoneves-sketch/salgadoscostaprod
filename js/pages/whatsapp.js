@@ -1,8 +1,51 @@
-// js/pages/whatsapp.js — extracted from whatsapp.html inline scripts
-(function () {
+// js/pages/whatsapp.js — módulo SPA (receita Task3/Task5)
+const HTML_WHATSAPP = `<body>
+<div class="page-header">
+  <i class="fab fa-whatsapp"></i>
+  <h1>Integração WhatsApp</h1>
+</div>
+
+<div id="instancesContainer">
+  <div class="card">
+    <div class="empty-state">
+      <i class="fas fa-wifi"></i>
+      <p>Carregando...</p>
+    </div>
+  </div>
+</div>
+
+<div id="qrContainer"></div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="criar-modal-overlay" id="criarModal">
+  <div class="criar-modal-content">
+    <h3><i class="fas fa-plus-circle" style="color:#25d366;"></i> Criar Instância WhatsApp</h3>
+    <input id="inputInstanceName" type="text" aria-label="Nome da instância" placeholder="Nome da instância (ex: WhatsApp Matriz)" />
+    <input id="inputPhoneNumber" type="text" aria-label="Número da loja" placeholder="Número da loja (ex: 5511999999999)" />
+    <div class="criar-modal-actions">
+      <button class="btn btn-ghost" data-action="fecharModalAction">Cancelar</button>
+      <button class="btn btn-primary" data-action="confirmarCriacaoAction">Criar</button>
+    </div>
+  </div>
+</div>
+
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+let whatsappPollId = null;
+let qrPollingId = null;
+
+export  function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  _cleanups.push(pageCss('css/whatsapp-page.css', 'whatsapp'));
+  container.innerHTML = HTML_WHATSAPP;
+  (function () {
   var API = (window.getApiBase ? window.getApiBase() : window.location.origin) + '/api';
   var authUser = JSON.parse(localStorage.getItem('authUser') || 'null');
-  if (!authUser) { window.location.href = 'login.html'; return; }
+  if (!authUser) { goTo('login'); return; }
 
   var TOKEN = authUser.token || '';
 
@@ -15,8 +58,7 @@
     try {
       var url = API + path;
       var headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
-      if (TOKEN) headers['Authorization'] = 'Bearer ' + TOKEN;
-      var res = await fetch(url, Object.assign({}, opts, { headers: headers }));
+      var res = await authFetch(url, Object.assign({}, opts, { headers: headers }));
       if (!res.ok) {
         var err = await res.json().catch(function () { return { error: 'Erro na requisição' }; });
         throw new Error(err.error || 'Erro');
@@ -118,8 +160,11 @@
           '</div></div>';
       }
     } catch (e) {
-      document.getElementById('instancesContainer').innerHTML =
-        '<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>' + e.message + '</p></div></div>';
+      var errBox = document.getElementById('instancesContainer');
+      if (errBox) {
+        errBox.innerHTML =
+          '<div class="card"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>' + e.message + '</p></div></div>';
+      }
     }
   }
 
@@ -204,7 +249,6 @@
       '<button class="btn btn-ghost" style="margin-top:12px;" data-action="fecharQRCard">Fechar</button></div>';
   }
 
-  var qrPollingId = null;
 
   async function iniciarPollingQR(id) {
     if (qrPollingId) clearInterval(qrPollingId);
@@ -274,5 +318,14 @@
   };
 
   carregarInstancias();
-  setInterval(carregarInstancias, 15000);
-})();
+  whatsappPollId = setInterval(carregarInstancias, 15000);
+  })();
+  return cleanup;
+}
+function cleanup() {
+  try { clearInterval(whatsappPollId); } catch (e) {}
+  try { clearInterval(qrPollingId); } catch (e) {}
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

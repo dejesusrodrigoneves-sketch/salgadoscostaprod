@@ -1,6 +1,7 @@
 const sql = require('../repositories/sqlRepository');
 const auditService = require('./auditService');
 const { invalidateEmpresaCache } = require('../config/empresaCache');
+const { validateAnoAbertura } = require('../utils/validation');
 
 function isWorkingDay(workingDays) {
   if (!Array.isArray(workingDays) || workingDays.length === 0) return true;
@@ -34,8 +35,15 @@ async function getStatus(slug) {
     isOpen = isWorkingDay(workingDays) && isWithinHours(empresa.openingTime, empresa.closingTime);
   }
 
+  // gate de caixa: loja so considera ABERTA com caixa do dia aberto
+  const data = new Date().toISOString().split('T')[0];
+  const caixa = await sql.buscarCaixaHoje(empresa.id, data);
+  const caixaAberto = !!caixa && caixa.status === 'aberto';
+  if (isOpen && !caixaAberto) isOpen = false;
+
   return {
     isOpen,
+    caixaAberto,
     openingTime: empresa.openingTime,
     closingTime: empresa.closingTime,
     workingDays,
@@ -105,6 +113,7 @@ function formatEmpresa(empresa) {
     latitude: empresa.latitude ? Number(empresa.latitude) : null,
     longitude: empresa.longitude ? Number(empresa.longitude) : null,
     descricao: empresa.descricao || '',
+    anoAbertura: empresa.anoAbertura ?? null,
     openingTime: empresa.openingTime || '',
     closingTime: empresa.closingTime || '',
     workingDays: Array.isArray(empresa.workingDays) ? empresa.workingDays : [],
@@ -134,10 +143,14 @@ async function updateSettings(empresaId, data, ctx = {}) {
     empresaId = empresas[0].id;
   }
   const empresa = await sql.buscarEmpresa(empresaId);
+  if (data.anoAbertura !== undefined) {
+    data = { ...data, anoAbertura: validateAnoAbertura(data.anoAbertura) };
+  }
   const allowed = [
     'openingTime', 'closingTime', 'workingDays', 'isOpen', 'manualOverride',
     'nome', 'telefone', 'endereco', 'numero', 'bairro', 'cidade', 'estado', 'cep',
     'latitude', 'longitude', 'descricao', 'logo', 'capa', 'bairrosAtendidos', 'themeSettings',
+    'anoAbertura',
   ];
   const payload = {};
   for (const key of allowed) {

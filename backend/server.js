@@ -4,7 +4,7 @@ const logger = require('./src/config/logger');
 const { validateAtBoot } = require('./src/config/cryptoKeys');
 validateAtBoot();
 
-let pixJob, settlementJob, filialBillingWorker, deferredDeleteWorker;
+let pixJob, settlementJob, filialBillingWorker, deferredDeleteWorker, caixaAutoCloseWorker;
 
 const server = app.listen(config.port, async () => {
   logger.info(`Servidor iniciado na porta ${config.port}`);
@@ -80,6 +80,14 @@ const server = app.listen(config.port, async () => {
     logger.error('Deferred delete worker falhou:', err.message);
   }
 
+  // Caixa auto-close worker: fecha caixas 'aberto' de dias anteriores diariamente 05:00
+  try {
+    caixaAutoCloseWorker = require('./src/jobs/caixaAutoCloseWorker');
+    caixaAutoCloseWorker.start();
+  } catch (err) {
+    logger.error('Caixa auto-close worker falhou:', err.message);
+  }
+
   // BullMQ workers (audit, whatsapp, fcm, webhook, financial-sync)
   try {
     const { startAllWorkers } = require('./src/workers/index');
@@ -120,6 +128,7 @@ async function shutdown(signal) {
   try { if (filialBillingWorker && filialBillingWorker.stop) filialBillingWorker.stop(); } catch {}
   try { if (filialBillingWorker && filialBillingWorker.stopBillingWorker) filialBillingWorker.stopBillingWorker(); } catch {}
   try { if (deferredDeleteWorker) deferredDeleteWorker.stop(); } catch {}
+  try { if (caixaAutoCloseWorker) caixaAutoCloseWorker.stop(); } catch {}
   try {
     const { stopAllWorkers } = require('./src/workers/index');
     await stopAllWorkers();

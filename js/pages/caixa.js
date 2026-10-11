@@ -1,9 +1,55 @@
-// js/pages/caixa.js — extracted from caixa.html inline scripts
+// js/pages/caixa.js — módulo Controle de Caixa
+const HTML_CAIXA = `<body>
 
-(function () {
-  if (!authGuard(['admin', 'user'])) throw new Error('Redirect');
+<div class="container">
+  <div class="card" id="aberturaCard">
+    <h2><i class="fas fa-cash-register"></i> Abertura de Caixa</h2>
+    <input type="number" id="valorInicial" aria-label="Valor inicial do troco" placeholder="Valor inicial (troco)">
+    <button class="btn-primary" data-action="abrirCaixaAction"><i class="fas fa-play"></i> Abrir Caixa</button>
+  </div>
+
+  <div class="card" id="caixaCard" style="display:none;">
+    <h2><i class="fas fa-chart-pie"></i> Resumo do Dia</h2>
+    <div class="resumo-grid">
+      <div class="resumo-item"><i class="fas fa-money-bill-wave"></i> Dinheiro<br><span id="dinheiro">0</span></div>
+      <div class="resumo-item"><i class="fas fa-qrcode"></i> Pix<br><span id="pix">0</span></div>
+      <div class="resumo-item"><i class="fas fa-credit-card"></i> Débito<br><span id="debito">0</span></div>
+      <div class="resumo-item"><i class="fas fa-credit-card"></i> Crédito<br><span id="credito">0</span></div>
+    </div>
+
+    <div class="total-geral">
+      <i class="fas fa-calculator"></i> Total Geral: R$ <span id="totalGeral">0</span><br>
+      <span style="font-size:14px;font-weight:500;color:#16a34a;">
+        Troco Inicial: R$ <span id="trocoInicial">0</span>
+        &nbsp;|&nbsp; Pedidos: <span id="qtdPedidos">0</span>
+      </span>
+    </div>
+
+    <canvas id="graficoPagamentos"></canvas>
+
+    <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn-info" data-action="verRelatoriosAction"><i class="fas fa-history"></i> Ver Relatórios</button>
+      <button class="btn-danger" data-action="fecharCaixaAction"><i class="fas fa-stop"></i> Fechar Caixa</button>
+    </div>
+    <div class="relatorios-list" id="listaRelatorios"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+
+export function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  _cleanups.push(pageCss('css/caixa-page.css', 'caixa'));
+  container.innerHTML = HTML_CAIXA;
+  (function () {
   var _au = JSON.parse(localStorage.getItem('authUser') || '{}');
-  if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { window.location.href = 'dashboard.html'; }
+  if (!_au.role || !['admin', 'superadmin'].includes(_au.role)) { goTo('admin'); return; }
 
   async function api(path, opts) {
     var o = opts || {};
@@ -11,10 +57,7 @@
     if (!skip && typeof showLoading === 'function') showLoading();
     try {
       var headers = { 'Content-Type': 'application/json' };
-      var token = (typeof safeGetToken === 'function' ? safeGetToken() : '') ||
-        (JSON.parse(localStorage.getItem('authUser') || '{}').token);
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      var r = await fetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path,
+      var r = await authFetch((window.getApiBase ? window.getApiBase() : '') + '/api' + path,
         Object.assign({}, o, { headers: Object.assign({}, headers, o.headers || {}) }));
       if (r.status === 204) return null;
       if (!r.ok) {
@@ -202,4 +245,11 @@
 
   function calcularTotalPedidos() { return Object.values(resumo).reduce(function (a, b) { return a + b; }, 0); }
   function calcularTotalComTroco() { return calcularTotalPedidos() + trocoInicial; }
-})();
+  })();
+  return cleanup;
+}
+function cleanup() {
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

@@ -3,13 +3,26 @@
    Extraído de inline <style>
    ═══════════════════════════════════════════════════════ */
 
+@layer overrides {
+
 :root {
   --bg: #0f172a; --card: #0b1224; --muted: #94a3b8; --text: #e2e8f0;
   --brand: #22c55e; --brand-2: #3b82f6; --warn: #f59e0b; --danger: #ef4444;
   --ok: #10b981; --ring: #22c55e55;
 }
-*{ box-sizing: border-box }
-html,body{ height:100%; margin:0; font-family:'Inter', sans-serif; background: var(--bg); color:var(--text); }
+
+} /* @layer overrides */
+
+@layer pages {
+
+#pageContainer {
+  min-height: 100%;
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+}
+
+@scope (#pageContainer) {
+
 .wrapper{ max-width:1200px; margin:32px auto; padding:0 16px; }
 header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
 .title{ font-weight:800; font-size:clamp(20px,2vw+12px,32px); display:flex; align-items:center; gap:10px }
@@ -104,3 +117,31 @@ img.prodThumb{ width:36px; height:36px; object-fit:cover; border-radius:6px; mar
 }
 .highlight-edit{ animation:pulseEdit 1s ease; box-shadow:0 0 0 4px rgba(59,130,246,0.5); }
 @keyframes pulseEdit{ 0%{transform:scale(1)} 50%{transform:scale(1.02)} 100%{transform:scale(1)} }
+
+/* ===== HT — Painel Loja (únicos) ===== */
+.wrapper { background: transparent !important; }
+.form-section { background: var(--ht-spice) !important; border: none !important; border-radius: var(--ht-radius-card) !important; box-shadow: none !important; }
+.title { font-family: var(--ht-display); font-weight: 400; text-transform: uppercase; color: var(--ht-fg); line-height: 1.05; }
+.toolbar { border-bottom: 1px dotted var(--ht-gold); }
+.table-wrapper { background: var(--ht-spice); border-radius: var(--ht-radius-card); }
+.table th { color: var(--ht-fg-muted); border-bottom: 1px dotted var(--ht-gold); text-transform: uppercase; font-size: 11px; }
+.table td { border-bottom: 1px solid var(--ht-cardamom); color: var(--ht-fg); }
+.pill-estoque { background: var(--ht-spice) !important; color: var(--ht-fg) !important; border: 1px solid var(--ht-cardamom) !important; }
+.pill-baixo { background: transparent !important; color: var(--ht-fg-muted) !important; border: 1px solid var(--ht-saffron) !important; }
+.chip { background: var(--ht-spice) !important; border: 1px solid var(--ht-cardamom) !important; color: var(--ht-fg) !important; }
+.highlight-edit { background: rgba(250, 174, 51, 0.12) !important; }
+.dot { background: var(--ht-gold); }
+
+} /* @scope */
+} /* @layer pages */
+
+@layer overrides {
+
+/* ===== HT — remap :root (paleta → Hungry Tiger) ===== */
+:root {
+  --bg: #823513; --card: #402011; --muted: #f0c46a; --text: #faae33;
+  --brand: #faae33; --brand-2: #faae33; --warn: #f0c46a; --danger: #ef6d97;
+  --ok: #faae33; --ring: rgba(250, 174, 51, 0.4);
+}
+
+} /* @layer overrides */

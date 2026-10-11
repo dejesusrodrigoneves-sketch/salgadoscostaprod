@@ -2,6 +2,19 @@
    Port do mockup aprovado: paleta ink, Fraunces/Instrument Sans/IBM Plex Mono.
    --signal só para dinheiro; --alert para juros/atraso. */
 
+@layer pages {
+
+#pageContainer {
+  color: var(--paper, #EDF1F7);
+  font-family: var(--ui, system-ui, sans-serif);
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  min-height: 100%;
+}
+
+@scope (#pageContainer) {
+
 .pg-wrap {
   --ink: #0B1020;
   --surface: #121A33;
@@ -18,18 +31,6 @@
   --display: 'Fraunces', Georgia, serif;
   --ui: 'Instrument Sans', system-ui, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
-}
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  background: var(--ink, #0B1020);
-  color: var(--paper, #EDF1F7);
-  font-family: var(--ui, system-ui, sans-serif);
-  font-size: 15px;
-  line-height: 1.5;
-  font-variant-numeric: tabular-nums;
 }
 
 ::selection { background: var(--signal); color: #04120a; }
@@ -187,3 +188,35 @@ body {
 
 .hidden { display: none !important; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ===== HT — Pagamentos (únicos) ===== */
+.pg-banner, .pg-receipt, .pg-ledger, .pg-mblock {
+  background: var(--ht-spice) !important; border: none !important;
+  border-radius: var(--ht-radius-card) !important; box-shadow: none !important;
+}
+.pg-hero { font-family: var(--ht-display) !important; font-size: 65px !important; line-height: 0.9 !important; color: var(--ht-fg) !important; }
+.pg-amount { font-family: var(--ht-display); color: var(--ht-fg); font-size: 43px; }
+.pg-status { background: var(--ht-spice) !important; color: var(--ht-fg) !important; border: 1px solid var(--ht-cardamom) !important; border-radius: 9999px !important; }
+.pg-hr { border: none; border-top: 1px dotted var(--ht-gold); }
+.pg-cols > * { background: var(--ht-spice); border-radius: var(--ht-radius-card); }
+
+/* ===== HT — Pagamentos: remap de variáveis ===== */
+.pg-wrap {
+  --ink: var(--ht-rust);
+  --surface: var(--ht-clove);
+  --surface-2: #241410;
+  --line: var(--ht-cardamom);
+  --line-soft: rgba(159, 83, 27, .45);
+  --paper: var(--ht-fg);
+  --muted: var(--ht-fg-muted);
+  --faint: var(--ht-fg-dim);
+  --signal: var(--ht-gold);
+  --signal-dim: rgba(250, 174, 51, .14);
+  --alert: var(--ht-danger);
+  --alert-dim: rgba(239, 109, 151, .14);
+}
+.pg-btn.primary { color: var(--ht-clove) !important; }
+.pg-flag { color: var(--ht-clove) !important; }
+
+} /* @scope */
+} /* @layer pages */

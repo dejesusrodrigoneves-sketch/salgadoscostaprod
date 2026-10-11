@@ -18,12 +18,10 @@
     delete opts.skipLoading;
     if (!skip && typeof showLoading === 'function') showLoading();
     try {
-      const token = getToken();
-      const res = await fetch(API_BASE + path, {
+      const res = await authFetch(API_BASE + path, {
         ...opts,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token,
           ...opts.headers
         }
       });

@@ -1,6 +1,81 @@
-// js/pages/balcao.js — extracted from balcao.html inline scripts
-(function () {
-  if (!authGuard(['admin', 'user'])) throw new Error('Redirect');
+// js/pages/balcao.js — módulo Lançar Pedido (balcao embedded via params)
+const HTML_BALCAO = `<body>
+
+<div class="produtos-area">
+
+  <div class="filtros" id="filtros"></div>
+
+  <div class="grid-produtos"></div>
+
+</div>
+
+<div class="checkout">
+
+  <h3>Resumo</h3>
+
+ <div class="lista" id="lista-carrinho"></div>
+
+  <div class="total-area">
+
+<div class="entrega-opcoes">
+
+  <label>
+    <input type="radio" name="tipoEntrega" value="retirada" checked data-action-change="atualizarFormularioBridge">
+    <span>Retirada / Balcão</span>
+  </label>
+
+  <label>
+    <input type="radio" name="tipoEntrega" value="delivery" data-action-change="atualizarFormularioBridge">
+    <span>Delivery</span>
+  </label>
+
+</div>
+
+
+  <div id="form-informacoes">
+    <!-- campos dinâmicos aqui -->
+  </div>
+
+</div>
+    <div>
+      <span>Total</span>
+      <span class="total-final" id="total">R$ 0,00</span>
+    </div>
+
+    <button class="botao-pagar" data-action="pagarAction">Finalizar Venda</button>
+  </div>
+
+</div>
+
+</body>
+`;
+let _abort = null;
+const _cleanups = [];
+
+const STYLE_BALCAO = `
+.toast-container{position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;}
+.toast-msg{background:#1e293b;color:white;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;animation:toastIn 0.3s ease,toastOut 0.3s ease 2.2s forwards;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.toast-msg.warning{background:#f59e0b;}
+.toast-msg.success{background:#16a34a;}
+.toast-msg.danger{background:#dc2626;}
+@keyframes toastIn{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
+@keyframes toastOut{from{opacity:1;}to{opacity:0;pointer-events:none;}}
+`;
+
+export async function mount(container, params) {
+  unmount();
+  _abort = new AbortController();
+  await loadScriptOnce('js/comboConfig.js');
+  _cleanups.push(pageCss('css/balcao.css', 'balcao'));
+  container.innerHTML = HTML_BALCAO;
+  if (STYLE_BALCAO) {
+    const s = document.createElement('style');
+    s.dataset.page = 'balcao';
+    s.textContent = STYLE_BALCAO;
+    document.head.appendChild(s);
+    _cleanups.push(function () { s.remove(); });
+  }
+  (function () {
 
   var total = 0;
   var todosProdutos = [];
@@ -10,7 +85,7 @@
     try {
       var authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
       var token = authUser.token || '';
-      var res = await fetch((getApiBase() || '') + '/api/produtos', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+      var res = await authFetch((getApiBase() || '') + '/api/produtos');
       if (!res.ok) throw new Error('Erro ao carregar produtos');
       todosProdutos = await res.json();
       todosProdutos = todosProdutos.filter(function (p) { return p.status === 'active'; });
@@ -18,6 +93,7 @@
       console.error('Erro ao carregar produtos:', e);
       todosProdutos = [];
     }
+    if (!document.getElementById('filtros')) return;
     criarFiltros();
     renderizarProdutos();
   }
@@ -80,7 +156,7 @@
     });
   }
 
-  window.addEventListener('DOMContentLoaded', carregarProdutos);
+  carregarProdutos();
 
   function atualizarFormulario() {
     var tipo = document.querySelector('input[name="tipoEntrega"]:checked').value;
@@ -347,12 +423,14 @@
       return { produtoId: item.id, quantidade: item.qtd, sabores: formatarSabores(item.sabores), preco: item.preco, nome: item.nome, extra: item.extra || 0 };
     });
     var totalVal = carrinho.reduce(function (sum, item) { return sum + item.preco * item.qtd + (Number(item.extra) || 0); }, 0);
+    // SELF-POST: canal overlay embed
     window.parent.postMessage({ type: 'CARRINHO_UPDATE', itens: itens, total: totalVal, totalItens: itens.reduce(function (sum, i) { return sum + i.quantidade; }, 0) }, '*');
   }
 
   function fecharPedido() {
     if (carrinho.length === 0) { toast('Carrinho vazio. Adicione produtos antes de finalizar.', 'warning'); return; }
     var itens = carrinho.map(function (item) { return { produtoId: item.id, quantidade: item.qtd, sabores: formatarSabores(item.sabores) }; });
+    // SELF-POST: canal overlay embed
     window.parent.postMessage({ type: 'FECHAR_PEDIDO', itens: itens }, '*');
     toast('Pedido enviado!', 'success');
     carrinho = [];
@@ -380,7 +458,7 @@
     return JSON.stringify(obj);
   }
 
-  var isEmbedded = new URLSearchParams(window.location.search).get('embedded') === '1';
+  var isEmbedded = !!(params && String(params.embedded) === '1');
   var itensNotificados = new Set();
 
   if (isEmbedded) {
@@ -394,7 +472,7 @@
         });
         e.source.postMessage({ type: 'ITENS', itens: itens }, e.origin);
       }
-    });
+    }, { signal: _abort.signal });
   }
 
   function adicionarAoCarrinho(produto) {
@@ -477,7 +555,7 @@
     document.getElementById('total').innerText = 'R$ ' + totalFinal.toFixed(2);
   }
 
-  window.addEventListener('DOMContentLoaded', atualizarFormulario);
+  atualizarFormulario();
 
   async function pagar() {
     if (carrinho.length === 0) { toast('Carrinho vazio. Adicione produtos antes de finalizar.', 'warning'); return; }
@@ -509,11 +587,9 @@
     };
     if (typeof showLoading === 'function') showLoading();
     try {
-      var authUser = JSON.parse(localStorage.getItem('authUser') || '{}');
-      var token = authUser.token || '';
-      var res = await fetch((getApiBase() || '') + '/api/pedidos', {
+      var res = await authFetch((getApiBase() || '') + '/api/pedidos', {
         method: 'POST',
-        headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': 'Bearer ' + token } : {}),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!res.ok) { var err = await res.json().catch(function () { return ({}); }); throw new Error(err.error || 'Erro ao criar pedido'); }
@@ -521,7 +597,7 @@
       carrinho = [];
       renderizarCarrinho();
       mostrarConfirmacaoPedido(pedido.id, snapshotCarrinho, totalFinal);
-      setTimeout(function () { window.location.href = 'admin.html'; }, 2000);
+      setTimeout(function () { goTo('admin'); }, 2000);
     } catch (error) {
       console.error('Erro ao finalizar venda:', error);
       toast(error.message || 'Erro ao finalizar venda.', 'danger');
@@ -572,11 +648,18 @@
       modal.remove();
       document.removeEventListener('keydown', onKey);
     }
-    document.addEventListener('keydown', onKey);
+    onPage(document, 'keydown', onKey);
     modal.addEventListener('click', function (e) {
       if (e.target !== modal) return;
       modal.remove();
       document.removeEventListener('keydown', onKey);
     });
   }
-})();
+  })();
+  return cleanup;
+}
+function cleanup() {
+  _cleanups.splice(0).forEach(function (f) { try { f(); } catch (e) {} });
+  if (_abort) { _abort.abort(); _abort = null; }
+}
+export function unmount() { cleanup(); }

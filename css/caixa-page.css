@@ -3,14 +3,17 @@
    Extraído de inline <style> — Finalização
    ═══════════════════════════════════════════════════════ */
 
-body {
+@layer pages {
+
+#pageContainer {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  background: linear-gradient(135deg,#f1f5f9,#e2e8f0);
   padding: 20px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100%;
 }
-.container { max-width: 1200px; margin: auto; display: flex; flex-direction: column; gap: 20px; }
+
+@scope (#pageContainer) {
+
+.container { max-width: 1200px; margin: 0; display: flex; flex-direction: column; gap: 20px; }
 
 .card {
   background: white;
@@ -119,7 +122,25 @@ canvas { width: 100% !important; max-height: 280px; margin-top: 20px; }
 }
 @media(max-width:480px){
   .resumo-grid { grid-template-columns: 1fr; }
-  body { padding: 12px; }
+  :scope { padding: 12px; }
   .card { padding: 16px; }
   input { max-width: 100%; }
 }
+
+/* ===== HT — Caixa (únicos) ===== */
+.resumo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.resumo-item, .relatorio-item {
+  background: var(--ht-spice) !important; border: none !important;
+  border-radius: var(--ht-radius-card) !important; box-shadow: none !important; color: var(--ht-fg) !important;
+}
+.total-geral { font-family: var(--ht-display); font-size: 65px; line-height: 0.95; color: var(--ht-fg); }
+.relatorios-list { border-top: 1px dotted var(--ht-gold); }
+h2 { color: var(--ht-fg) !important; font-family: var(--ht-display); font-weight: 400; text-transform: uppercase; letter-spacing: 0.01em; }
+h2 i { color: var(--ht-gold) !important; }
+.resumo-item span { color: var(--ht-fg) !important; }
+input:focus { border-color: var(--ht-gold) !important; box-shadow: none !important; }
+.btn-info { background: var(--ht-gold) !important; color: var(--ht-clove) !important; border: none !important; }
+.btn-info:hover { filter: brightness(1.06); }
+
+} /* @scope */
+} /* @layer pages */

@@ -7,9 +7,7 @@ window.SuperIntegracoes = (function () {
 
   async function carregar() {
     const a = auth();
-    const res = await fetch((window.getApiBase?window.getApiBase():'') + '/api/admin/integracoes', {
-      headers: { Authorization: `Bearer ${a.token}` },
-    });
+    const res = await authFetch((window.getApiBase?window.getApiBase():'') + '/api/admin/integracoes');
     if (res.status === 401) { window.location.href = 'login.html'; return; }
     const integs = await res.json();
     const lista = document.getElementById('super-integ-lista');
